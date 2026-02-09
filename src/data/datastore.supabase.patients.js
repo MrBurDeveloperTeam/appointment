@@ -89,22 +89,22 @@ export async function addPatient(clinicId, patient) {
 export async function updatePatient(patientUuid, updates) {
   const payload = {};
   if (updates.name !== undefined) payload.name = updates.name;
-  if (updates.phone !== undefined) payload.phone = updates.phone;
-  if (updates.email !== undefined) payload.email = updates.email;
-  if (updates.idNumber !== undefined) payload.id_number = updates.idNumber;
-  if (updates.address !== undefined) payload.address = updates.address;
-  if (updates.dob !== undefined) payload.dob = updates.dob;
-  if (updates.gender !== undefined) payload.gender = updates.gender;
-  if (updates.taxNumber !== undefined) payload.tax_number = updates.taxNumber;
-  if (updates.emergencyContactName !== undefined) payload.emergency_contact_name = updates.emergencyContactName;
-  if (updates.emergencyContactPhone !== undefined) payload.emergency_contact_phone = updates.emergencyContactPhone;
-  if (updates.allergies !== undefined) payload.allergies = updates.allergies;
-  if (updates.medicalConditions !== undefined) payload.medical_conditions = updates.medicalConditions;
-  if (updates.medications !== undefined) payload.medications = updates.medications;
-  if (updates.source !== undefined) payload.source = updates.source;
+  if (updates.phone !== undefined) payload.phone = updates.phone || null;
+  if (updates.email !== undefined) payload.email = updates.email || null;
+  if (updates.idNumber !== undefined) payload.id_number = updates.idNumber || null;
+  if (updates.address !== undefined) payload.address = updates.address || null;
+  if (updates.dob !== undefined) payload.dob = updates.dob || null;
+  if (updates.gender !== undefined) payload.gender = updates.gender || null;
+  if (updates.taxNumber !== undefined) payload.tax_number = updates.taxNumber || null;
+  if (updates.emergencyContactName !== undefined) payload.emergency_contact_name = updates.emergencyContactName || null;
+  if (updates.emergencyContactPhone !== undefined) payload.emergency_contact_phone = updates.emergencyContactPhone || null;
+  if (updates.allergies !== undefined) payload.allergies = updates.allergies || null;
+  if (updates.medicalConditions !== undefined) payload.medical_conditions = updates.medicalConditions || null;
+  if (updates.medications !== undefined) payload.medications = updates.medications || null;
+  if (updates.source !== undefined) payload.source = updates.source || null;
   if (updates.preferredDentist !== undefined) payload.preferred_dentist_id = updates.preferredDentist || null;
-  if (updates.insurance !== undefined) payload.insurance = updates.insurance;
-  if (updates.notes !== undefined) payload.notes = updates.notes;
+  if (updates.insurance !== undefined) payload.insurance = updates.insurance || null;
+  if (updates.notes !== undefined) payload.notes = updates.notes || null;
 
   const headers = await getHeaders();
   const response = await fetch(`${API_URL}/patients?id=${patientUuid}`, {
