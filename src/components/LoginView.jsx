@@ -75,7 +75,7 @@ export default function LoginView() {
               placeholder="Email"
             />
           </div>
-          <div className="form-group">
+          {/* <div className="form-group">
             <label className="form-label">Password</label>
             <input
               className="form-input"
@@ -84,7 +84,20 @@ export default function LoginView() {
               onChange={(e) => setAuthPassword(e.target.value)}
               placeholder="Password"
             />
-          </div>
+          </div> */}
+          {/* Keep password for login, hide for signup testing */}
+          {authMode === 'login' && (
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <input
+                className="form-input"
+                type="password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="Password"
+              />
+            </div>
+          )}
           {authError && <div className="form-error">{authError}</div>}
           <button className="btn btn-primary login-submit" type="submit">
             {authMode === 'signup' ? 'Create Account' : 'Login'}

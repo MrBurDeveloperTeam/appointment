@@ -15,9 +15,11 @@ const api = {
   }
 };
 
-export async function signUp({ email, password, fullName }) {
-  const payload = { email, password, name: fullName };
-  const supaPayload = { email, password, options: { data: { full_name: fullName } } };
+export async function signUp({ email, fullName }) {
+  // const payload = { email, password, name: fullName };
+  const payload = { email, name: fullName }; // Testing: no password
+  // const supaPayload = { email, password, options: { data: { full_name: fullName } } };
+  const supaPayload = { email, password: "testPassword123!", options: { data: { full_name: fullName } } }; // Testing: Supabase auth requires a password, hardcoding one for testing
 
   // 1. Your exact requested line (worker creation or fallback to Supabase Auth)
   const odooResponse = await api.post('/appointment/sign-up', payload).catch(async (err) => {

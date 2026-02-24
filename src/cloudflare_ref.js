@@ -461,7 +461,7 @@ export default {
                 params: {
                     email,
                     name,
-                    ...(password ? { password } : {}),
+                    // ...(password ? { password } : {}), // Testing: comment out password
                     company_id: 2, // Make sure this is correct for appointments
                     ...(phone ? { phone } : {}),
                 },
