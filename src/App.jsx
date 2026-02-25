@@ -32,6 +32,10 @@ const getBookingSlugFromPath = () => {
 
 export default function App() {
 
+  useEffect(() => {
+    checkSession();
+  }, []);
+
   const checkSession = async () => {
     const sso = await api.get('/sso/exchange');
     await supabase.auth.setSession({
@@ -67,7 +71,6 @@ function AppContent() {
   });
 
   useEffect(() => {
-    checkSession();
     DataStore.clearLegacyLocalData();
   }, []);
 
