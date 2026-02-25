@@ -10,28 +10,13 @@ const mapHoliday = (row) => ({
   createdAt: row.created_at,
 });
 
-// Assuming your Worker is deployed at this URL
-const API_URL = "https://sso.mrburstudio.com/api";
-
-// Helper to get headers
-async function getHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) throw new Error("No active session");
-  return {
-    "Authorization": `Bearer ${token}`,
-    "Content-Type": "application/json"
-  };
-}
-
 export async function getHolidays(clinicId) {
-  const headers = await getHeaders();
-  const params = new URLSearchParams({ clinicId });
-
-  const response = await fetch(`${API_URL}/holidays?${params.toString()}`, { headers });
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_holidays")
+    .select("*")
+    .eq("clinic_id", clinicId)
+    .order("start_date", { ascending: true });
+  if (error) throw error;
   return (data || []).map(mapHoliday);
 }
 
@@ -44,17 +29,12 @@ export async function addHoliday(clinicId, holiday) {
     type: holiday.type || "public",
     is_public: holiday.isPublic || false,
   };
-
-  const headers = await getHeaders();
-  const response = await fetch(`${API_URL}/holidays`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_holidays")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error) throw error;
   return mapHoliday(data);
 }
 
@@ -66,27 +46,18 @@ export async function updateHoliday(id, updates) {
     ...(updates.type !== undefined ? { type: updates.type } : {}),
     ...(updates.isPublic !== undefined ? { is_public: updates.isPublic } : {}),
   };
-
-  const headers = await getHeaders();
-  const response = await fetch(`${API_URL}/holidays?id=${id}`, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_holidays")
+    .update(payload)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
   return mapHoliday(data);
 }
 
 export async function deleteHoliday(id) {
-  const headers = await getHeaders();
-  const response = await fetch(`${API_URL}/holidays?id=${id}`, {
-    method: "DELETE",
-    headers
-  });
-
-  if (!response.ok) throw new Error(await response.text());
+  const { error } = await supabase.from("apt_holidays").delete().eq("id", id);
+  if (error) throw error;
   return true;
 }

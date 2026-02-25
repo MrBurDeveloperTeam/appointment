@@ -8,28 +8,13 @@ const mapTreatment = (row) => ({
   suppliesNeeded: row.supplies_needed || [],
 });
 
-// Assuming your Worker is deployed at this URL
-const API_URL = "https://sso.mrburstudio.com/api";
-
-// Helper to get headers
-async function getHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) throw new Error("No active session");
-  return {
-    "Authorization": `Bearer ${token}`,
-    "Content-Type": "application/json"
-  };
-}
-
 export async function getTreatments(clinicId) {
-  const headers = await getHeaders();
-  const params = new URLSearchParams({ clinicId });
-
-  const response = await fetch(`${API_URL}/treatments?${params.toString()}`, { headers });
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_treatments")
+    .select("*")
+    .eq("clinic_id", clinicId)
+    .order("name", { ascending: true });
+  if (error) throw error;
   return (data || []).map(mapTreatment);
 }
 
@@ -41,17 +26,12 @@ export async function addTreatment(clinicId, treatment) {
     color: treatment.color || null,
     supplies_needed: treatment.suppliesNeeded || [],
   };
-
-  const headers = await getHeaders();
-  const response = await fetch(`${API_URL}/treatments`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_treatments")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error) throw error;
   return mapTreatment(data);
 }
 
@@ -62,27 +42,18 @@ export async function updateTreatment(id, updates) {
     ...(updates.color !== undefined ? { color: updates.color } : {}),
     ...(updates.suppliesNeeded !== undefined ? { supplies_needed: updates.suppliesNeeded } : {}),
   };
-
-  const headers = await getHeaders();
-  const response = await fetch(`${API_URL}/treatments?id=${id}`, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_treatments")
+    .update(payload)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
   return mapTreatment(data);
 }
 
 export async function deleteTreatment(id) {
-  const headers = await getHeaders();
-  const response = await fetch(`${API_URL}/treatments?id=${id}`, {
-    method: "DELETE",
-    headers
-  });
-
-  if (!response.ok) throw new Error(await response.text());
+  const { error } = await supabase.from("apt_treatments").delete().eq("id", id);
+  if (error) throw error;
   return true;
 }
