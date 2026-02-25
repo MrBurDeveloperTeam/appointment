@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { api } from "../services/api";
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || "https://sso.mrburstudio.com/api";
 
@@ -43,7 +44,9 @@ export async function signUp({ email, fullName }) {
 }
 
 export async function signIn({ email, password }) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await api.post("/auth/login", { email, password }).catch(async (err) => {
+    return await supabase.auth.signInWithPassword({ email, password });
+  });
   if (error) throw error;
   return data;
 }
