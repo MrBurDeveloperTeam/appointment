@@ -23,6 +23,7 @@ import { todayISO } from './utils/date';
 import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from './lib/supabaseClient';
 import DataStore from "./data";
+import { api } from './services/api';
 
 const getBookingSlugFromPath = () => {
   const parts = window.location.pathname.split('/').filter(Boolean);
