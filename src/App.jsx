@@ -31,6 +31,15 @@ const getBookingSlugFromPath = () => {
 };
 
 export default function App() {
+
+  const checkSession = async () => {
+    const sso = await api.get('/sso/exchange');
+    await supabase.auth.setSession({
+      access_token: sso.data.access_token,
+      refresh_token: sso.data.refresh_token
+    });
+  };
+
   return (
     <ToastProvider>
       <AppContent />
@@ -58,6 +67,7 @@ function AppContent() {
   });
 
   useEffect(() => {
+    checkSession();
     DataStore.clearLegacyLocalData();
   }, []);
 
