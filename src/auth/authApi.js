@@ -3,19 +3,6 @@ import { api } from "../services/api";
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || "https://sso.mrburstudio.com/api";
 
-// Helper to mimic Axios using native fetch
-const api = {
-  post: async (endpoint, data) => {
-    const res = await fetch(`${API_URL}${endpoint}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return { data: await res.json() };
-  }
-};
-
 export async function signUp({ email, fullName }) {
   // const payload = { email, password, name: fullName };
   const payload = { email, name: fullName }; // Testing: no password
