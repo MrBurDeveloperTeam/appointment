@@ -1055,7 +1055,6 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                       <th>Name</th>
                       <th>Account Type</th>
                       <th>Phone</th>
-                      <th>Position</th>
                       <th>Created At</th>
                       <th>Status</th>
                       <th style={{ textAlign: 'right' }}>Action</th>
@@ -1094,7 +1093,9 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                     }).map((user) => (
                       <tr key={user.id}>
                         <td className="font-medium">{user.email}</td>
-                        <td>{user.name || '-'}</td>
+                        <td title={user.name}>
+                          {user.name ? (user.name.length > 20 ? `${user.name.substring(0, 20)}...` : user.name) : '-'}
+                        </td>
                         <td>
                           <div className="flex-col">
                             <span className="text-capitalize">{user.role}</span>
@@ -1106,7 +1107,6 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                           </div>
                         </td>
                         <td>{user.phone || '-'}</td>
-                        <td>{user.role === 'dentist' ? 'Dentist' : 'Administrator'}</td>
                         <td className="text-muted text-sm">
                           {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
                         </td>
