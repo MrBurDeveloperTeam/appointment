@@ -42,10 +42,9 @@ export default function App() {
   const checkSession = async () => {
     try{
       const sso = await exchangeSso();
-      console.log('SSO exchange successful:', sso);
       await supabase.auth.setSession({
-        access_token: sso.data.access_token,
-        refresh_token: sso.data.refresh_token
+        access_token: sso.access_token,
+        refresh_token: sso.refresh_token
       });
     } catch (err) {
       await supabase.auth.signOut();
