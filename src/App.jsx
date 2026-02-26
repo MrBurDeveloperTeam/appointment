@@ -42,7 +42,8 @@ export default function App() {
 }
 
 function AppContent() {
-    const { mutateAsync: exchangeSso, isPending } = useSsoExchange();
+    const { mutateAsync: exchangeSso } = useSsoExchange();
+    const [exchangeDone, setExchangeDone] = useState(false);
 
   useEffect(() => {
     checkSession();
@@ -61,6 +62,42 @@ function AppContent() {
     }
   };
   const { addToast } = useToast();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // If your /sso/exchange sometimes returns 401 when no cookie,
+        // that's fine — we still mark exchangeDone = true at the end.
+        const sso = await exchangeSso();
+
+        if (cancelled) return;
+
+        // If API returns { access_token, refresh_token }
+        if (sso?.access_token && sso?.refresh_token) {
+          await supabase.auth.setSession({
+            access_token: sso.access_token,
+            refresh_token: sso.refresh_token,
+          });
+        } else {
+          // Optional: if exchange returns nothing, just ensure signed out
+          await supabase.auth.signOut();
+        }
+      } catch (err) {
+        // If exchange fails, ensure clean state then proceed to login
+        await supabase.auth.signOut();
+        console.error("SSO exchange failed:", err);
+      } finally {
+        if (!cancelled) setExchangeDone(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [exchangeSso]);
+
   const {
     session,
     user,
@@ -188,6 +225,7 @@ function AppContent() {
   const [confirmDialog, setConfirmDialog] = useState({ open: false, type: '', payload: null });
   const [isRedeeming, setIsRedeeming] = useState(false);
   const bookingSlug = getBookingSlugFromPath();
+  const [authInitializing, setAuthInitializing] = useState(true);
 
   const viewTitle = {
     calendar: 'Calendar',
@@ -290,78 +328,15 @@ function AppContent() {
     updateAppointment(appointment.id, updates);
   };
 
-    if(isPending){
+  if (!exchangeDone) {
     return (
-      <motion.div
-        layout
-        initial={{ opacity: 0, scale: 0.8, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.8, y: 20, transition: { duration: 0.08 } }}
-        transition={{
-          layout: { type: "spring", stiffness: 300, damping: 30 },
-          opacity: { duration: 0.3 },
-          scale: { duration: 0.3 },
-          y: { duration: 0.3 },
-        }}
-        className="group flex flex-col items-center gap-3 sm:gap-4 w-full pb-4 pt-2"
-      >
-        <div className="relative">
-          <div
-            className={`relative w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 ${app.colorScheme.bg} rounded-[2rem] shadow-[0_4px_12px_rgba(0,0,0,0.03),0_8px_24px_rgba(0,0,0,0.02)] flex items-center justify-center overflow-hidden`}
-          >
-            {/* ICON */}
-            <div
-              className={`relative z-10 select-none transition-all duration-300 transform group-hover:scale-110 flex items-center justify-center h-full w-full ${
-                !isImageUrl ? app.colorScheme.text : ""
-              }`}
-            >
-              {isImageUrl ? (
-                <img
-                  src={app.icon}
-                  alt={app.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <i className={`${app.icon} text-3xl sm:text-4xl`} />
-              )}
-            </div>
-            
-            {/* OVERLAY SPINNER */}
-            {isPending && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center">
-                {/* optional dim effect (remove if you want pure transparent) */}
-                <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
-            
-                <svg
-                  className="relative animate-spin h-6 w-6 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                  />
-                </svg>
-              </div>
-            )}
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-700 font-medium">Checking session...</p>
         </div>
-          
-        <h3 className="text-[12px] sm:text-[14px] font-bold text-slate-800 text-center px-1 truncate w-full tracking-tight">
-          {app.title}
-        </h3>
-      </motion.div>
-    )
+      </div>
+    );
   }
 
   if (bookingSlug) {
