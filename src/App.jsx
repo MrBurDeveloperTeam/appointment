@@ -24,6 +24,7 @@ import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from './lib/supabaseClient';
 import DataStore from "./data";
 import { api } from './services/api';
+import { useSsoExchange } from './mutation/useSsoExchange';
 
 const getBookingSlugFromPath = () => {
   const parts = window.location.pathname.split('/').filter(Boolean);
@@ -32,14 +33,15 @@ const getBookingSlugFromPath = () => {
 };
 
 export default function App() {
-
+  const { mutateAsync: exchangeSso, isPending } = useSsoExchange();
+  
   useEffect(() => {
     checkSession();
   }, []);
 
   const checkSession = async () => {
     try{
-      const sso = await api.get('/sso/exchange');
+      const sso = await exchangeSso();
       await supabase.auth.setSession({
         access_token: sso.data.access_token,
         refresh_token: sso.data.refresh_token
