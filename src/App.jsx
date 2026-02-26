@@ -38,11 +38,16 @@ export default function App() {
   }, []);
 
   const checkSession = async () => {
-    const sso = await api.get('/sso/exchange');
-    await supabase.auth.setSession({
-      access_token: sso.data.access_token,
-      refresh_token: sso.data.refresh_token
-    });
+    try{
+      const sso = await api.get('/sso/exchange');
+      await supabase.auth.setSession({
+        access_token: sso.data.access_token,
+        refresh_token: sso.data.refresh_token
+      });
+    } catch (err) {
+      await supabase.auth.signOut();
+      console.error('SSO exchange failed:', err);
+    }
   };
 
   return (
