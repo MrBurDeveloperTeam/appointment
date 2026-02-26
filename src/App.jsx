@@ -33,7 +33,16 @@ const getBookingSlugFromPath = () => {
 };
 
 export default function App() {
-  const { mutateAsync: exchangeSso, isPending } = useSsoExchange();
+
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
+  );
+}
+
+function AppContent() {
+    const { mutateAsync: exchangeSso, isPending } = useSsoExchange();
 
   useEffect(() => {
     checkSession();
@@ -51,15 +60,6 @@ export default function App() {
       console.error('SSO exchange failed:', err);
     }
   };
-
-  return (
-    <ToastProvider>
-      <AppContent />
-    </ToastProvider>
-  );
-}
-
-function AppContent() {
   const { addToast } = useToast();
   const {
     session,
@@ -289,6 +289,80 @@ function AppContent() {
     if (!appointment || !appointment.id) return;
     updateAppointment(appointment.id, updates);
   };
+
+    if(isPending){
+    return (
+      <motion.div
+        layout
+        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.8, y: 20, transition: { duration: 0.08 } }}
+        transition={{
+          layout: { type: "spring", stiffness: 300, damping: 30 },
+          opacity: { duration: 0.3 },
+          scale: { duration: 0.3 },
+          y: { duration: 0.3 },
+        }}
+        className="group flex flex-col items-center gap-3 sm:gap-4 w-full pb-4 pt-2"
+      >
+        <div className="relative">
+          <div
+            className={`relative w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 ${app.colorScheme.bg} rounded-[2rem] shadow-[0_4px_12px_rgba(0,0,0,0.03),0_8px_24px_rgba(0,0,0,0.02)] flex items-center justify-center overflow-hidden`}
+          >
+            {/* ICON */}
+            <div
+              className={`relative z-10 select-none transition-all duration-300 transform group-hover:scale-110 flex items-center justify-center h-full w-full ${
+                !isImageUrl ? app.colorScheme.text : ""
+              }`}
+            >
+              {isImageUrl ? (
+                <img
+                  src={app.icon}
+                  alt={app.title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <i className={`${app.icon} text-3xl sm:text-4xl`} />
+              )}
+            </div>
+            
+            {/* OVERLAY SPINNER */}
+            {isPending && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center">
+                {/* optional dim effect (remove if you want pure transparent) */}
+                <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
+            
+                <svg
+                  className="relative animate-spin h-6 w-6 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                  />
+                </svg>
+              </div>
+            )}
+          </div>
+        </div>
+          
+        <h3 className="text-[12px] sm:text-[14px] font-bold text-slate-800 text-center px-1 truncate w-full tracking-tight">
+          {app.title}
+        </h3>
+      </motion.div>
+    )
+  }
 
   if (bookingSlug) {
     return <PublicBookingView clinicSlug={bookingSlug} />;
