@@ -330,10 +330,12 @@ function AppContent() {
 
   if (!exchangeDone) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
+      <div className="fixed inset-0 flex items-center justify-center bg-slate-50 z-50">
+        <div className="flex flex-col items-center justify-center gap-3 text-center">
           <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-700 font-medium">Checking session...</p>
+          <p className="text-slate-700 font-medium">
+            Checking session...
+          </p>
         </div>
       </div>
     );
