@@ -124,6 +124,12 @@
   --line-height-relaxed: 1.75;
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Reset & Base */
 *,
 *::before,
