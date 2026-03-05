@@ -10,6 +10,20 @@ export default function LoginView() {
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState(null);
+
+  // 3D Carousel State
+  const [activeFeature, setActiveFeature] = useState(0);
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveFeature((prev) => (prev + 1) % 3);
+    }, 7000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleNextFeature = () => setActiveFeature((prev) => (prev + 1) % 3);
+  const handlePrevFeature = () => setActiveFeature((prev) => (prev - 1 + 3) % 3);
+
   const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
@@ -147,30 +161,70 @@ export default function LoginView() {
         <div className="landing-section-tag">Features</div>
         <h2>Online Appointment Booking Made Simple</h2>
 
-        <div className="landing-features-grid">
-          <div className="landing-feature-card">
-            <div className="landing-feature-icon-wrapper">
-              🕒
-            </div>
-            <h3>Set your availability, Simple and Flexible</h3>
-            <p>Simply enter the available services and working hours for you and your staff so your booking page is live, ready. Add buffers, block times, or integrate multiple calendars.</p>
-          </div>
+        <div className="landing-features-carousel-container">
+          <button className="landing-carousel-btn left" onClick={handlePrevFeature}>&#8592;</button>
+          <div className="landing-features-grid">
+            {[
+              {
+                icon: '🕒',
+                title: 'Set your availability, Simple and Flexible',
+                desc: 'Simply enter the available services and working hours for you and your staff so your booking page is live, ready. Add buffers, block times, or integrate multiple calendars.'
+              },
+              {
+                icon: '🔗',
+                title: 'Share your link with your Customer',
+                desc: 'Share your online appointment booking page URL with your customer in emails, texts, brochures, etc. Start appointments by placing our widget on your site.'
+              },
+              {
+                icon: '📱',
+                title: 'Accept online booking hassle free 24/7',
+                desc: 'Give customers the convenience to self-schedule, cancel, reschedule and book recurring appointments using our 24/7 online booking software. Send automated SMS/Emails.'
+              }
+            ].map((feature, index) => {
+              // Calculate relative position: 0 (front), 1 (right/back), 2 (left/back)
+              const offset = (index - activeFeature + 3) % 3;
+              let transformStyle = '';
+              let opacity = 1;
+              let zIndex = 3;
 
-          <div className="landing-feature-card">
-            <div className="landing-feature-icon-wrapper">
-              🔗
-            </div>
-            <h3>Share your link with your Customer</h3>
-            <p>Share your online appointment booking page URL with your customer in emails, texts, brochures, etc. Start appointments by placing our widget on your site.</p>
-          </div>
+              if (offset === 0) {
+                // Front active
+                transformStyle = 'translateZ(0px) translateY(0) rotateX(0deg)';
+                opacity = 1;
+                zIndex = 3;
+              } else if (offset === 1) {
+                // Right back path
+                transformStyle = 'translateZ(-150px) translateY(-60px) rotateX(8deg)';
+                opacity = 0.5;
+                zIndex = 2;
+              } else if (offset === 2) {
+                // Left deeper back path
+                transformStyle = 'translateZ(-300px) translateY(40px) rotateX(-8deg)';
+                opacity = 0;
+                zIndex = 1;
+              }
 
-          <div className="landing-feature-card">
-            <div className="landing-feature-icon-wrapper">
-              📱
-            </div>
-            <h3>Accept online booking hassle free 24/7</h3>
-            <p>Give customers the convenience to self-schedule, cancel, reschedule and book recurring appointments using our 24/7 online booking software. Send automated SMS/Emails.</p>
+              return (
+                <div
+                  key={index}
+                  className={`landing-feature-card ${offset === 0 ? 'active' : ''}`}
+                  style={{
+                    transform: transformStyle,
+                    opacity: opacity,
+                    zIndex: zIndex,
+                    transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                >
+                  <div className="landing-feature-icon-wrapper" style={index === 1 ? { background: '#eff6ff', color: '#3b82f6' } : {}}>
+                    {feature.icon}
+                  </div>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.desc}</p>
+                </div>
+              );
+            })}
           </div>
+          <button className="landing-carousel-btn right" onClick={handleNextFeature}>&#8594;</button>
         </div>
       </section>
 
@@ -237,7 +291,7 @@ export default function LoginView() {
         <div className="landing-cta-box">
           <h2>Easy Access for Easy Bookings.</h2>
           <p>Deliver the best booking experience today and take your clinic's workflow to the next level.</p>
-          <button className="landing-btn-white" onClick={openSignup}>Get Started Now</button>
+          <button className="landing-btn-dark" onClick={openSignup}>Get Started Now</button>
         </div>
       </section>
 
