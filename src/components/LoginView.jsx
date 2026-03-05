@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { signIn, signUp } from '../auth/authApi';
 import { useToast } from '../context/ToastProvider';
 
@@ -10,6 +10,15 @@ export default function LoginView() {
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState(null);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("remember_email");
+    if (savedEmail) {
+      setAuthEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   // Toggle FAQ accordion
   const [activeFaq, setActiveFaq] = useState(null);
@@ -36,6 +45,11 @@ export default function LoginView() {
         setAuthMode('login');
         setAuthPassword('');  // Clear password for security
       } else {
+        if (rememberMe) {
+          localStorage.setItem("remember_email", authEmail);
+        } else {
+          localStorage.removeItem("remember_email");
+        }
         await signIn({ email: authEmail, password: authPassword });
       }
     } catch (err) {
@@ -291,6 +305,9 @@ export default function LoginView() {
                   <label>Full Name</label>
                   <input
                     className="landing-form-input"
+                    id="fullName"
+                    name="fullName"
+                    autoComplete="name"
                     value={authFullName}
                     onChange={(e) => setAuthFullName(e.target.value)}
                     placeholder="John Doe"
@@ -302,6 +319,9 @@ export default function LoginView() {
                 <label>Email</label>
                 <input
                   className="landing-form-input"
+                  id="email"
+                  name="email"
+                  autoComplete="email"
                   type="email"
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
@@ -321,6 +341,9 @@ export default function LoginView() {
                 </div>
                 <input
                   className="landing-form-input"
+                  id="password"
+                  name="password"
+                  autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
                   type="password"
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
@@ -328,6 +351,21 @@ export default function LoginView() {
                   required
                 />
               </div>
+
+              {authMode === 'login' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                  <input
+                    type="checkbox"
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={{ margin: 0, cursor: 'pointer', width: 'auto', height: 'auto' }}
+                  />
+                  <label htmlFor="rememberMe" style={{ margin: 0, fontWeight: 'normal', fontSize: '0.9rem', cursor: 'pointer', color: '#475569' }}>
+                    Remember me
+                  </label>
+                </div>
+              )}
 
               {authError && <div className="landing-form-error">{authError}</div>}
 
