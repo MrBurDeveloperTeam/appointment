@@ -343,105 +343,107 @@ export default function LoginView() {
       {/* MODAL OVERLAY (LOGIN / SIGNUP) */}
       {showForm && (
         <div className="landing-modal-overlay">
-          <div className="landing-login-card">
+          <div className="landing-login-card" onClick={(e) => e.stopPropagation()}>
             <button className="landing-modal-close" onClick={() => setShowForm(false)}>×</button>
-            <div className="landing-login-header">
-              <img src="/assets/Mr_Bur_Logo-01.png" alt="App Logo" className="landing-login-logo" />
-              <h2>{authMode === 'login' ? 'Welcome back' : 'Create Account'}</h2>
-              <p>
-                {authMode === 'login' ? 'Sign in to access your dashboard' : 'Sign up to get started today'}
-              </p>
-            </div>
+            <div className="landing-login-content">
+              <div className="landing-login-header">
+                <img src="/assets/Mr_Bur_Logo-01.png" alt="App Logo" className="landing-login-logo" />
+                <h2>{authMode === 'login' ? 'Welcome back' : 'Create Account'}</h2>
+                <p>
+                  {authMode === 'login' ? 'Sign in to access your dashboard' : 'Sign up to get started today'}
+                </p>
+              </div>
 
-            <form onSubmit={handleSupabaseSubmit}>
-              {authMode === 'signup' && (
+              <form onSubmit={handleSupabaseSubmit}>
+                {authMode === 'signup' && (
+                  <div className="landing-form-group">
+                    <label>Full Name</label>
+                    <input
+                      className="landing-form-input"
+                      id="fullName"
+                      name="fullName"
+                      autoComplete="name"
+                      value={authFullName}
+                      onChange={(e) => setAuthFullName(e.target.value)}
+                      placeholder="John Doe"
+                      required
+                    />
+                  </div>
+                )}
                 <div className="landing-form-group">
-                  <label>Full Name</label>
+                  <label>Email</label>
                   <input
                     className="landing-form-input"
-                    id="fullName"
-                    name="fullName"
-                    autoComplete="name"
-                    value={authFullName}
-                    onChange={(e) => setAuthFullName(e.target.value)}
-                    placeholder="John Doe"
+                    id="email"
+                    name="email"
+                    autoComplete="email"
+                    type="email"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="name@clinic.com"
                     required
                   />
                 </div>
-              )}
-              <div className="landing-form-group">
-                <label>Email</label>
-                <input
-                  className="landing-form-input"
-                  id="email"
-                  name="email"
-                  autoComplete="email"
-                  type="email"
-                  value={authEmail}
-                  onChange={(e) => setAuthEmail(e.target.value)}
-                  placeholder="name@clinic.com"
-                  required
-                />
-              </div>
 
-              <div className="landing-form-group">
-                <div className="landing-form-options">
-                  <label style={{ margin: 0 }}>Password</label>
-                  {authMode === 'login' && (
-                    <a href="#" className="landing-forgot-link" onClick={(e) => e.preventDefault()}>
-                      Forgot password?
-                    </a>
-                  )}
+                <div className="landing-form-group">
+                  <div className="landing-form-options">
+                    <label style={{ margin: 0 }}>Password</label>
+                    {authMode === 'login' && (
+                      <a href="#" className="landing-forgot-link" onClick={(e) => e.preventDefault()}>
+                        Forgot password?
+                      </a>
+                    )}
+                  </div>
+                  <input
+                    className="landing-form-input"
+                    id="password"
+                    name="password"
+                    autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+                    type="password"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                  />
                 </div>
-                <input
-                  className="landing-form-input"
-                  id="password"
-                  name="password"
-                  autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
-                  type="password"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
+
+                {authMode === 'login' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                    <input
+                      type="checkbox"
+                      id="rememberMe"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      style={{ margin: 0, cursor: 'pointer', width: 'auto', height: 'auto' }}
+                    />
+                    <label htmlFor="rememberMe" style={{ margin: 0, fontWeight: 'normal', fontSize: '0.9rem', cursor: 'pointer', color: '#475569' }}>
+                      Remember me
+                    </label>
+                  </div>
+                )}
+
+                {authError && <div className="landing-form-error">{authError}</div>}
+
+                <button className="landing-submit-btn" type="submit">
+                  {authMode === 'signup' ? 'Create Account' : 'Sign In'}
+                </button>
+              </form>
 
               {authMode === 'login' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                  <input
-                    type="checkbox"
-                    id="rememberMe"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    style={{ margin: 0, cursor: 'pointer', width: 'auto', height: 'auto' }}
-                  />
-                  <label htmlFor="rememberMe" style={{ margin: 0, fontWeight: 'normal', fontSize: '0.9rem', cursor: 'pointer', color: '#475569' }}>
-                    Remember me
-                  </label>
+                <div className="landing-sample-accounts" style={{ marginTop: '1.5rem' }}>
+                  <strong>Demo Access:</strong>
+                  <div>Dentist: mrbur123@gmail.com / mrbur@123</div>
+                  <div>Admin: adminbur@gmail.com / bur@123</div>
                 </div>
               )}
 
-              {authError && <div className="landing-form-error">{authError}</div>}
-
-              <button className="landing-submit-btn" type="submit">
-                {authMode === 'signup' ? 'Create Account' : 'Sign In'}
-              </button>
-            </form>
-
-            {authMode === 'login' && (
-              <div className="landing-sample-accounts" style={{ marginTop: '1.5rem' }}>
-                <strong>Demo Access:</strong>
-                <div>Dentist: mrbur123@gmail.com / mrbur@123</div>
-                <div>Admin: adminbur@gmail.com / bur@123</div>
+              <div className="landing-switch-mode" style={{ marginTop: '2rem' }}>
+                {authMode === 'login' ? (
+                  <>Don't have an account? <button type="button" onClick={() => setAuthMode('signup')}>Sign up</button></>
+                ) : (
+                  <>Already have an account? <button type="button" onClick={() => setAuthMode('login')}>Log in</button></>
+                )}
               </div>
-            )}
-
-            <div className="landing-switch-mode" style={{ marginTop: '2rem' }}>
-              {authMode === 'login' ? (
-                <>Don't have an account? <button type="button" onClick={() => setAuthMode('signup')}>Sign up</button></>
-              ) : (
-                <>Already have an account? <button type="button" onClick={() => setAuthMode('login')}>Log in</button></>
-              )}
             </div>
           </div>
         </div>
