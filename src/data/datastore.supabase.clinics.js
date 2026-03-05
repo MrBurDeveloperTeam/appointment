@@ -10,38 +10,23 @@ const mapClinic = (row) => ({
   createdAt: row.created_at,
 });
 
-// Assuming your Worker is deployed at this URL
-const API_URL = "https://sso.mrburstudio.com/api";
-
-// Helper to get headers
-async function getHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) throw new Error("No active session");
-  return {
-    "Authorization": `Bearer ${token}`,
-    "Content-Type": "application/json"
-  };
-}
-
 export async function getClinics() {
-  const headers = await getHeaders();
-
-  const response = await fetch(`${API_URL}/clinics`, { headers });
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_clinics")
+    .select("*")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
   return (data || []).map(mapClinic);
 }
 
 export async function getClinicById(id) {
-  const headers = await getHeaders();
+  const { data, error } = await supabase
+    .from("apt_clinics")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
 
-  const response = await fetch(`${API_URL}/clinics?id=${id}`, { headers });
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
-  // Worker returns object or null
+  if (error) throw error;
   if (!data) return null;
   return mapClinic(data);
 }
@@ -54,17 +39,12 @@ export async function addClinic(clinic) {
     plan: clinic.plan || null,
     status: clinic.status || null,
   };
-
-  const headers = await getHeaders();
-  const response = await fetch(`${API_URL}/clinics`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_clinics")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error) throw error;
   return mapClinic(data);
 }
 
@@ -76,27 +56,18 @@ export async function updateClinic(id, updates) {
     ...(updates.plan !== undefined ? { plan: updates.plan } : {}),
     ...(updates.status !== undefined ? { status: updates.status } : {}),
   };
-
-  const headers = await getHeaders();
-  const response = await fetch(`${API_URL}/clinics?id=${id}`, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_clinics")
+    .update(payload)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
   return mapClinic(data);
 }
 
 export async function deleteClinic(id) {
-  const headers = await getHeaders();
-  const response = await fetch(`${API_URL}/clinics?id=${id}`, {
-    method: "DELETE",
-    headers
-  });
-
-  if (!response.ok) throw new Error(await response.text());
+  const { error } = await supabase.from("clinics").delete().eq("id", id);
+  if (error) throw error;
   return true;
 }

@@ -147,6 +147,7 @@ function AppContent() {
         }
         setBookingLink(`${window.location.origin}/book/${data.slug}`);
       } catch (error) {
+        if (!isActive) return;
         console.error('Failed to load clinic slug:', error);
         setBookingLink('');
       }

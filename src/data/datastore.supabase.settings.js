@@ -12,32 +12,13 @@ const mapSettings = (row) => ({
   restDays: row.rest_days || [],
 });
 
-// Assuming your Worker is deployed at this URL
-const API_URL = "https://sso.mrburstudio.com/api";
-
-// Helper to get headers
-async function getHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) throw new Error("No active session");
-  return {
-    "Authorization": `Bearer ${token}`,
-    "Content-Type": "application/json"
-  };
-}
-
 export async function getSettings(clinicId) {
-  const headers = await getHeaders();
-  const params = new URLSearchParams({ clinicId });
-
-  const response = await fetch(`${API_URL}/settings?${params.toString()}`, { headers });
-  if (!response.ok) {
-    // If 404 or null data, we might return null as per original logic
-    if (response.status === 404) return null;
-    throw new Error(await response.text());
-  }
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_settings")
+    .select("*")
+    .eq("clinic_id", clinicId)
+    .maybeSingle();
+  if (error) throw error;
   if (!data) return null;
   return mapSettings(data);
 }
@@ -53,15 +34,11 @@ export async function saveSettings(clinicId, settings) {
     updated_at: new Date().toISOString(),
   };
 
-  const headers = await getHeaders();
-  const response = await fetch(`${API_URL}/settings`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_settings")
+    .upsert(payload, { onConflict: "clinic_id" })
+    .select("*")
+    .single();
+  if (error) throw error;
   return mapSettings(data);
 }

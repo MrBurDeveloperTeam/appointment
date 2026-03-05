@@ -1,19 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import DataStore from '../data';
-
-// Helper functions defined outside to maintain stable references
-const toPromise = (value) => (value && typeof value.then === 'function' ? value : Promise.resolve(value));
-
-const handleAsync = (maybePromise, onSuccess) =>
-  toPromise(maybePromise)
-    .then((result) => {
-      onSuccess(result);
-      return result;
-    })
-    .catch((error) => {
-      console.error('DataStore error:', error);
-      return null;
-    });
 
 // Data hook wrapping DataStore (localStorage/Supabase)
 export default function useDataStore(activeClinicId, enabled = true) {
@@ -33,6 +19,19 @@ export default function useDataStore(activeClinicId, enabled = true) {
   const [creditHistory, setCreditHistory] = useState([
     { date: new Date().toISOString(), description: 'Initial Balance', amount: 5 }
   ]);
+
+  const toPromise = (value) => (value && typeof value.then === 'function' ? value : Promise.resolve(value));
+
+  const handleAsync = (maybePromise, onSuccess) =>
+    toPromise(maybePromise)
+      .then((result) => {
+        onSuccess(result);
+        return result;
+      })
+      .catch((error) => {
+        console.error('DataStore error:', error);
+        return null;
+      });
 
   useEffect(() => {
     let cancelled = false;
@@ -108,32 +107,22 @@ export default function useDataStore(activeClinicId, enabled = true) {
     return () => { cancelled = true; };
   }, [activeClinicId, enabled, dateRange]);
 
-  /* -----------------------------------------------------
-     REFRESH ACTIONS (Wrapped in useCallback)
-     ----------------------------------------------------- */
-
-  // define refresh functions
-  const refreshAppointments = useCallback(() => {
+  const refreshAppointments = () => {
     handleAsync(
       DataStore.getAppointments(activeClinicId, dateRange.start, dateRange.end),
       (data) => setAppointments(data || [])
     );
-  }, [activeClinicId, dateRange, handleAsync]); // handleAsync needs to be stable or ignored if internal
+  };
+  const refreshPatients = () => handleAsync(DataStore.getPatients(), (data) => setPatients(data || []));
+  const refreshRooms = () => handleAsync(DataStore.getRooms(), (data) => setRooms(data || []));
+  const refreshTreatments = () => handleAsync(DataStore.getTreatments(), (data) => setTreatments(data || []));
+  const refreshSettings = () => handleAsync(DataStore.getSettings(), (data) => setSettings(data || null));
+  const refreshStaff = () => handleAsync(DataStore.getStaff(), (data) => setStaff(data || []));
+  const refreshHolidays = () => handleAsync(DataStore.getHolidays(), (data) => setHolidays(data || []));
+  const refreshActivity = () => handleAsync(DataStore.getActivityLog(), (data) => setActivity(data || []));
+  const refreshRequests = () =>
+    handleAsync(DataStore.getAppointmentRequests(), (data) => setAppointmentRequests(data || []));
 
-  const refreshPatients = useCallback(() => handleAsync(DataStore.getPatients(), (data) => setPatients(data || [])), [handleAsync]);
-  const refreshRooms = useCallback(() => handleAsync(DataStore.getRooms(), (data) => setRooms(data || [])), [handleAsync]);
-  const refreshTreatments = useCallback(() => handleAsync(DataStore.getTreatments(), (data) => setTreatments(data || [])), [handleAsync]);
-  const refreshSettings = useCallback(() => handleAsync(DataStore.getSettings(), (data) => setSettings(data || null)), [handleAsync]);
-  const refreshStaff = useCallback(() => handleAsync(DataStore.getStaff(), (data) => setStaff(data || [])), [handleAsync]);
-  const refreshHolidays = useCallback(() => handleAsync(DataStore.getHolidays(), (data) => setHolidays(data || [])), [handleAsync]);
-  const refreshActivity = useCallback(() => handleAsync(DataStore.getActivityLog(), (data) => setActivity(data || [])), [handleAsync]);
-
-  const refreshRequests = useCallback(() =>
-    handleAsync(DataStore.getAppointmentRequests(), (data) => setAppointmentRequests(data || [])), [handleAsync]);
-
-  /* -----------------------------------------------------
-     MUTATIONS
-     ----------------------------------------------------- */
   const addPatient = (patient) =>
     handleAsync(DataStore.addPatient(patient), () => {
       refreshPatients();
