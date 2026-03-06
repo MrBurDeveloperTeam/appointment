@@ -7018,24 +7018,86 @@ tbody tr:hover {
   }
 
   .calendar-container {
-    overflow-x: auto;
-    /* Enable horizontal scroll */
+    overflow-x: hidden;
+    /* Prevent horizontal scroll, force fit */
     display: block;
-    /* Remove flex if present */
   }
 
   .calendar-month,
   .week-header,
   .week-body,
   .calendar-day-view {
-    min-width: 800px;
-    /* Force minimum width to prevent squeezing */
+    min-width: 0;
+    /* Remove force minimum width, allow squish */
+    width: 100%;
   }
 
   .calendar-top-nav,
   .calendar-header {
-    min-width: 800px;
-    /* Ensure header aligns with grid */
+    min-width: 0;
+    /* Remove line-up minimum */
+    width: 100%;
+  }
+
+  /* Month View Mobile Squish Fixes */
+  .calendar-weekday {
+    padding: var(--space-xs);
+    font-size: 9px;
+    letter-spacing: 0;
+  }
+
+  .calendar-day {
+    min-height: 60px;
+    /* Reduced from 100px */
+    padding: 2px;
+    /* Very tight padding */
+  }
+
+  .day-number {
+    font-size: 10px;
+    margin-bottom: 2px;
+  }
+
+  .day-number>span:first-child,
+  .day-number::before {
+    width: 20px;
+    height: 20px;
+  }
+
+  .calendar-day.today .day-number {
+    width: 20px;
+    height: 20px;
+  }
+
+  .day-appointment {
+    padding: 0;
+    justify-content: flex-start;
+  }
+
+  .day-appointment-title {
+    display: none;
+    /* Hide text on mobile month view, rely on dots */
+  }
+
+  .day-appointment-time {
+    display: block;
+    font-size: 8px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .day-appointment-dot {
+    width: 6px;
+    /* Slightly larger dot for touch targets */
+    height: 6px;
+    margin-right: 2px;
+  }
+
+  .day-appointments {
+    flex-direction: column;
+    /* Stack dots horizontally */
+    gap: 1px;
+    justify-content: flex-start;
   }
 
   /* Today View Mobile Fixes */
@@ -7101,6 +7163,101 @@ tbody tr:hover {
 
   .settings-list-item .settings-cta {
     align-self: flex-end;
+  }
+
+  /* Day View Mobile Squish Fixes */
+  .day-column {
+    min-width: 0;
+  }
+
+  .dentist-header {
+    min-width: 0;
+    padding: 2px 4px;
+    gap: 4px;
+  }
+
+  .day-time-column {
+    width: 40px;
+  }
+
+  .dentist-avatar {
+    width: 20px;
+    height: 20px;
+    font-size: 9px;
+  }
+
+  .dentist-header-info {
+    min-width: 0;
+    /* Critical for truncation in flex child */
+  }
+
+  .dentist-header-name {
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dentist-header-hours {
+    font-size: 8px;
+    line-height: 1.1;
+    white-space: normal;
+    /* Force wrapping to 2 lines */
+  }
+
+  /* Week View Mobile Squish Fixes */
+  .week-header {
+    grid-template-columns: 40px repeat(7, 1fr) !important;
+  }
+
+  .week-body {
+    grid-template-columns: 40px repeat(7, 1fr) !important;
+  }
+
+  .week-time-slot {
+    font-size: 9px;
+    padding-right: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .week-header-cell {
+    padding: var(--space-xs) 2px;
+  }
+
+  .week-header-day {
+    font-size: 8px;
+    margin-bottom: 2px;
+  }
+
+  .week-header-date {
+    font-size: 11px;
+  }
+
+  .week-header-cell.today .week-header-date {
+    width: 20px;
+    height: 20px;
+  }
+
+  .week-appointment {
+    padding: 2px;
+    overflow: hidden;
+  }
+
+  .week-appointment-time {
+    font-size: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .week-appointment-title {
+    font-size: 8px;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 

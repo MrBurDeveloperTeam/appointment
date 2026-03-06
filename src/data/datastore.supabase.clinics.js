@@ -7,6 +7,8 @@ const mapClinic = (row) => ({
   city: row.city || "",
   plan: row.plan || "",
   status: row.status || "",
+  subscriptionType: row.subscription_type || "monthly",
+  subscriptionEnd: row.subscription_end || "",
   createdAt: row.created_at,
 });
 
@@ -38,6 +40,8 @@ export async function addClinic(clinic) {
     city: clinic.city || null,
     plan: clinic.plan || null,
     status: clinic.status || null,
+    subscription_type: clinic.subscriptionType || null,
+    subscription_end: clinic.subscriptionEnd || null,
   };
   const { data, error } = await supabase
     .from("apt_clinics")
@@ -55,6 +59,8 @@ export async function updateClinic(id, updates) {
     ...(updates.city !== undefined ? { city: updates.city } : {}),
     ...(updates.plan !== undefined ? { plan: updates.plan } : {}),
     ...(updates.status !== undefined ? { status: updates.status } : {}),
+    ...(updates.subscriptionType !== undefined ? { subscription_type: updates.subscriptionType } : {}),
+    ...(updates.subscriptionEnd !== undefined ? { subscription_end: updates.subscriptionEnd || null } : {}),
   };
   const { data, error } = await supabase
     .from("apt_clinics")

@@ -42,15 +42,15 @@ export default function App() {
 }
 
 function AppContent() {
-    const { mutateAsync: exchangeSso } = useSsoExchange();
-    const [exchangeDone, setExchangeDone] = useState(false);
+  const { mutateAsync: exchangeSso } = useSsoExchange();
+  const [exchangeDone, setExchangeDone] = useState(false);
 
   useEffect(() => {
     checkSession();
   }, []);
 
   const checkSession = async () => {
-    try{
+    try {
       const sso = await exchangeSso();
       await supabase.auth.setSession({
         access_token: sso.access_token,
@@ -171,6 +171,7 @@ function AppContent() {
     staff,
     holidays,
     appointmentRequests,
+    activeClinicData,
     isReady,
     addPatient,
     updatePatient,
@@ -227,6 +228,14 @@ function AppContent() {
   const [isRedeeming, setIsRedeeming] = useState(false);
   const bookingSlug = getBookingSlugFromPath();
   const [authInitializing, setAuthInitializing] = useState(true);
+
+  // Check if subscription is expired
+  const isExpired = React.useMemo(() => {
+    if (!activeClinicData?.subscriptionEnd) return false;
+    const end = new Date(activeClinicData.subscriptionEnd);
+    end.setHours(23, 59, 59, 999);
+    return new Date() > end;
+  }, [activeClinicData]);
 
   const viewTitle = {
     calendar: 'Calendar',
@@ -591,11 +600,13 @@ function AppContent() {
       )}
 
 
-      {showCreditModal && (
+      {(showCreditModal || isExpired) && (
         <CreditModal
           credits={credits}
           history={creditHistory}
           loading={isRedeeming}
+          subscriptionEnd={activeClinicData?.subscriptionEnd}
+          disableClose={isExpired}
           onClose={() => setShowCreditModal(false)}
           onRedeem={async (code) => {
             setIsRedeeming(true);

@@ -12,6 +12,7 @@ export default function useDataStore(activeClinicId, enabled = true) {
   const [staff, setStaff] = useState([]);
   const [holidays, setHolidays] = useState([]);
   const [appointmentRequests, setAppointmentRequests] = useState([]);
+  const [activeClinicData, setActiveClinicData] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const [dateRange, setDateRange] = useState({ start: null, end: null });
   // MOCK CREDIT SYSTEM
@@ -53,11 +54,13 @@ export default function useDataStore(activeClinicId, enabled = true) {
         setStaff([]);
         setHolidays([]);
         setAppointmentRequests([]);
+        setActiveClinicData(null);
         return;
       }
 
       // Fetch static data
       const results = await Promise.allSettled([
+        toPromise(DataStore.getClinicById(activeClinicId)),
         toPromise(DataStore.getPatients()),
         toPromise(DataStore.getRooms()),
         toPromise(DataStore.getTreatments()),
@@ -73,14 +76,15 @@ export default function useDataStore(activeClinicId, enabled = true) {
       const getValue = (index, fallback) =>
         results[index].status === 'fulfilled' ? results[index].value ?? fallback : fallback;
 
-      setPatients(getValue(0, []));
-      setRooms(getValue(1, []));
-      setTreatments(getValue(2, []));
-      setSettings(getValue(3, null));
-      setActivity(getValue(4, []));
-      setStaff(getValue(5, []));
-      setHolidays(getValue(6, []));
-      setAppointmentRequests(getValue(7, []));
+      setActiveClinicData(getValue(0, null));
+      setPatients(getValue(1, []));
+      setRooms(getValue(2, []));
+      setTreatments(getValue(3, []));
+      setSettings(getValue(4, null));
+      setActivity(getValue(5, []));
+      setStaff(getValue(6, []));
+      setHolidays(getValue(7, []));
+      setAppointmentRequests(getValue(8, []));
       setIsReady(true);
     };
 
@@ -302,6 +306,7 @@ export default function useDataStore(activeClinicId, enabled = true) {
     staff,
     holidays,
     appointmentRequests,
+    activeClinicData,
     isReady,
     dateRange,
     setDateRange,

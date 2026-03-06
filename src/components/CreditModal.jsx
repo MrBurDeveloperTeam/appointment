@@ -1,17 +1,29 @@
 import React from 'react';
 import Modal from './Modal';
 
-export default function CreditModal({ onClose }) {
+export default function CreditModal({ onClose, subscriptionEnd, disableClose = false }) {
     const handleSubscribe = (plan) => {
         alert(`Redirecting to checkout for ${plan} plan...`);
-        onClose();
+        if (!disableClose) {
+            onClose();
+        }
     };
 
+    const endDateText = subscriptionEnd ? new Date(subscriptionEnd).toLocaleDateString() : 'Active / Free';
+
     return (
-        <Modal title="Choose Your Subscription Plan" onClose={onClose}>
+        <Modal
+            title={disableClose ? "Subscription Expired" : "Choose Your Subscription Plan"}
+            onClose={onClose}
+            disableClose={disableClose}
+        >
             <div className="modal-body" style={{ minHeight: '300px', padding: '1.5rem', background: '#f8fafc' }}>
                 <div className="landing-pricing-header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                    <h2 style={{ fontSize: '1.25rem', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>Upgrade your clinic's workflow today.</h2>
+                    <h2 style={{ fontSize: '1.25rem', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>
+                        {disableClose
+                            ? "Please renew your subscription to continue using the clinic app."
+                            : "Upgrade your clinic's workflow today."}
+                    </h2>
                     <div style={{
                         background: '#fee2e2',
                         padding: '0.4rem 0.8rem',
@@ -28,7 +40,7 @@ export default function CreditModal({ onClose }) {
                             <circle cx="12" cy="12" r="10"></circle>
                             <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
-                        Subscription ends: <span style={{ color: '#ef4444' }}>2026-12-31</span>
+                        Subscription status: <span style={{ color: '#ef4444' }}>{endDateText}</span>
                     </div>
                 </div>
 
