@@ -74,11 +74,24 @@ export default function LoginView() {
 
   const openLogin = () => {
     setAuthMode('login');
+    const savedEmail = localStorage.getItem("remember_email");
+    if (savedEmail) {
+      setAuthEmail(savedEmail);
+      setRememberMe(true);
+    } else {
+      setAuthEmail('');
+      setRememberMe(false);
+    }
+    setAuthPassword('');
     setShowForm(true);
   };
 
   const openSignup = () => {
     setAuthMode('signup');
+    setAuthEmail('');
+    setAuthPassword('');
+    setAuthFullName('');
+    setRememberMe(false);
     setShowForm(true);
   };
 
@@ -439,9 +452,9 @@ export default function LoginView() {
 
               <div className="landing-switch-mode" style={{ marginTop: '2rem' }}>
                 {authMode === 'login' ? (
-                  <>Don't have an account? <button type="button" onClick={() => setAuthMode('signup')}>Sign up</button></>
+                  <>Don't have an account? <button type="button" onClick={openSignup}>Sign up</button></>
                 ) : (
-                  <>Already have an account? <button type="button" onClick={() => setAuthMode('login')}>Log in</button></>
+                  <>Already have an account? <button type="button" onClick={openLogin}>Log in</button></>
                 )}
               </div>
             </div>
