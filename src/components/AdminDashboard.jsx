@@ -40,7 +40,7 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
   const [expandedAppointmentMonths, setExpandedAppointmentMonths] = useState({});
   const [appointmentFilter, setAppointmentFilter] = useState({ status: 'all', query: '' });
   const [modalState, setModalState] = useState({ type: null, mode: 'new' });
-  const [clinicForm, setClinicForm] = useState({ id: '', name: '', slug: '', city: '', plan: 'Starter', status: 'active' });
+  const [clinicForm, setClinicForm] = useState({ id: '', name: '', slug: '', city: '', plan: 'Starter', status: 'active', subscriptionType: 'monthly', subscriptionEnd: '' });
   const [userForm, setUserForm] = useState({ id: '', username: '', password: '', role: 'dentist', clinicId: '', name: '', status: 'active' });
   const [userFilter, setUserFilter] = useState({ query: '', sortBy: 'newest' });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -169,12 +169,14 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
         slug: clinic.slug || '',
         city: clinic.city || '',
         plan: clinic.plan || 'Starter',
-        status: clinic.status || 'active'
+        status: clinic.status || 'active',
+        subscriptionType: clinic.subscriptionType || 'monthly',
+        subscriptionEnd: clinic.subscriptionEnd || ''
       });
       setModalState({ type: 'clinic', mode: 'edit' });
       return;
     }
-    setClinicForm({ id: '', name: '', slug: '', city: '', plan: 'Starter', status: 'active' });
+    setClinicForm({ id: '', name: '', slug: '', city: '', plan: 'Starter', status: 'active', subscriptionType: 'monthly', subscriptionEnd: '' });
     setModalState({ type: 'clinic', mode: 'new' });
   };
 
@@ -726,7 +728,11 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                     <div className="admin-list-top">
                       <div>
                         <div className="admin-row-title">{clinic.name}</div>
-                        <div className="admin-row-sub">{clinic.city} - {clinic.plan} - {clinic.status}</div>
+                        <div className="admin-row-sub">
+                          {clinic.city} - {clinic.plan}
+                          {clinic.subscriptionType && clinic.subscriptionType !== 'free' && ` (${clinic.subscriptionType}${clinic.subscriptionEnd ? ` until ${clinic.subscriptionEnd}` : ''})`}
+                          {' '}- {clinic.status}
+                        </div>
                         <div className="admin-list-meta">
                           <span>{clinic.stats.patients} patients</span>
                           <span>{clinic.stats.appointments} appointments</span>
@@ -958,6 +964,13 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                                     <div className="setting-item">
                                       <span className="setting-label">Clinic Name</span>
                                       <span className="setting-value">{clinicDetails[clinic.id]?.settings?.clinicName || 'Dental Clinic'}</span>
+                                    </div>
+                                    <div className="setting-item">
+                                      <span className="setting-label">Subscription</span>
+                                      <span className="setting-value" style={{ textTransform: 'capitalize' }}>
+                                        {clinic.subscriptionType || 'Monthly'}
+                                        {clinic.subscriptionEnd && ` (Ends: ${new Date(clinic.subscriptionEnd).toLocaleDateString()})`}
+                                      </span>
                                     </div>
                                     <div className="setting-item">
                                       <span className="setting-label">Working Hours</span>
@@ -1212,12 +1225,32 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Subscription Plan</label>
+                <label className="form-label">System Plan</label>
                 <select className="form-select" value={clinicForm.plan} onChange={(e) => setClinicForm({ ...clinicForm, plan: e.target.value })}>
                   {planOptions.map((option) => (
                     <option key={option} value={option}>{option}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Billing Cycle</label>
+                <select className="form-select" value={clinicForm.subscriptionType} onChange={(e) => setClinicForm({ ...clinicForm, subscriptionType: e.target.value })}>
+                  <option value="monthly">Monthly</option>
+                  <option value="annually">Annually</option>
+                  <option value="free">Free / Unmanaged</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Subscription End Date</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={clinicForm.subscriptionEnd}
+                  onChange={(e) => setClinicForm({ ...clinicForm, subscriptionEnd: e.target.value })}
+                />
               </div>
             </div>
 

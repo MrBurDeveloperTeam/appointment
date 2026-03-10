@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { signIn, signUp } from '../auth/authApi';
 import { useToast } from '../context/ToastProvider';
 
@@ -10,6 +10,29 @@ export default function LoginView() {
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState(null);
+
+  // 3D Carousel State
+  const [activeFeature, setActiveFeature] = useState(0);
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveFeature((prev) => (prev + 1) % 3);
+    }, 7000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleNextFeature = () => setActiveFeature((prev) => (prev + 1) % 3);
+  const handlePrevFeature = () => setActiveFeature((prev) => (prev - 1 + 3) % 3);
+
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("remember_email");
+    if (savedEmail) {
+      setAuthEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   // Toggle FAQ accordion
   const [activeFaq, setActiveFaq] = useState(null);
@@ -36,6 +59,11 @@ export default function LoginView() {
         setAuthMode('login');
         setAuthPassword('');  // Clear password for security
       } else {
+        if (rememberMe) {
+          localStorage.setItem("remember_email", authEmail);
+        } else {
+          localStorage.removeItem("remember_email");
+        }
         await signIn({ email: authEmail, password: authPassword });
       }
     } catch (err) {
@@ -46,11 +74,24 @@ export default function LoginView() {
 
   const openLogin = () => {
     setAuthMode('login');
+    const savedEmail = localStorage.getItem("remember_email");
+    if (savedEmail) {
+      setAuthEmail(savedEmail);
+      setRememberMe(true);
+    } else {
+      setAuthEmail('');
+      setRememberMe(false);
+    }
+    setAuthPassword('');
     setShowForm(true);
   };
 
   const openSignup = () => {
     setAuthMode('signup');
+    setAuthEmail('');
+    setAuthPassword('');
+    setAuthFullName('');
+    setRememberMe(false);
     setShowForm(true);
   };
 
@@ -133,30 +174,70 @@ export default function LoginView() {
         <div className="landing-section-tag">Features</div>
         <h2>Online Appointment Booking Made Simple</h2>
 
-        <div className="landing-features-grid">
-          <div className="landing-feature-card">
-            <div className="landing-feature-icon-wrapper">
-              🕒
-            </div>
-            <h3>Set your availability, Simple and Flexible</h3>
-            <p>Simply enter the available services and working hours for you and your staff so your booking page is live, ready. Add buffers, block times, or integrate multiple calendars.</p>
-          </div>
+        <div className="landing-features-carousel-container">
+          <button className="landing-carousel-btn left" onClick={handlePrevFeature}>&#8592;</button>
+          <div className="landing-features-grid">
+            {[
+              {
+                icon: '🕒',
+                title: 'Set your availability, Simple and Flexible',
+                desc: 'Simply enter the available services and working hours for you and your staff so your booking page is live, ready. Add buffers, block times, or integrate multiple calendars.'
+              },
+              {
+                icon: '🔗',
+                title: 'Share your link with your Customer',
+                desc: 'Share your online appointment booking page URL with your customer in emails, texts, brochures, etc. Start appointments by placing our widget on your site.'
+              },
+              {
+                icon: '📱',
+                title: 'Accept online booking hassle free 24/7',
+                desc: 'Give customers the convenience to self-schedule, cancel, reschedule and book recurring appointments using our 24/7 online booking software. Send automated SMS/Emails.'
+              }
+            ].map((feature, index) => {
+              // Calculate relative position: 0 (front), 1 (right/back), 2 (left/back)
+              const offset = (index - activeFeature + 3) % 3;
+              let transformStyle = '';
+              let opacity = 1;
+              let zIndex = 3;
 
-          <div className="landing-feature-card">
-            <div className="landing-feature-icon-wrapper">
-              🔗
-            </div>
-            <h3>Share your link with your Customer</h3>
-            <p>Share your online appointment booking page URL with your customer in emails, texts, brochures, etc. Start appointments by placing our widget on your site.</p>
-          </div>
+              if (offset === 0) {
+                // Front active
+                transformStyle = 'translateZ(0px) translateY(0) rotateX(0deg)';
+                opacity = 1;
+                zIndex = 3;
+              } else if (offset === 1) {
+                // Right back path
+                transformStyle = 'translateZ(-150px) translateY(-60px) rotateX(8deg)';
+                opacity = 0.5;
+                zIndex = 2;
+              } else if (offset === 2) {
+                // Left deeper back path
+                transformStyle = 'translateZ(-300px) translateY(40px) rotateX(-8deg)';
+                opacity = 0;
+                zIndex = 1;
+              }
 
-          <div className="landing-feature-card">
-            <div className="landing-feature-icon-wrapper">
-              📱
-            </div>
-            <h3>Accept online booking hassle free 24/7</h3>
-            <p>Give customers the convenience to self-schedule, cancel, reschedule and book recurring appointments using our 24/7 online booking software. Send automated SMS/Emails.</p>
+              return (
+                <div
+                  key={index}
+                  className={`landing-feature-card ${offset === 0 ? 'active' : ''}`}
+                  style={{
+                    transform: transformStyle,
+                    opacity: opacity,
+                    zIndex: zIndex,
+                    transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                >
+                  <div className="landing-feature-icon-wrapper" style={index === 1 ? { background: '#eff6ff', color: '#3b82f6' } : {}}>
+                    {feature.icon}
+                  </div>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.desc}</p>
+                </div>
+              );
+            })}
           </div>
+          <button className="landing-carousel-btn right" onClick={handleNextFeature}>&#8594;</button>
         </div>
       </section>
 
@@ -223,7 +304,7 @@ export default function LoginView() {
         <div className="landing-cta-box">
           <h2>Easy Access for Easy Bookings.</h2>
           <p>Deliver the best booking experience today and take your clinic's workflow to the next level.</p>
-          <button className="landing-btn-white" onClick={openSignup}>Get Started Now</button>
+          <button className="landing-btn-dark" onClick={openSignup}>Get Started Now</button>
         </div>
       </section>
 
@@ -275,81 +356,107 @@ export default function LoginView() {
       {/* MODAL OVERLAY (LOGIN / SIGNUP) */}
       {showForm && (
         <div className="landing-modal-overlay">
-          <div className="landing-login-card">
+          <div className="landing-login-card" onClick={(e) => e.stopPropagation()}>
             <button className="landing-modal-close" onClick={() => setShowForm(false)}>×</button>
-            <div className="landing-login-header">
-              <img src="/assets/Mr_Bur_Logo-01.png" alt="App Logo" className="landing-login-logo" />
-              <h2>{authMode === 'login' ? 'Welcome back' : 'Create Account'}</h2>
-              <p>
-                {authMode === 'login' ? 'Sign in to access your dashboard' : 'Sign up to get started today'}
-              </p>
-            </div>
+            <div className="landing-login-content">
+              <div className="landing-login-header">
+                <img src="/assets/Mr_Bur_Logo-01.png" alt="App Logo" className="landing-login-logo" />
+                <h2>{authMode === 'login' ? 'Welcome back' : 'Create Account'}</h2>
+                <p>
+                  {authMode === 'login' ? 'Sign in to access your dashboard' : 'Sign up to get started today'}
+                </p>
+              </div>
 
-            <form onSubmit={handleSupabaseSubmit}>
-              {authMode === 'signup' && (
+              <form onSubmit={handleSupabaseSubmit}>
+                {authMode === 'signup' && (
+                  <div className="landing-form-group">
+                    <label>Full Name</label>
+                    <input
+                      className="landing-form-input"
+                      id="fullName"
+                      name="fullName"
+                      autoComplete="name"
+                      value={authFullName}
+                      onChange={(e) => setAuthFullName(e.target.value)}
+                      placeholder="John Doe"
+                      required
+                    />
+                  </div>
+                )}
                 <div className="landing-form-group">
-                  <label>Full Name</label>
+                  <label>Email</label>
                   <input
                     className="landing-form-input"
-                    value={authFullName}
-                    onChange={(e) => setAuthFullName(e.target.value)}
-                    placeholder="John Doe"
+                    id="email"
+                    name="email"
+                    autoComplete="email"
+                    type="email"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="name@clinic.com"
                     required
                   />
                 </div>
-              )}
-              <div className="landing-form-group">
-                <label>Email</label>
-                <input
-                  className="landing-form-input"
-                  type="email"
-                  value={authEmail}
-                  onChange={(e) => setAuthEmail(e.target.value)}
-                  placeholder="name@clinic.com"
-                  required
-                />
-              </div>
 
-              <div className="landing-form-group">
-                <div className="landing-form-options">
-                  <label style={{ margin: 0 }}>Password</label>
-                  {authMode === 'login' && (
-                    <a href="#" className="landing-forgot-link" onClick={(e) => e.preventDefault()}>
-                      Forgot password?
-                    </a>
-                  )}
+                <div className="landing-form-group">
+                  <div className="landing-form-options">
+                    <label style={{ margin: 0 }}>Password</label>
+                    {authMode === 'login' && (
+                      <a href="#" className="landing-forgot-link" onClick={(e) => e.preventDefault()}>
+                        Forgot password?
+                      </a>
+                    )}
+                  </div>
+                  <input
+                    className="landing-form-input"
+                    id="password"
+                    name="password"
+                    autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+                    type="password"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                  />
                 </div>
-                <input
-                  className="landing-form-input"
-                  type="password"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
 
-              {authError && <div className="landing-form-error">{authError}</div>}
+                {authMode === 'login' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                    <input
+                      type="checkbox"
+                      id="rememberMe"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      style={{ margin: 0, cursor: 'pointer', width: 'auto', height: 'auto' }}
+                    />
+                    <label htmlFor="rememberMe" style={{ margin: 0, fontWeight: 'normal', fontSize: '0.9rem', cursor: 'pointer', color: '#475569' }}>
+                      Remember me
+                    </label>
+                  </div>
+                )}
 
-              <button className="landing-submit-btn" type="submit">
-                {authMode === 'signup' ? 'Create Account' : 'Sign In'}
-              </button>
-            </form>
+                {authError && <div className="landing-form-error">{authError}</div>}
 
-            {authMode === 'login' && (
-              <div className="landing-sample-accounts" style={{ marginTop: '1.5rem' }}>
-                <strong>Demo Access:</strong>
-                <div>Dentist: mrbur123@gmail.com / mrbur@123</div>
-                <div>Admin: adminbur@gmail.com / bur@123</div>
-              </div>
-            )}
+                <button className="landing-submit-btn" type="submit">
+                  {authMode === 'signup' ? 'Create Account' : 'Sign In'}
+                </button>
+              </form>
 
-            <div className="landing-switch-mode" style={{ marginTop: '2rem' }}>
-              {authMode === 'login' ? (
-                <>Don't have an account? <button type="button" onClick={() => setAuthMode('signup')}>Sign up</button></>
-              ) : (
-                <>Already have an account? <button type="button" onClick={() => setAuthMode('login')}>Log in</button></>
+              {authMode === 'login' && (
+                <div className="landing-sample-accounts" style={{ marginTop: '1.5rem' }}>
+                  <strong>Demo Access:</strong>
+                  <div>Dentist: mrbur123@gmail.com / mrbur@123</div>
+                  <div>Admin: adminbur@gmail.com / bur@123</div>
+                </div>
               )}
+
+              <div className="landing-switch-mode" style={{ marginTop: '2rem' }}>
+                {authMode === 'login' ? (
+                  <>Don't have an account? <button type="button" onClick={openSignup}>Sign up</button></>
+                ) : (
+                  <>Already have an account? <button type="button" onClick={openLogin}>Log in</button></>
+                )}
+              </div>
             </div>
           </div>
         </div>

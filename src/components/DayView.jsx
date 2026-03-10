@@ -251,9 +251,18 @@ export default function DayView({
                   {getInitials(dentist.name)}
                 </div>
                 <div className="dentist-header-info">
-                  <div className="dentist-header-name">{dentist.name}</div>
+                  <div className="dentist-header-name" title={dentist.name}>
+                    {dentist.name.length > 8 ? `${dentist.name.substring(0, 8)}...` : dentist.name}
+                  </div>
                   <div className="dentist-header-hours">
-                    {isWorkingDay ? `${formatTime(dentistStart)} - ${formatTime(dentistEnd)}` : 'Off Duty'}
+                    {isWorkingDay ? (
+                      <>
+                        <span style={{ display: 'block' }}>{formatTime(dentistStart)} -</span>
+                        <span style={{ display: 'block' }}>{formatTime(dentistEnd)}</span>
+                      </>
+                    ) : (
+                      'Off Duty'
+                    )}
                   </div>
                 </div>
               </div>
