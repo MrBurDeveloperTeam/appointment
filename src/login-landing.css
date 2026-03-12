@@ -735,15 +735,15 @@
 }
 
 .landing-cta-box {
-    background: #f1f5f9;
-    background-image: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    background: #0f172a;
+    background-image: linear-gradient(135deg, #f1f5f9, #e2e8f0);
     border-radius: 32px;
     padding: 4rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    color: #0f172a;
+    color: #ffffff;
     max-width: 1200px;
     margin: 0 auto;
     position: relative;
@@ -795,8 +795,8 @@
 }
 
 .landing-btn-white {
-    background: white;
-    color: #2563eb;
+    background: rgb(0, 0, 0);
+    color: #ffffff;
     padding: 1rem 2.5rem;
     border-radius: 999px;
     font-weight: 700;

@@ -75,8 +75,16 @@ export default function Sidebar({ view, onChange, theme, setTheme, onLogout, boo
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-header">
-        <div className="sidebar-logo">
-          <img className="sidebar-logo-img" src="/assets/Mr_Bur_Logo-01.png" alt="MR.BUR" />
+        <div 
+          className="sidebar-logo" 
+          onClick={() => window.open('https://app.snabbb.com/', '_self')}
+          style={{ cursor: 'pointer' }}
+        >
+          <img 
+            className="sidebar-logo-img" 
+            src={theme === 'dark' ? "/assets/Snabbb (White).png" : "/assets/Snabbb (Teal).png"} 
+            alt="Snabbb" 
+          />
         </div>
         <button
           type="button"

@@ -100,8 +100,12 @@ export default function LoginView() {
 
       {/* NAVBAR */}
       <nav className="landing-navbar">
-        <div className="landing-nav-logo">
-          <img src="/assets/Mr_Bur_Logo-01.png" alt="Mr Bur Logo" />
+        <div 
+          className="landing-nav-logo"
+          onClick={() => window.open('https://app.snabbb.com/', '_self')}
+          style={{ cursor: 'pointer' }}
+        >
+          <img src="/assets/Snabbb (Teal).png" alt="Snabbb Logo" />
         </div>
         <div className="landing-nav-links">
           <a href="#features">Features</a>
@@ -304,14 +308,14 @@ export default function LoginView() {
         <div className="landing-cta-box">
           <h2>Easy Access for Easy Bookings.</h2>
           <p>Deliver the best booking experience today and take your clinic's workflow to the next level.</p>
-          <button className="landing-btn-dark" onClick={openSignup}>Get Started Now</button>
+          <button className="landing-btn-white" onClick={openSignup}>Get Started Now</button>
         </div>
       </section>
 
       {/* FOOTER DIRECTORY */}
       <footer className="landing-footer">
         <div className="landing-footer-col">
-          <img src="/assets/Mr_Bur_Logo-01.png" alt="Logo" style={{ height: '32px', marginBottom: '1rem' }} />
+          <img src="/assets/Snabbb (White).png" alt="Snabbb Logo" style={{ height: '32px', marginBottom: '1rem' }} />
           <p style={{ color: '#64748b', fontSize: '0.9rem', maxWidth: '250px' }}>
             Empowering clinics worldwide with smart, easy-to-use scheduling software.
           </p>
@@ -360,7 +364,7 @@ export default function LoginView() {
             <button className="landing-modal-close" onClick={() => setShowForm(false)}>×</button>
             <div className="landing-login-content">
               <div className="landing-login-header">
-                <img src="/assets/Mr_Bur_Logo-01.png" alt="App Logo" className="landing-login-logo" />
+                <img src="/assets/Snabbb (Teal).png" alt="Snabbb Logo" className="landing-login-logo" />
                 <h2>{authMode === 'login' ? 'Welcome back' : 'Create Account'}</h2>
                 <p>
                   {authMode === 'login' ? 'Sign in to access your dashboard' : 'Sign up to get started today'}
