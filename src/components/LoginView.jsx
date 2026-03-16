@@ -100,7 +100,7 @@ export default function LoginView() {
 
       {/* NAVBAR */}
       <nav className="landing-navbar">
-        <div 
+        <div
           className="landing-nav-logo"
           onClick={() => window.open('https://app.snabbb.com/', '_self')}
           style={{ cursor: 'pointer' }}
