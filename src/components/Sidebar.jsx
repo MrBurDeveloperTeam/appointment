@@ -1,6 +1,6 @@
 import { useToast } from '../context/ToastProvider';
 
-export default function Sidebar({ view, onChange, theme, setTheme, onLogout, bookingLink, isOpen, onClose }) {
+export default function Sidebar({ view, onChange, theme, setTheme, onLogout, bookingLink, isOpen, onClose, isUnconfigured }) {
   const { addToast } = useToast();
   const items = [
     { id: 'calendar', label: 'Calendar', icon: 'calendar' },
@@ -98,18 +98,22 @@ export default function Sidebar({ view, onChange, theme, setTheme, onLogout, boo
         </button>
       </div>
       <nav className="sidebar-nav" aria-label="Primary">
-        {items.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`nav-item ${view === item.id ? 'active' : ''}`}
-            onClick={() => onChange(item.id)}
-            aria-current={view === item.id ? 'page' : undefined}
-          >
-            {renderIcon(item.icon)}
-            <span>{item.label}</span>
-          </button>
-        ))}
+        {items.map((item) => {
+          const isDisabled = isUnconfigured && item.id !== 'settings';
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`nav-item ${view === item.id ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}
+              onClick={() => onChange(item.id)}
+              aria-current={view === item.id ? 'page' : undefined}
+              style={isDisabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            >
+              {renderIcon(item.icon)}
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
       <div className="sidebar-footer">
         <div className="sidebar-booking">
@@ -127,7 +131,7 @@ export default function Sidebar({ view, onChange, theme, setTheme, onLogout, boo
             <button
               className="btn btn-secondary btn-sm"
               type="button"
-              disabled={!bookingLink}
+              disabled={!bookingLink || isUnconfigured}
               onClick={() => {
                 if (!bookingLink) return;
                 if (navigator.clipboard && navigator.clipboard.writeText) {

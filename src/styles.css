@@ -3857,6 +3857,7 @@ tbody tr:hover {
 .settings-content {
   display: grid;
   gap: var(--space-lg);
+  align-content: start;
 }
 
 .settings-card {
