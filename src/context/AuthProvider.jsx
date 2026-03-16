@@ -114,6 +114,7 @@ export function AuthProvider({ children }) {
 
     const signOut = async () => {
         try {
+            await api.post('/logout');
             await supabase.auth.signOut();
             // Local storage cleanup
             DataStore.setActiveClinicId(null);
@@ -130,8 +131,16 @@ export function AuthProvider({ children }) {
             setUser(null);
             setProfile(null);
             setRole(null);
+            if (window.opener && !window.opener.closed) {
+              window.opener.postMessage(
+                { type: 'SSO_LOGOUT', source: 'miniapp' },
+                'https://app.snabbb.com'
+              );
+            }
         } catch (err) {
             console.error('Error signing out:', err);
+        } finally {
+          window.location.href = 'https://app.snabbb.com';
         }
     };
 
