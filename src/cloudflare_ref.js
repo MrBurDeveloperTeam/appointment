@@ -1,5 +1,5 @@
 import { APP_CONFIG } from "./config/apps.js";
-import { parseJwtPayload, extractEmail } from "./auth/odooJwt.js";
+import { parseJwtPayload, extractEmail } from "./auth/odooJWT.js";
 import { getProfileByEmail } from "./supabase/profiles.js";
 import { getInventoryMetaByUserId } from "./supabase/inventoryMeta.js";
 import { supabaseBootstrapByEmail } from "./supabase/bootstrap.js";
@@ -13,7 +13,7 @@ import { getSettings, saveSettings } from "./supabase/settings.js";
 import { getHolidays, addHoliday, updateHoliday, deleteHoliday } from "./supabase/holidays.js";
 import { getActivity, addActivity } from "./supabase/activity.js";
 import { handleWhiteboardApi } from "./supabase/whiteboard.js";
-import { handleTasksApi } from "./supabase/tasks.js";
+import { handleTasksApi } from "./supabase/tasks.js"; 
 import { getRequests, updateRequest } from "./supabase/requests.js";
 import { getClinics, getClinicById, addClinic, updateClinic, deleteClinic } from "./supabase/clinics.js";
 import { getProfiles, getProfileById, updateProfile } from "./supabase/apt_profiles.js";
@@ -26,14 +26,14 @@ import { updateRoomPosition } from "./supabase/inventoryRooms.js";
    🔥 CONFIG
 ========================================================= */
 
-const PUBLIC_EVENT_HOST = "event.mrburstudio.com";
-const ODOO_EVENT_HOST = "mrbur-sandbox.odoo.com";
+const PUBLIC_EVENT_HOST = "event.snabbb.com";
+const ODOO_EVENT_HOST = "mrbur.odoo.com";
 const ODOO_EVENT_BASE = "/event";
 const ODOO_SHOP_BASE = "/shop";
-const ODOO_DEV_HOST = "mrbur-staging-bur-26090883.dev.odoo.com";
+const ODOO_DEV_HOST = "aht-systemadmin-mrbur-main-20994444.dev.odoo.com";
 const ODOO_DEV_BASE = `https://${ODOO_DEV_HOST}`;
-const PUBLIC_SHOP_HOST = "shop.mrburstudio.com";
-const ODOO_SHOP_HOST = "https://mrbur-sandbox.odoo.com/shop"; // or staging host
+const PUBLIC_SHOP_HOST = "shop.snabbb.com";
+const ODOO_SHOP_HOST = "mrbur.odoo.com";
 
 export default {
   async fetch(request, env) {
@@ -44,7 +44,7 @@ export default {
     // ==============================
     const COOKIE_NAME = "mrbur_sso";
     const COOKIE_ODOO_NAME = "session_id";
-    const COOKIE_DOMAIN = ".mrburstudio.com"; // ✅ shared across all subdomains
+    const COOKIE_DOMAIN = ".snabbb.com"; // ✅ shared across all subdomains
     const DEFAULT_MAX_AGE = 60 * 60; // 1 hour
 
     // ==============================
@@ -52,15 +52,16 @@ export default {
     // ==============================
     const origin = request.headers.get("Origin");
     const allowedOrigins = new Set([
-      "https://gallery.mrburstudio.com",
-      "https://inventory.mrburstudio.com",
-      "https://appointment.mrburstudio.com",
-      "https://event.mrburstudio.com",
-      "https://recruitment.mrburstudio.com",
-      "https://calculator.mrburstudio.com",
-      "https://todo.mrburstudio.com",
-      "https://shop.mrburstudio.com",
-      "https://mrbur-sandbox.odoo.com",
+      "https://app.snabbb.com",
+      "https://inventory.snabbb.com",
+      "https://appointment.snabbb.com",
+      "https://imageai.snabbb.com",
+      "https://event.snabbb.com",
+      "https://recruitment.snabbb.com",
+      "https://calculator.snabbb.com",
+      "https://todo.snabbb.com",
+      "https://shop.snabbb.com",
+      "https://mrbur.odoo.com",
       "http://localhost:3000",
       "http://localhost:5173",
     ]);
@@ -72,7 +73,7 @@ export default {
       ? {
           "Access-Control-Allow-Origin": allowedOrigins.has(origin)
             ? origin
-            : "https://inventory.mrburstudio.com",
+            : "https://inventory.snabbb.com",
           "Access-Control-Allow-Credentials": "true",
           "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
           "Access-Control-Allow-Headers":
@@ -90,21 +91,30 @@ export default {
     // ==============================
     // ✅ HELPERS
     // ==============================
-    function getCookie(request, name) {
-      const cookieHeader = request.headers.get("cookie");
-      if (!cookieHeader) return null;
-        
-      const cookies = cookieHeader.split(";");
-        
-      for (const cookie of cookies) {
-        const [key, ...valParts] = cookie.trim().split("=");
-        if (key === name) {
-          return valParts.join("="); // handles JWT with "=" inside
-        }
-      }
-    
-      return null;
+    function appendRewrittenCookies(outHeaders, upstreamRes, targetDomain = ".snabbb.com") {
+  const setCookies = upstreamRes.headers.getSetCookie?.() ?? [];
+
+  for (const cookie of setCookies) {
+    let rewritten = cookie;
+
+    if (/Domain=/i.test(rewritten)) {
+      rewritten = rewritten.replace(/Domain=[^;]+/i, `Domain=${targetDomain}`);
+    } else {
+      rewritten = `${rewritten}; Domain=${targetDomain}`;
     }
+
+    outHeaders.append("Set-Cookie", rewritten);
+  }
+}
+
+function copyResponseHeadersWithoutSetCookie(upstreamRes) {
+  const outHeaders = new Headers();
+  for (const [key, value] of upstreamRes.headers.entries()) {
+    if (key.toLowerCase() === "set-cookie") continue;
+    outHeaders.append(key, value);
+  }
+  return outHeaders;
+}
 
 
     function getCookieValue(req, name) {
@@ -123,13 +133,13 @@ export default {
       return m?.[1] || null;
     }
     
-    // IMPORTANT: make Odoo session cookie shared across *.mrburstudio.com
+    // IMPORTANT: make Odoo session cookie shared across *.snabbb.com
     function buildSharedOdooSessionCookie(sessionId, { maxAge = 60 * 60 * 6 } = {}) {
       // You can tune maxAge; Odoo session might still expire server-side earlier/later.
       return [
         `session_id=${sessionId}`,
         "Path=/",
-        `Domain=.mrburstudio.com`,
+        `Domain=.snabbb.com`,
         "HttpOnly",
         "Secure",
         "SameSite=Lax",
@@ -324,7 +334,7 @@ export default {
         
         // ✅ SHOP
         if (u.hostname === ODOO_SHOP_HOST) {
-          u.hostname = PUBLIC_SHOP_HOST;          // shop.mrburstudio.com
+          u.hostname = PUBLIC_SHOP_HOST;          // shop.snabbb.com
           u.protocol = "https:";
           return u.toString();
         }
@@ -335,7 +345,7 @@ export default {
       
         // ✅ EVENT
         if (u.hostname === ODOO_EVENT_HOST) {
-          u.hostname = PUBLIC_EVENT_HOST;         // event.mrburstudio.com
+          u.hostname = PUBLIC_EVENT_HOST;         // event.snabbb.com
           u.protocol = "https:";
           return u.toString();
         }
@@ -552,11 +562,11 @@ export default {
 
     // ==============================
     // ✅ ODOO UI PROXY under your domain
-    // https://gallery.mrburstudio.com/odoo/*  ->  https://mrbur-sandbox.odoo.com/*
-    // Goal: make Odoo session_id shared on Domain=.mrburstudio.com (NOT host-only)
+    // https://app.snabbb.com/odoo/*  ->  https://mrbur.odoo.com/*
+    // Goal: make Odoo session_id shared on Domain=.snabbb.com (NOT host-only)
     // ==============================
     if (url.pathname.startsWith("/odoo/")) {
-      const UPSTREAM_ORIGIN = "https://mrbur-sandbox.odoo.com";
+      const UPSTREAM_ORIGIN = "https://mrbur.odoo.com";
       const COOKIE_NAME = "session_id";
     
       // Read cookies from browser
@@ -617,16 +627,16 @@ export default {
       const newSessionId = m?.[1];
     
       // IMPORTANT:
-      // 1) Remove upstream Set-Cookie so the browser DOES NOT store host-only cookies for gallery.mrburstudio.com
+      // 1) Remove upstream Set-Cookie so the browser DOES NOT store host-only cookies for app.snabbb.com
       resHeaders.delete("Set-Cookie");   // correct case
       resHeaders.delete("set-cookie");   // extra safety
     
-      // 2) If we got a session_id, RE-ISSUE it as a shared cookie on .mrburstudio.com
+      // 2) If we got a session_id, RE-ISSUE it as a shared cookie on .snabbb.com
       if (newSessionId) {
-        // Clear any host-only cookie previously set on gallery.mrburstudio.com (cleanup)
+        // Clear any host-only cookie previously set on app.snabbb.com (cleanup)
         resHeaders.append(
           "Set-Cookie",
-          `session_id=${newSessionId}; Path=/; Domain=.mrburstudio.com; Max-Age=0; HttpOnly; Secure; SameSite=Lax`
+          `session_id=${newSessionId}; Path=/; Domain=.snabbb.com; Max-Age=0; HttpOnly; Secure; SameSite=Lax`
         );
       
         // Set shared cookie across all subdomains
@@ -644,6 +654,116 @@ export default {
     =========================================*/
     if (url.pathname === "/api/sso/exchange" && request.method === "GET") {
       return handleSSO(request, env)
+    }
+
+    /* ==============================
+      authenticate web session
+    ================================= */
+    if (url.pathname === "/api/web/session/authenticate") {
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: corsHeaders });
+      }
+    
+      if (request.method !== "POST") {
+        return new Response("Method Not Allowed", { status: 405, headers: corsHeaders });
+      }
+    
+      try {
+        const body = await request.json();
+      
+        const login = body?.params?.login;
+        const password = body?.params?.password;
+      
+        if (!login || !password) {
+          return new Response(JSON.stringify({ ok: false, error: "Missing email or password" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          });
+        }
+      
+        const ODOO_BASE = "https://mrbur.odoo.com";
+        const DB = "aht-systemadmin-mrbur-main-20994444";
+      
+        // ✅ ODOO AUTH (fixed: prevent host-only session_id + re-issue Domain=.snabbb.com)
+        const upstream = await fetch(`${ODOO_BASE}/web/session/authenticate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            method: "call",
+            params: { db: DB, login, password },
+            id: body?.id ?? 1,
+          }),
+        });
+        
+        const data = await upstream.json().catch(() => null);
+
+        if (!upstream.ok) {
+          return new Response(
+            JSON.stringify({ ok: false, error: "Upstream Odoo error", status: upstream.status, data }),
+            { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+
+        if (data?.error) {
+          return new Response(
+            JSON.stringify({ ok: false, error: data.error.message || "Odoo login failed", data }),
+            { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+
+        // ✅ Odoo success payload is in data.result
+        const result = data?.result;
+
+        // ✅ Read upstream cookie, extract session_id
+        const upstreamSetCookie = upstream.headers.get("Set-Cookie");
+        const newSessionId = parseSessionIdFromSetCookie(upstreamSetCookie);
+
+        // ✅ Build response headers (DO NOT forward upstream Set-Cookie)
+        const out = new Headers({
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        });
+
+        // ✅ If we got a session_id, re-issue as shared cookie
+        if (newSessionId) {
+          // (optional cleanup) delete host-only cookie on gallery
+          out.append(
+            "Set-Cookie",
+            `session_id=; Path=/; Domain=app.snabbb.com; Max-Age=0; HttpOnly; Secure; SameSite=Lax`
+          );
+        
+          // ✅ re-issue as shared cookie for ALL subdomains
+          out.append("Set-Cookie", buildSharedOdooSessionCookie(newSessionId));
+        }
+
+        // ✅ Return response (no upstream Set-Cookie leakage)
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            sessionInfo: {
+              name: result?.name ?? result?.partner_display_name ?? "",
+              email: result?.username ?? login,
+              uid: result?.uid ?? null,
+              partner_id: result?.partner_id ?? null,
+              db: result?.db ?? DB,
+            },
+            data,
+          }),
+          {
+            status: 200,
+            headers: out,
+          }
+        );
+      } catch (err) {
+        return new Response(JSON.stringify({ ok: false, error: err?.message || "Odoo login failed" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
     }
 
     /* =========================================================
@@ -705,7 +825,7 @@ export default {
       // Add API CORS headers
       for (const [k, v] of Object.entries(corsHeaders)) outHeaders.set(k, v);
 
-      // ✅ Rewrite session_id cookie domain to .mrburstudio.com
+      // ✅ Rewrite session_id cookie domain to .snabbb.com
       const upstreamSetCookie = upstreamRes.headers.get("Set-Cookie");
       if (upstreamSetCookie) {
         const sessionIdMatch = upstreamSetCookie.match(/session_id=([^;]+)/i);
@@ -713,10 +833,10 @@ export default {
           const sessionId = sessionIdMatch[1];
           // Remove original Set-Cookie
           outHeaders.delete("Set-Cookie");
-          // Re-issue with .mrburstudio.com domain
+          // Re-issue with .snabbb.com domain
           outHeaders.set(
             "Set-Cookie",
-            `session_id=${sessionId}; Path=/; Domain=.mrburstudio.com; HttpOnly; Secure; SameSite=Lax; Max-Age=21600`
+            `session_id=${sessionId}; Path=/; Domain=.snabbb.com; HttpOnly; Secure; SameSite=Lax; Max-Age=21600`
           );
         }
       }
@@ -841,7 +961,7 @@ export default {
           id: 1,
         };
       
-        const odooRes = await fetch("https://mrbur-sandbox.odoo.com/api/v1/users", {
+        const odooRes = await fetch("https://mrbur.odoo.com/api/v1/users", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1028,7 +1148,7 @@ export default {
       };
     
       try {
-        const upstreamUrl = "https://mrbur-sandbox.odoo.com/api/v1/users"; // your real target
+        const upstreamUrl = "https://mrbur.odoo.com/api/v1/users"; // your real target
       
         const upstreamRes = await fetch(upstreamUrl, {
           method: "POST",
@@ -1123,7 +1243,7 @@ export default {
             };
 
             try {
-                const upstreamUrl = "https://mrbur-sandbox.odoo.com/api/v1/users";
+                const upstreamUrl = "https://mrbur.odoo.com/api/v1/users";
 
                 const upstreamRes = await fetch(upstreamUrl, {
                     method: "POST",
@@ -1168,6 +1288,115 @@ export default {
                 });
             }
         }
+
+    /* ==============================
+          ✅ IMAGEAI SIGNUP
+        ============================== */
+    if (url.pathname === "/api/imageai/sign-up") {
+      const imageAiCorsHeaders = {
+        ...corsHeaders,
+        "Access-Control-Allow-Origin": allowedOrigins.has(origin)
+          ? origin
+          : "https://imageai.snabbb.com",
+      };
+
+      if (request.method !== "POST") {
+        return new Response("Method Not Allowed", { status: 405, headers: imageAiCorsHeaders });
+      }
+
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return new Response(JSON.stringify({ ok: false, error: "Invalid JSON body" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...imageAiCorsHeaders },
+        });
+      }
+
+      const payload = body?.data ?? body?.options?.data ?? body?.params ?? body ?? {};
+
+      const email = body?.email ?? payload?.email ?? payload?.login;
+      const name = payload?.name ?? body?.name;
+      const password = payload?.password ?? body?.password;
+      const phone = payload?.phone ?? body?.phone;
+      const company_name = payload?.company_name ?? payload?.companyName ?? body?.company_name;
+      const company_id = payload?.company_id ?? body?.company_id ?? 2;
+      const jobPosition =
+        payload?.position ??
+        payload?.jobPosition ??
+        body?.jobPosition ??
+        payload?.job_position;
+
+      if (!email || !name) {
+        return new Response(JSON.stringify({ ok: false, error: "email and name are required" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...imageAiCorsHeaders },
+        });
+      }
+
+      const requestData = {
+        jsonrpc: "2.0",
+        method: "call",
+        params: {
+          email,
+          name,
+          ...(password ? { password } : {}),
+          ...(phone ? { phone } : {}),
+          ...(jobPosition ? { job_position: jobPosition } : {}),
+          ...(company_name ? { company_name } : {}),
+          ...(company_id ? { company_id } : {}),
+        },
+        id: body?.id ?? 1,
+      };
+
+      try {
+        const upstreamUrl = "https://mrbur.odoo.com/api/v1/users";
+
+        const upstreamRes = await fetch(upstreamUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "X-SSO-API-KEY": env.ODOO_SSO_API_KEY,
+          },
+          body: JSON.stringify(requestData),
+        });
+
+        const text = await upstreamRes.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = { raw: text };
+        }
+
+        if (data?.error) {
+          const errMsg = data.error.data?.message || data.error.message || "Odoo error";
+          return new Response(
+            JSON.stringify({ ok: false, error: errMsg, details: data.error }),
+            { status: 400, headers: { "Content-Type": "application/json", ...imageAiCorsHeaders } }
+          );
+        }
+
+        if (!upstreamRes.ok) {
+          return new Response(
+            JSON.stringify({ ok: false, error: "Upstream Odoo error", status: upstreamRes.status, data }),
+            { status: 502, headers: { "Content-Type": "application/json", ...imageAiCorsHeaders } }
+          );
+        }
+
+        return new Response(JSON.stringify({ ok: true, data }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...imageAiCorsHeaders },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ ok: false, error: err?.message || "Odoo sign-up failed" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...imageAiCorsHeaders },
+        });
+      }
+    }    
 
     /* ==============================
           ✅ HIRING SIGNUP
@@ -1220,7 +1449,7 @@ export default {
       };
 
       try {
-        const upstreamUrl = "https://mrbur-sandbox.odoo.com/api/v1/users";
+        const upstreamUrl = "https://mrbur.odoo.com/api/v1/users";
 
         const upstreamRes = await fetch(upstreamUrl, {
           method: "POST",
@@ -1568,7 +1797,7 @@ export default {
     
       try {
         const bodyText = await request.text(); // keep raw JSON
-        const upstreamUrl = "https://mrbur-sandbox.odoo.com/api/v1/sso/app_link";
+        const upstreamUrl = "https://mrbur.odoo.com/api/v1/sso/app_link";
         const upstreamRes = await fetch(upstreamUrl, {
           method: "POST",
           headers: {
@@ -1580,6 +1809,12 @@ export default {
         });
         
         const upstreamText = await upstreamRes.text();
+        // Rewrite Odoo's hardcoded SSO domain to your app domain
+        const rewrittenText = upstreamText.replace(
+          /https:\/\/sso\.mrburstudio\.com/g,
+          "https://sso.snabbb.com"  // or whatever your target domain is
+        );
+
         const resHeaders = new Headers(corsHeaders);
         resHeaders.set(
           "Content-Type",
@@ -1593,13 +1828,13 @@ export default {
             buildSetCookie({
               name: "session_id",
               value: sessionId,
-              domain: '.mrburstudio.com'
+              domain: '.snabbb.com'
             })
           );
         }
       
         // pass-through response (recommended)
-        return new Response(upstreamText, {
+        return new Response(rewrittenText, {
           status: upstreamRes.status,
           headers: {
             "Content-Type": upstreamRes.headers.get("Content-Type") || "application/json",
@@ -1614,117 +1849,7 @@ export default {
       }
     }
 
-    /* ==============================
-      authenticate web session
-    ================================= */
-    if (url.pathname === "/api/web/session/authenticate") {
-      console.log('new session id: ', request)
-      if (request.method === "OPTIONS") {
-        return new Response(null, { status: 204, headers: corsHeaders });
-      }
     
-      if (request.method !== "POST") {
-        return new Response("Method Not Allowed", { status: 405, headers: corsHeaders });
-      }
-    
-      try {
-        const body = await request.json();
-      
-        const login = body?.params?.login;
-        const password = body?.params?.password;
-      
-        if (!login || !password) {
-          return new Response(JSON.stringify({ ok: false, error: "Missing email or password" }), {
-            status: 400,
-            headers: { "Content-Type": "application/json", ...corsHeaders },
-          });
-        }
-      
-        const ODOO_BASE = "https://mrbur-sandbox.odoo.com";
-        const DB = "mrbur-staging-bur-26090883";
-      
-        // ✅ ODOO AUTH (fixed: prevent host-only session_id + re-issue Domain=.mrburstudio.com)
-        const upstream = await fetch(`${ODOO_BASE}/web/session/authenticate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({
-            jsonrpc: "2.0",
-            method: "call",
-            params: { db: DB, login, password },
-            id: body?.id ?? 1,
-          }),
-        });
-
-        
-        const data = await upstream.json().catch(() => null);
-
-        if (!upstream.ok) {
-          return new Response(
-            JSON.stringify({ ok: false, error: "Upstream Odoo error", status: upstream.status, data }),
-            { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders } }
-          );
-        }
-
-        if (data?.error) {
-          return new Response(
-            JSON.stringify({ ok: false, error: data.error.message || "Odoo login failed", data }),
-            { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
-          );
-        }
-
-        // ✅ Odoo success payload is in data.result
-        const result = data?.result;
-
-        // ✅ Read upstream cookie, extract session_id
-        const upstreamSetCookie = upstream.headers.get("Set-Cookie");
-        const newSessionId = parseSessionIdFromSetCookie(upstreamSetCookie);
-
-        // ✅ Build response headers (DO NOT forward upstream Set-Cookie)
-        const out = new Headers({
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        });
-
-        // ✅ If we got a session_id, re-issue as shared cookie
-        if (newSessionId) {
-          // (optional cleanup) delete host-only cookie on gallery
-          out.append(
-            "Set-Cookie",
-            `session_id=; Path=/; Domain=gallery.mrburstudio.com; Max-Age=0; HttpOnly; Secure; SameSite=Lax`
-          );
-        
-          // ✅ re-issue as shared cookie for ALL subdomains
-          out.append("Set-Cookie", buildSharedOdooSessionCookie(newSessionId));
-        }
-
-        // ✅ Return response (no upstream Set-Cookie leakage)
-        return new Response(
-          JSON.stringify({
-            ok: true,
-            sessionInfo: {
-              name: result?.name ?? result?.partner_display_name ?? "",
-              email: result?.username ?? login,
-              uid: result?.uid ?? null,
-              partner_id: result?.partner_id ?? null,
-              db: result?.db ?? DB,
-            },
-            data,
-          }),
-          {
-            status: 200,
-            headers: out,
-          }
-        );
-      } catch (err) {
-        return new Response(JSON.stringify({ ok: false, error: err?.message || "Odoo login failed" }), {
-          status: 500,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        });
-      }
-    }
 
 
     /* ==============================
@@ -1740,7 +1865,7 @@ export default {
         return new Response("Method Not Allowed", { status: 405, headers: corsHeaders });
       }
     
-      const upstreamUrl = "https://mrbur-sandbox.odoo.com/api/v1/users";
+      const upstreamUrl = "https://mrbur.odoo.com/api/v1/users";
     
       const upstreamRes = await fetch(upstreamUrl, {
         method: "POST",
@@ -1769,209 +1894,347 @@ export default {
   });
 }
 
-    /* =========================================================
-       🌐 shop REVERSE PROXY
-       shop.mrburstudio.com → mrbur-sandbox.odoo.com/shop
-    ========================================================= */
-    const isShopHost = url.hostname === PUBLIC_SHOP_HOST;
-    
-    if (isShopHost && !isApi && !url.pathname.startsWith("/sso/")) {
-      const ip = request.headers.get("CF-Connecting-IP");
-  
-      let country = request.headers.get("CF-IPCountry"); // fallback
-        
-      try {
-        const geoRes = await fetch(`https://ipwho.is/${ip}`);
-        const geoData = await geoRes.json();
-        console.log("ipwho:", JSON.stringify(geoData));
-        if (geoRes.ok) {
-           if (geoData?.success && geoData?.country_code) {
-             country = geoData.country_code;
-           }
-        }
-      } catch (e) {
-        console.log("geo lookup failed, using CF-IPCountry:", e.message);
-        // falls back to CF-IPCountry silently
-      }
-    
-      console.log("ip:", ip, "country:", country);
-          
-        const countryRedirects = {
-          TH: "https://th.mrbur.shop",
-          ID:	"https://id.mrbur.shop",
-          MY:	"https://my.mrbur.shop",
-          US:	"https://us.mrbur.shop",
-          UK:	"https://uk.mrbur.shop",
-          AU:	"https://au.mrbur.shop",
-          SG:	"https://sg.mrbur.shop",
-          AE:	"https://ae.mrbur.shop",
-          VN:	"https://vn.mrbur.shop",
-          PH:	"https://ph.mrbur.shop",
-          KR:	"https://kr.mrbur.shop",
-          CA:	"https://ca.mrbur.shop",
-          SA:	"https://sa.mrbur.shop",
-          NZ:	"https://nz.mrbur.shop",
-          BE:	"https://eu.mrbur.shop",
-          BG:	"https://eu.mrbur.shop",
-          CZ:	"https://eu.mrbur.shop",
-          DK:	"https://eu.mrbur.shop",
-          DE:	"https://eu.mrbur.shop",
-          EE:	"https://eu.mrbur.shop",
-          IE:	"https://eu.mrbur.shop",
-          EL:	"https://eu.mrbur.shop",
-          ES:	"https://eu.mrbur.shop",
-          FR:	"https://eu.mrbur.shop",
-          HR:	"https://eu.mrbur.shop",
-          IT:	"https://eu.mrbur.shop",
-          CY:	"https://eu.mrbur.shop",
-          LV:	"https://eu.mrbur.shop",
-          LT:	"https://eu.mrbur.shop",
-          LU:	"https://eu.mrbur.shop",
-          HU:	"https://eu.mrbur.shop",
-          MT:	"https://eu.mrbur.shop",
-          NL:	"https://eu.mrbur.shop",
-          AT:	"https://eu.mrbur.shop",
-          PL:	"https://eu.mrbur.shop",
-          PT:	"https://eu.mrbur.shop",
-          RO:	"https://eu.mrbur.shop",
-          SI:	"https://eu.mrbur.shop",
-          SK:	"https://eu.mrbur.shop",
-          FI:	"https://eu.mrbur.shop",
-          SE:	"https://eu.mrbur.shop",
-          IS:	"https://eu.mrbur.shop",
-          NO:	"https://eu.mrbur.shop",
-          LI:	"https://eu.mrbur.shop",
-          CH:	"https://eu.mrbur.shop",
-          BA:	"https://eu.mrbur.shop",
-          ME:	"https://eu.mrbur.shop",
-          MD:	"https://eu.mrbur.shop",
-          MK:	"https://eu.mrbur.shop",
-          GE:	"https://eu.mrbur.shop",
-          AL:	"https://eu.mrbur.shop",
-          RS:	"https://eu.mrbur.shop",
-          TR:	"https://eu.mrbur.shop",
-          UA:	"https://eu.mrbur.shop",
-        };
+/* =========================================================
+   🏠 HOME REVERSE PROXY
+   app.snabbb.com/home → my.mrbur.shop
+========================================================= */
 
+const isHomeRequest =
+  url.hostname === "app.snabbb.com" &&
+  (url.pathname === "/home" || url.pathname.startsWith("/home/"));
 
-      if (country && countryRedirects[country]) {
-        const targetBase = countryRedirects[country]; // e.g. "https://my.mrbur.shop"
-        const targetHostname = new URL(targetBase).hostname; // e.g. "my.mrbur.shop"
-      
-        const upstreamUrl = new URL(request.url);
-        upstreamUrl.hostname = targetHostname; // proxy FROM the country-specific subdomain
-        upstreamUrl.protocol = "https:";
-      
-        if (upstreamUrl.pathname === "/" || upstreamUrl.pathname === "") {
-          upstreamUrl.pathname = "/shop";
-        }
-      
-        const sessionId = getCookie(request, "session_id");
-      
-        const reqHeaders = new Headers(request.headers);
-        reqHeaders.set("Host", targetHostname); // ← tell Odoo which site to serve
-        reqHeaders.set("X-Forwarded-For", request.headers.get("CF-Connecting-IP") || "");
-        reqHeaders.set("X-Real-IP", request.headers.get("CF-Connecting-IP") || "");
-        if (sessionId) {
-          reqHeaders.set("Cookie", `session_id=${sessionId}`);
-        }
-      
-        const upstreamReq = new Request(upstreamUrl.toString(), {
-          method: request.method,
-          headers: reqHeaders,
-          body: request.method === "GET" || request.method === "HEAD" ? null : request.body,
-          redirect: "manual",
-        });
-      
-        const upstreamRes = await fetch(upstreamReq, {
-          cf: {
-            cacheTtl: 300, // cache for 5 minutes
-            cacheEverything: false, // only cache cacheable responses
-          }
-        });
-      
-        const outHeaders = new Headers();
-        for (const [key, value] of upstreamRes.headers.entries()) {
-          if (key.toLowerCase() === "set-cookie") continue;
-          outHeaders.append(key, value);
-        }
-      
-        const loc = outHeaders.get("Location");
-        if (loc) outHeaders.set("Location", rewriteLocationHeader(loc));
-      
-        // Re-issue cookies on .mrburstudio.com domain
-        const setCookies = upstreamRes.headers.getSetCookie?.() ?? [];
-        for (const cookie of setCookies) {
-          if (!cookie.match(/Domain=/i)) {
-            outHeaders.append("Set-Cookie", `${cookie}; Domain=.mrburstudio.com`);
-          } else {
-            outHeaders.append("Set-Cookie", cookie.replace(/Domain=[^;]+/i, "Domain=.mrburstudio.com"));
-          }
-        }
-      
-        return new Response(upstreamRes.body, {
-          status: upstreamRes.status,
-          headers: outHeaders,
-        });
-      }
+if (isHomeRequest && !isApi) {
+  const upstreamUrl = new URL(request.url);
+  upstreamUrl.hostname = "my.mrbur.shop";
+  upstreamUrl.protocol = "https:";
+  upstreamUrl.pathname = url.pathname.replace(/^\/home/, "") || "/";
 
-      const upstreamUrl = new URL(request.url);
-      const sessionId = getCookie(request, "session_id");
-      console.log("session_id:", sessionId);
-      
-      upstreamUrl.hostname = ODOO_EVENT_HOST;
-      
-      if (upstreamUrl.pathname === "/" || upstreamUrl.pathname === "") {
-        upstreamUrl.pathname = ODOO_SHOP_BASE;
-      }
-      
-      const reqHeaders = new Headers(request.headers);
-      reqHeaders.set("Host", ODOO_EVENT_HOST);
+  const reqHeaders = new Headers(request.headers);
+  reqHeaders.set("Host", "my.mrbur.shop");
 
-      reqHeaders.set("X-Forwarded-For", request.headers.get("CF-Connecting-IP") || "");
-      reqHeaders.set("X-Real-IP", request.headers.get("CF-Connecting-IP") || "");
-      
-      const upstreamReq = new Request(upstreamUrl.toString(), {
-        method: request.method,
-        headers: reqHeaders,
-        body:
-        request.method === "GET" || request.method === "HEAD"
-        ? null
-        : request.body,
-        redirect: "manual",
-      });
-      
-      const upstreamRes = await fetch(upstreamReq);
+  const upstreamReq = new Request(upstreamUrl.toString(), {
+    method: request.method,
+    headers: reqHeaders,
+    body: request.method === "GET" || request.method === "HEAD" ? null : request.body,
+    redirect: "manual",
+  });
 
-      // ✅ Build outHeaders WITHOUT copying Set-Cookie
-      const outHeaders = new Headers();
-      for (const [key, value] of upstreamRes.headers.entries()) {
-        if (key.toLowerCase() === "set-cookie") continue; // skip all Set-Cookie
-        outHeaders.append(key, value);
-      }
+  const upstreamRes = await fetch(upstreamReq);
+  const contentType = upstreamRes.headers.get("content-type") || "";
 
-      const loc = outHeaders.get("Location");
-      if (loc) outHeaders.set("Location", rewriteLocationHeader(loc));
+  const outHeaders = new Headers();
+  for (const [key, value] of upstreamRes.headers.entries()) {
+    if (key.toLowerCase() === "set-cookie") continue;
+    outHeaders.append(key, value);
+  }
 
-      // ✅ Re-issue all Set-Cookie headers with .mrburstudio.com domain
-      const setCookies = upstreamRes.headers.getSetCookie?.() ?? [];
-      for (const cookie of setCookies) {
-        if (!cookie.match(/Domain=/i)) {
-          outHeaders.append("Set-Cookie", `${cookie}; Domain=.mrburstudio.com`);
-        } else {
-          outHeaders.append("Set-Cookie", cookie.replace(/Domain=[^;]+/i, "Domain=.mrburstudio.com"));
-        }
-      }
+  if (contentType.includes("text/html")) {
+    let html = await upstreamRes.text();
 
-      return new Response(upstreamRes.body, {
-        status: upstreamRes.status,
-        headers: outHeaders,
-      });
+    // Make relative URLs resolve against the upstream site
+    if (html.includes("<head>")) {
+      html = html.replace(
+        "<head>",
+        `<head><base href="https://app.snabbb.com/">`
+      );
     }
+
+    // Optional but safer: rewrite common root-relative URLs
+    html = html
+  .replace(/src="\/(?!\/)/g, 'src="https://app.snabbb.com/')
+  .replace(/action="\/(?!\/)/g, 'action="https://app.snabbb.com/');
+
+    const script = `
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const homeTarget = 'https://app.snabbb.com/home';
+
+  // logo
+  const navbarBrand = document.querySelector('a.navbar-brand');
+  if (navbarBrand) {
+    navbarBrand.setAttribute('href', homeTarget);
+    navbarBrand.onclick = function(e) {
+      e.preventDefault();
+      window.location.href = homeTarget;
+    };
+  }
+
+  // home menu links
+  const allMenuLinks = Array.from(document.querySelectorAll('#top_menu a, a.nav-link, header a'));
+
+  allMenuLinks.forEach(link => {
+    const href = (link.getAttribute('href') || '').trim();
+    const text = (link.textContent || '').trim().toLowerCase();
+
+    if (href === '/' || href === '/home' || text === 'home') {
+      link.setAttribute('href', homeTarget);
+      link.onclick = function(e) {
+        e.preventDefault();
+        window.location.href = homeTarget;
+      };
+    }
+  });
+});
+</script>`;
+
+    html = html.replace("</body>", script + "</body>");
+
+    return new Response(html, {
+      status: upstreamRes.status,
+      headers: outHeaders,
+    });
+  }
+
+  return new Response(upstreamRes.body, {
+    status: upstreamRes.status,
+    headers: outHeaders,
+  });
+}
+
+/* =========================================================
+   🌐 EVENT REVERSE PROXY
+   app.snabbb.com/event → mrbur.odoo.com/event
+========================================================= */
+
+const isEventRequest =
+  url.hostname === "event.snabbb.com" ||
+  (url.hostname === "app.snabbb.com" && url.pathname.startsWith("/event"));
+
+if (isEventRequest && !isApi) {
+
+  const upstreamUrl = new URL(request.url);
+
+  upstreamUrl.protocol = "https:";
+  upstreamUrl.hostname = ODOO_EVENT_HOST; // mrbur.odoo.com
+
+  const reqHeaders = new Headers(request.headers);
+
+  reqHeaders.set("Host", ODOO_EVENT_HOST);
+  reqHeaders.set("X-Forwarded-For", request.headers.get("CF-Connecting-IP") || "");
+  reqHeaders.set("X-Real-IP", request.headers.get("CF-Connecting-IP") || "");
+
+  const incomingCookie = request.headers.get("Cookie") || "";
+  if (incomingCookie) {
+    reqHeaders.set("Cookie", incomingCookie);
+  }
+
+  const upstreamReq = new Request(upstreamUrl.toString(), {
+    method: request.method,
+    headers: reqHeaders,
+    body: request.method === "GET" || request.method === "HEAD" ? null : request.body,
+    redirect: "manual",
+  });
+
+  const upstreamRes = await fetch(upstreamReq);
+
+  const outHeaders = copyResponseHeadersWithoutSetCookie(upstreamRes);
+
+  appendRewrittenCookies(outHeaders, upstreamRes, ".snabbb.com");
+
+  return new Response(upstreamRes.body, {
+    status: upstreamRes.status,
+    headers: outHeaders,
+  });
+}
+
+    /* =========================================================
+   🌐 SHOP REVERSE PROXY
+   app.snabbb.com/shop* OR shop.snabbb.com/* → country shop
+========================================================= */
+const isShopRequest =
+  (url.hostname === "app.snabbb.com" &&
+    (
+      url.pathname.startsWith("/shop") ||
+      url.pathname.startsWith("/website_sale") ||
+      url.pathname.startsWith("/web/") ||
+      url.pathname.startsWith("/website/") ||
+      url.pathname.startsWith("/products") ||
+      url.pathname.startsWith("/product") ||
+      url.pathname.startsWith("/home") ||
+      url.pathname.startsWith("/payment/") ||
+      url.pathname.startsWith("/category_grid/") ||
+      url.pathname.startsWith("/banner") ||
+      url.pathname.startsWith("/web/image") ||
+      url.pathname.startsWith("/web/content") ||
+      url.pathname.startsWith("/web/assets") ||
+      url.pathname.startsWith("/my/home") ||
+      url.pathname.startsWith("/im_livechat") ||
+      url.pathname.startsWith("/my/counters") ||
+      url.pathname.startsWith("/loyalty") ||
+      url.pathname.startsWith("/user_inventory") ||
+      url.pathname.startsWith("/sale") ||
+      url.pathname.startsWith("/portal") ||
+      url.pathname.startsWith("/my") ||
+      url.pathname.startsWith("/account") ||
+      url.pathname.startsWith("/shop/cart")
+
+    )) ||
+  (url.hostname === "shop.snabbb.com");
+
+if (isShopRequest && !isApi && !url.pathname.startsWith("/sso/")) {
+  const country = request.headers.get("CF-IPCountry") || "";
+  const countryRedirects = {
+    TH: "https://th.mrbur.shop",
+    ID: "https://id.mrbur.shop",
+    MY: "https://my.mrbur.shop",
+    US: "https://us.mrbur.shop",
+    UK: "https://uk.mrbur.shop",
+    AU: "https://au.mrbur.shop",
+    SG: "https://sg.mrbur.shop",
+    AE: "https://ae.mrbur.shop",
+    VN: "https://vn.mrbur.shop",
+    PH: "https://ph.mrbur.shop",
+    KR: "https://kr.mrbur.shop",
+    CA: "https://ca.mrbur.shop",
+    SA: "https://sa.mrbur.shop",
+    NZ: "https://nz.mrbur.shop",
+    BE: "https://eu.mrbur.shop",
+    BG: "https://eu.mrbur.shop",
+    CZ: "https://eu.mrbur.shop",
+    DK: "https://eu.mrbur.shop",
+    DE: "https://eu.mrbur.shop",
+    EE: "https://eu.mrbur.shop",
+    IE: "https://eu.mrbur.shop",
+    EL: "https://eu.mrbur.shop",
+    ES: "https://eu.mrbur.shop",
+    FR: "https://eu.mrbur.shop",
+    HR: "https://eu.mrbur.shop",
+    IT: "https://eu.mrbur.shop",
+    CY: "https://eu.mrbur.shop",
+    LV: "https://eu.mrbur.shop",
+    LT: "https://eu.mrbur.shop",
+    LU: "https://eu.mrbur.shop",
+    HU: "https://eu.mrbur.shop",
+    MT: "https://eu.mrbur.shop",
+    NL: "https://eu.mrbur.shop",
+    AT: "https://eu.mrbur.shop",
+    PL: "https://eu.mrbur.shop",
+    PT: "https://eu.mrbur.shop",
+    RO: "https://eu.mrbur.shop",
+    SI: "https://eu.mrbur.shop",
+    SK: "https://eu.mrbur.shop",
+    FI: "https://eu.mrbur.shop",
+    SE: "https://eu.mrbur.shop",
+    IS: "https://eu.mrbur.shop",
+    NO: "https://eu.mrbur.shop",
+    LI: "https://eu.mrbur.shop",
+    CH: "https://eu.mrbur.shop",
+    BA: "https://eu.mrbur.shop",
+    ME: "https://eu.mrbur.shop",
+    MD: "https://eu.mrbur.shop",
+    MK: "https://eu.mrbur.shop",
+    GE: "https://eu.mrbur.shop",
+    AL: "https://eu.mrbur.shop",
+    RS: "https://eu.mrbur.shop",
+    TR: "https://eu.mrbur.shop",
+    UA: "https://eu.mrbur.shop",
+  };
+
+  const targetOrigin = countryRedirects[country] || `https://${ODOO_SHOP_HOST}`;
+  const targetUrl = new URL(request.url);
+
+  targetUrl.protocol = "https:";
+  targetUrl.hostname = new URL(targetOrigin).hostname;
+
+  if (url.hostname === "shop.snabbb.com" && (targetUrl.pathname === "/" || targetUrl.pathname === "")) {
+    targetUrl.pathname = "/shop";
+  }
+
+  const reqHeaders = new Headers(request.headers);
+  reqHeaders.set("Host", targetUrl.hostname);
+  reqHeaders.set("X-Forwarded-For", request.headers.get("CF-Connecting-IP") || "");
+  reqHeaders.set("X-Real-IP", request.headers.get("CF-Connecting-IP") || "");
+  reqHeaders.delete("Origin");
+  reqHeaders.delete("Referer");
+
+  // Forward all browser cookies upstream so cart/session works
+  const incomingCookie = request.headers.get("Cookie") || "";
+  if (incomingCookie) {
+    reqHeaders.set("Cookie", incomingCookie);
+  } else {
+    reqHeaders.delete("Cookie");
+  }
+
+  const upstreamReq = new Request(targetUrl.toString(), {
+    method: request.method,
+    headers: reqHeaders,
+    body: request.method === "GET" || request.method === "HEAD" ? null : request.body,
+    redirect: "manual",
+  });
+
+  const upstreamRes = await fetch(upstreamReq, {
+    cf: {
+      cacheTtl: 300,
+      cacheEverything: false,
+    },
+  });
+
+  const contentType = upstreamRes.headers.get("Content-Type") || "";
+  const outHeaders = copyResponseHeadersWithoutSetCookie(upstreamRes);
+
+  const loc = outHeaders.get("Location");
+  if (loc) {
+    outHeaders.set("Location", rewriteLocationHeader(loc));
+  }
+
+  // Reissue cookies for app.snabbb.com/shop flow
+  appendRewrittenCookies(outHeaders, upstreamRes, ".snabbb.com");
+
+  if (contentType.includes("text/html")) {
+  let html = await upstreamRes.text();
+
+  const script = `
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const homeTarget = 'https://app.snabbb.com/home';
+
+  // logo
+  const logoLink = document.querySelector('#top_menu a[role="menuitem"][href="/home"]')
+  if (logoLink) {
+    logoLink.setAttribute('href', homeTarget);
+    logoLink.onclick = function(e) {
+      e.preventDefault();
+      window.location.href = homeTarget;
+    };
+  }
+
+  // home menu links
+  const allMenuLinks = Array.from(document.querySelectorAll('#top_menu a, a.nav-link, header a'));
+
+  allMenuLinks.forEach(link => {
+    const href = (link.getAttribute('href') || '').trim();
+    const text = (link.textContent || '').trim().toLowerCase();
+
+    if (href === '/' || href === '/home' || text === 'home') {
+      link.setAttribute('href', homeTarget);
+      link.onclick = function(e) {
+        e.preventDefault();
+        window.location.href = homeTarget;
+      };
+    }
+  });
+});
+</script>`;
+
+  html = html.replace("</body>", script + "</body>");
+
+  return new Response(html, {
+    status: upstreamRes.status,
+    headers: outHeaders,
+  });
+}
+
+
+
+  return new Response(upstreamRes.body, {
+    status: upstreamRes.status,
+    headers: outHeaders,
+  });
+}
 
     /* =========================================================
        🌐 EVENT REVERSE PROXY
-       event.mrburstudio.com → mrbur-sandbox.odoo.com/event
+       event.snabbb.com → mrbur.odoo.com/event
     ========================================================= */
 
     const isEventHost = url.hostname === PUBLIC_EVENT_HOST;
@@ -2012,13 +2275,13 @@ export default {
       const loc = outHeaders.get("Location");
       if (loc) outHeaders.set("Location", rewriteLocationHeader(loc));
       
-      // ✅ Re-issue all Set-Cookie headers with .mrburstudio.com domain
+      // ✅ Re-issue all Set-Cookie headers with .snabbb.com domain
       const setCookies = upstreamRes.headers.getSetCookie?.() ?? [];
       for (const cookie of setCookies) {
         if (!cookie.match(/Domain=/i)) {
-          outHeaders.append("Set-Cookie", `${cookie}; Domain=.mrburstudio.com`);
+          outHeaders.append("Set-Cookie", `${cookie}; Domain=.snabbb.com`);
         } else {
-          outHeaders.append("Set-Cookie", cookie.replace(/Domain=[^;]+/i, "Domain=.mrburstudio.com"));
+          outHeaders.append("Set-Cookie", cookie.replace(/Domain=[^;]+/i, "Domain=.snabbb.com"));
         }
       }
       
@@ -2949,7 +3212,7 @@ export default {
       }
       
       const outHeaders = new Headers({
-        "Location": "https://gallery.mrburstudio.com",
+        "Location": "https://app.snabbb.com",
         "Cache-Control": "no-store",
         ...corsHeaders,
       });
@@ -2996,12 +3259,12 @@ export default {
           return new Response(e.message, { status: 500 });
         }
 
-        const finalUrl = `${config.baseUrl}/login`;
+        const finalUrl = `${config.baseUrl}`;
 
         return new Response(null, {
           status: 302,
           headers: {
-            "Set-Cookie": buildSetCookie({ value: token,domain: '.mrburstudio.com', maxAge }),
+            "Set-Cookie": buildSetCookie({ value: token,domain: '.snabbb.com', maxAge }),
             Location: finalUrl,
             "Cache-Control": "no-store",
           },
@@ -3018,7 +3281,7 @@ export default {
         return new Response(null, {
           status: 302,
           headers: {
-            "Set-Cookie": buildSetCookie({ value: token,domain: '.mrburstudio.com', maxAge }),
+            "Set-Cookie": buildSetCookie({ value: token,domain: '.snabbb.com', maxAge }),
             Location: finalUrl,
             "Cache-Control": "no-store",
           },
@@ -3026,7 +3289,7 @@ export default {
       }
 
       // For OAuth apps (kept, but also set cookie if you want)
-      const MAIN_ODOO_URL = "https://mrbur-staging-bur-2609087.dev.odoo.com";
+      const MAIN_ODOO_URL = "https://aht-systemadmin-mrbur-main-20994444.dev.odoo.com";
       const redirectUri = `${config.baseUrl}/auth_oauth/signin`;
 
       const oauthUrl =
@@ -3038,7 +3301,7 @@ export default {
       return new Response(null, {
         status: 302,
         headers: {
-          "Set-Cookie": buildSetCookie({ value: token,domain: '.mrburstudio.com', maxAge }),
+          "Set-Cookie": buildSetCookie({ value: token,domain: '.snabbb.com', maxAge }),
           Location: oauthUrl,
           "Cache-Control": "no-store",
         },
@@ -3126,6 +3389,42 @@ export default {
         },
         secret: env.APP_JWT_SECRET,
       });
+
+      // ✅ AUTO-PROVISION SUPABASE USER (Self-healing for Odoo-only accounts)
+      try {
+        let sbUser = await getSupabaseUserByEmail(env, sessionInfo.email);
+        if (!sbUser) {
+          const createRes = await fetch(
+            `${env.SUPABASE_URL}/auth/v1/admin/users`,
+            {
+              method: "POST",
+              headers: {
+                "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
+                "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                email: sessionInfo.email,
+                email_confirm: true,
+                password: crypto.randomUUID() + crypto.randomUUID(),
+                user_metadata: {
+                  sso: "odoo",
+                  name: sessionInfo.name,
+                  odoo_sub: String(uid),
+                },
+              }),
+            }
+          );
+          if (!createRes.ok) {
+            console.error("Supabase auto-provision failed during direct login:", await createRes.text());
+          } else {
+            const created = await createRes.json();
+            console.log("Auto-provisioned Supabase user:", sessionInfo.email);
+          }
+        }
+      } catch (err) {
+        console.error("Supabase check/create failed during direct login:", err);
+      }
     
       return json({ ok: true, token: appToken, sessionInfo }, 200);
     }
