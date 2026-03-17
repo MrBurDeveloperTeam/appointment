@@ -33,6 +33,34 @@ export async function signIn({ email, password }) {
     return await supabase.auth.signInWithPassword({ email, password });
   });
   if (error) throw error;
+
+  // After successful Odoo login, ensure the Supabase session is established.
+  // The worker now auto-provisions the account, but we still need to hit /sso/exchange
+  // to get the browser-side Supabase JWT.
+  if (data?.token) {
+    // Set the SSO cookie for exchange (using .snabbb.com if on that domain)
+    const domain = window.location.hostname.includes('snabbb.com') ? '; domain=.snabbb.com' : '';
+    document.cookie = `mrbur_sso=${data.token}; path=/${domain}; secure; samesite=lax; max-age=3600`;
+
+    try {
+      const exchangeRes = await api.get('/sso/exchange', {
+        headers: {
+          Authorization: `Bearer ${data.token}`
+        }
+      });
+      
+      if (exchangeRes.data?.access_token) {
+        await supabase.auth.setSession({
+          access_token: exchangeRes.data.access_token,
+          refresh_token: exchangeRes.data.refresh_token,
+        });
+        console.log("Supabase session established via direct login exchange.");
+      }
+    } catch (e) {
+      console.error('Failed to exchange SSO token on direct login:', e);
+    }
+  }
+
   return data;
 }
 

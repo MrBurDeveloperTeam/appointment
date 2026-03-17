@@ -229,6 +229,17 @@ function AppContent() {
   const bookingSlug = getBookingSlugFromPath();
   const [authInitializing, setAuthInitializing] = useState(true);
 
+  // Check what is missing
+  const missingSettings = !settings?.workingHours?.start;
+  const missingStaff = staff.length === 0;
+  const missingRooms = rooms.length === 0;
+  const missingTreatments = treatments.length === 0;
+
+  // Check if unconfigured
+  const isUnconfigured = isReady && user && activeClinicId && (
+    missingSettings || missingStaff || missingRooms || missingTreatments
+  );
+
   // Check if subscription is expired
   const isExpired = React.useMemo(() => {
     if (!activeClinicData?.subscriptionEnd) return false;
@@ -246,6 +257,44 @@ function AppContent() {
     activity: 'Activity Log',
     requests: 'Requests',
   }[view];
+
+  // Force configuration of settings for new clinics
+  useEffect(() => {
+    let timeoutId;
+    // Ensure data is ready, the user is active, we are not already on the settings view,
+    // and they have an active clinic assigned.
+    if (isReady && user && activeClinicId && view !== 'settings') {
+      if (isUnconfigured) {
+        setView('settings');
+        
+        // Build dynamic warning message
+        const missing = [];
+        if (missingSettings) missing.push("working hours");
+        if (missingStaff) missing.push("1 staff");
+        if (missingRooms) missing.push("1 room");
+        if (missingTreatments) missing.push("1 treatment");
+
+        const message = `Please configure: ${missing.join(', ')} to get started.`;
+
+        // Small delay to ensure the ToastProvider is mounted and ready
+        timeoutId = setTimeout(() => {
+          addToast(message, 'warning');
+        }, 500);
+      }
+    }
+    return () => clearTimeout(timeoutId);
+  }, [
+    isReady, 
+    isUnconfigured, 
+    missingSettings, 
+    missingStaff, 
+    missingRooms, 
+    missingTreatments, 
+    user, 
+    activeClinicId, 
+    view, 
+    addToast
+  ]);
 
   const handleSaveAppointment = (data) => {
     if (data.id) {
@@ -449,6 +498,15 @@ function AppContent() {
       <Sidebar
         view={view}
         onChange={(newView) => {
+          if (isUnconfigured && newView !== 'settings') {
+            const missing = [];
+            if (missingSettings) missing.push("working hours");
+            if (missingStaff) missing.push("1 staff");
+            if (missingRooms) missing.push("1 room");
+            if (missingTreatments) missing.push("1 treatment");
+            addToast(`Please configure: ${missing.join(', ')} first.`, 'warning');
+            return;
+          }
           setView(newView);
           closeSidebar(); // Close sidebar on mobile when navigating
         }}
@@ -458,6 +516,7 @@ function AppContent() {
         bookingLink={bookingLink}
         isOpen={sidebarOpen}
         onClose={closeSidebar}
+        isUnconfigured={isUnconfigured}
       />
       {/* Mobile Backdrop */}
       {sidebarOpen && (
@@ -474,6 +533,7 @@ function AppContent() {
           isSidebarOpen={sidebarOpen}
           credits={credits}
           onOpenCredits={() => setShowCreditModal(true)}
+          isUnconfigured={isUnconfigured}
         />
         <div className="content">
           {view === 'calendar' && (

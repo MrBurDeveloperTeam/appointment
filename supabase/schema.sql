@@ -297,7 +297,63 @@ CREATE TABLE public.apt_clinic_members (
 );
 
 
--- 4. HELPER FUNCTIONS
+-- =========================================================
+-- 4. SYNCHRONIZATION TRIGGERS
+-- =========================================================
+
+-- Trigger function to sync clinics -> settings
+CREATE OR REPLACE FUNCTION public.sync_clinic_name()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Prevent infinite loop by checking if we are already inside a trigger chain
+  IF pg_trigger_depth() <= 1 AND NEW.name IS DISTINCT FROM OLD.name THEN
+    UPDATE public.apt_settings 
+    SET clinic_name = NEW.name
+    WHERE clinic_id = NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- Trigger for clinics -> settings
+DROP TRIGGER IF EXISTS trg_sync_clinic_name ON public.apt_clinics;
+CREATE TRIGGER trg_sync_clinic_name
+AFTER UPDATE OF name ON public.apt_clinics
+FOR EACH ROW
+EXECUTE FUNCTION public.sync_clinic_name();
+
+
+-- Trigger function to sync settings -> clinics
+CREATE OR REPLACE FUNCTION public.sync_settings_clinic_name()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Prevent infinite loop by checking if we are already inside a trigger chain
+  IF pg_trigger_depth() <= 1 AND NEW.clinic_name IS DISTINCT FROM OLD.clinic_name THEN
+    UPDATE public.apt_clinics
+    SET name = NEW.clinic_name
+    WHERE id = NEW.clinic_id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- Trigger for settings -> clinics
+DROP TRIGGER IF EXISTS trg_sync_settings_clinic_name ON public.apt_settings;
+CREATE TRIGGER trg_sync_settings_clinic_name
+AFTER UPDATE OF clinic_name ON public.apt_settings
+FOR EACH ROW
+EXECUTE FUNCTION public.sync_settings_clinic_name();
+
+
+-- =========================================================
+-- 5. HELPER FUNCTIONS
+-- =========================================================
 
 -- current_clinic_id() refs profiles
 create or replace function public.current_clinic_id()
@@ -317,10 +373,46 @@ returns trigger
 language plpgsql
 security definer
 as $$
+declare
+  user_name text;
+  new_clinic_name text;
+  new_clinic_id uuid;
 begin
-  insert into public.profiles (user_id, email, name, account_type)
-  values (new.id, new.email, new.raw_user_meta_data->>'full_name', 'individual')
+  user_name := coalesce(new.raw_user_meta_data->>'full_name', 'New User');
+  new_clinic_name := user_name || '''s Clinic';
+  
+  -- Create a new clinic for this user
+  insert into public.apt_clinics (name)
+  values (new_clinic_name)
+  returning id into new_clinic_id;
+
+  -- Insert basic clinic settings
+  insert into public.apt_settings (clinic_id, clinic_name)
+  values (new_clinic_id, new_clinic_name);
+  
+  -- Record the user as a clinic member (owner/admin)
+  insert into public.apt_clinic_members (clinic_id, user_id, role)
+  values (new_clinic_id, new.id, 'admin');
+
+  -- Create the user profile and assign to the new clinic
+  insert into public.profiles (
+    user_id,
+    email,
+    name,
+    account_type,
+    clinic_id,
+    status
+  )
+  values (
+    new.id,
+    new.email,
+    user_name,
+    'individual',
+    new_clinic_id,
+    'active'
+  )
   on conflict (user_id) do nothing;
+  
   return new;
 end;
 $$;
