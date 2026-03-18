@@ -40,6 +40,7 @@ export function AuthProvider({ children }) {
                 // 2. Now get the session (either from SSO update or local storage)
                 const { data: { session: initialSession } } = await supabase.auth.getSession();
 
+                console.log("initialSession", initialSession);
                 if (mounted) {
                     setSession(initialSession);
                     setUser(initialSession?.user ?? null);
@@ -135,34 +136,45 @@ export function AuthProvider({ children }) {
     }, [user]);
 
     const signOut = async () => {
+        // 1. Best-effort: clear the SSO cookie on the server
         try {
             await api.post('/logout');
+        } catch (err) {
+            // Expected to fail on localhost (no Cloudflare worker running)
+            console.warn('Backend /logout failed (ok on localhost):', err?.message);
+        }
+
+        // 2. Always clear Supabase session (works locally too)
+        try {
             await supabase.auth.signOut();
-            // Local storage cleanup
+
+            // 3. Wipe localStorage
             DataStore.setActiveClinicId(null);
             setActiveClinicId(null);
             localStorage.removeItem('appointmentApp_activeClinic');
-            // Clear supabase keys if needed (though signOut handles mostly)
             for (let i = localStorage.length - 1; i >= 0; i -= 1) {
                 const key = localStorage.key(i);
                 if (key && (key.startsWith('sb-') || key.startsWith('supabase.auth.'))) {
                     localStorage.removeItem(key);
                 }
             }
+
+            // 4. Clear React state
             setSession(null);
             setUser(null);
             setProfile(null);
             setRole(null);
+
             if (window.opener && !window.opener.closed) {
-              window.opener.postMessage(
-                { type: 'SSO_LOGOUT', source: 'miniapp' },
-                'https://app.snabbb.com'
-              );
+                window.opener.postMessage(
+                    { type: 'SSO_LOGOUT', source: 'miniapp' },
+                    'https://app.snabbb.com'
+                );
             }
         } catch (err) {
-            console.error('Error signing out:', err);
+            console.error('Error signing out of Supabase:', err);
         } finally {
-          window.location.href = 'https://app.snabbb.com';
+            window.location.href = 'https://app.snabbb.com';
         }
     };
 
