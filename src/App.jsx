@@ -24,7 +24,6 @@ import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from './lib/supabaseClient';
 import DataStore from "./data";
 import { api } from './services/api';
-import { useSsoExchange } from './mutation/useSsoExchange';
 
 const getBookingSlugFromPath = () => {
   const parts = window.location.pathname.split('/').filter(Boolean);
@@ -42,61 +41,14 @@ export default function App() {
 }
 
 function AppContent() {
-  const { mutateAsync: exchangeSso } = useSsoExchange();
+
+  const { addToast } = useToast();
+
   const [exchangeDone, setExchangeDone] = useState(false);
 
   useEffect(() => {
-    checkSession();
+    setExchangeDone(true);
   }, []);
-
-  const checkSession = async () => {
-    try {
-      const sso = await exchangeSso();
-      await supabase.auth.setSession({
-        access_token: sso.access_token,
-        refresh_token: sso.refresh_token
-      });
-    } catch (err) {
-      await supabase.auth.signOut();
-      console.error('SSO exchange failed:', err);
-    }
-  };
-  const { addToast } = useToast();
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        // If your /sso/exchange sometimes returns 401 when no cookie,
-        // that's fine — we still mark exchangeDone = true at the end.
-        const sso = await exchangeSso();
-
-        if (cancelled) return;
-
-        // If API returns { access_token, refresh_token }
-        if (sso?.access_token && sso?.refresh_token) {
-          await supabase.auth.setSession({
-            access_token: sso.access_token,
-            refresh_token: sso.refresh_token,
-          });
-        } else {
-          // Optional: if exchange returns nothing, just ensure signed out
-          await supabase.auth.signOut();
-        }
-      } catch (err) {
-        // If exchange fails, ensure clean state then proceed to login
-        await supabase.auth.signOut();
-        console.error("SSO exchange failed:", err);
-      } finally {
-        if (!cancelled) setExchangeDone(true);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [exchangeSso]);
 
   const {
     session,
@@ -239,6 +191,9 @@ function AppContent() {
   const isUnconfigured = isReady && user && activeClinicId && (
     missingSettings || missingStaff || missingRooms || missingTreatments
   );
+
+  // Count of pending appointment requests for the sidebar badge
+  const pendingRequestsCount = appointmentRequests.filter(r => r.status === 'pending').length;
 
   // Check if subscription is expired
   const isExpired = React.useMemo(() => {
@@ -517,6 +472,7 @@ function AppContent() {
         isOpen={sidebarOpen}
         onClose={closeSidebar}
         isUnconfigured={isUnconfigured}
+        pendingRequestsCount={pendingRequestsCount}
       />
       {/* Mobile Backdrop */}
       {sidebarOpen && (
