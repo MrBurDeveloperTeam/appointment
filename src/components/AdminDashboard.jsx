@@ -126,6 +126,20 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
     });
   }, [clinics, clinicDetails]);
 
+  // Map clinicId -> list of emails from profiles table (already loaded as `users`)
+  const clinicEmailsMap = useMemo(() => {
+    const map = {};
+    users.forEach((u) => {
+      if (u.clinicId && u.email) {
+        if (!map[u.clinicId]) map[u.clinicId] = [];
+        if (!map[u.clinicId].includes(u.email)) {
+          map[u.clinicId].push(u.email);
+        }
+      }
+    });
+    return map;
+  }, [users]);
+
   const totals = useMemo(() => {
     const base = { clinics: clinics.length, users: users.length, patients: 0, appointments: 0, staff: 0 };
     clinicSummaries.forEach((clinic) => {
@@ -728,6 +742,11 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                     <div className="admin-list-top">
                       <div>
                         <div className="admin-row-title">{clinic.name}</div>
+                        {(clinicEmailsMap[clinic.id] || []).map((email) => (
+                          <div key={email} className="admin-row-email" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>
+                            {email}
+                          </div>
+                        ))}
                         <div className="admin-row-sub">
                           {clinic.city} - {clinic.plan}
                           {clinic.subscriptionType && clinic.subscriptionType !== 'free' && ` (${clinic.subscriptionType}${clinic.subscriptionEnd ? ` until ${clinic.subscriptionEnd}` : ''})`}
@@ -1067,9 +1086,7 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                       <th>Email</th>
                       <th>Name</th>
                       <th>Account Type</th>
-                      <th>Phone</th>
                       <th>Created At</th>
-                      <th>Status</th>
                       <th style={{ textAlign: 'right' }}>Action</th>
                     </tr>
                   </thead>
@@ -1105,7 +1122,9 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                       return 0;
                     }).map((user) => (
                       <tr key={user.id}>
-                        <td className="font-medium">{user.email}</td>
+                        <td className="font-medium" title={user.email}>
+                          {user.email && user.email.length > 20 ? `${user.email.substring(0, 20)}...` : user.email}
+                        </td>
                         <td title={user.name}>
                           {user.name ? (user.name.length > 20 ? `${user.name.substring(0, 20)}...` : user.name) : '-'}
                         </td>
@@ -1119,14 +1138,8 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                             </span>
                           </div>
                         </td>
-                        <td>{user.phone || '-'}</td>
                         <td className="text-muted text-sm">
                           {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
-                        </td>
-                        <td>
-                          <span className={`admin-tag ${user.status === 'active' ? 'success' : 'warning'}`}>
-                            {user.status}
-                          </span>
                         </td>
                         <td style={{ textAlign: 'right' }}>
                           <button
@@ -1284,7 +1297,13 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Email</label>
-                <input className="form-input" value={userForm.username} onChange={(e) => setUserForm({ ...userForm, username: e.target.value })} />
+                <input
+                  className="form-input"
+                  value={userForm.username}
+                  onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                  readOnly={modalState.mode === 'edit'}
+                  style={modalState.mode === 'edit' ? { opacity: 0.6, cursor: 'not-allowed', background: 'var(--bg-hover)' } : {}}
+                />
               </div>
               {DataStore.canCreateUsers && modalState.mode === 'new' && (
                 <div className="form-group">
