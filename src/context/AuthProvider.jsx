@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { api } from '../services/api';
 import DataStore from '../data';
-import { api } from "../services/api";
+import React from "react";
 
 const AuthContext = createContext({});
 
@@ -22,6 +23,21 @@ export function AuthProvider({ children }) {
 
         const initializeAuth = async () => {
             try {
+                // 1. First, try to exchange SSO session to ensure we have the latest tokens
+                try {
+                    const { data: sso } = await api.get("/sso/exchange");
+                    if (sso?.access_token && sso?.refresh_token) {
+                        await supabase.auth.setSession({
+                            access_token: sso.access_token,
+                            refresh_token: sso.refresh_token,
+                        });
+                    }
+                } catch (ssoErr) {
+                    console.error('SSO exchange failed in AuthProvider:', ssoErr);
+                    // If SSO fails, we might still have a local session, so we don't return immediately
+                }
+
+                // 2. Now get the session (either from SSO update or local storage)
                 const { data: { session: initialSession } } = await supabase.auth.getSession();
 
                 if (mounted) {
@@ -76,11 +92,17 @@ export function AuthProvider({ children }) {
                     .from('profiles')
                     .select('*')
                     .eq('user_id', user.id)
-                    .single();
+                    .maybeSingle();
 
                 if (fetchError) throw fetchError;
 
                 if (mounted) {
+                    if (!data) {
+                        console.warn('No profile found for user:', user.id);
+                        setProfile(null);
+                        setRole(null);
+                        return;
+                    }
                     setProfile(data);
                     const derivedRole = data.account_type === 'admin' ? 'admin' : 'dentist';
                     setRole(derivedRole);

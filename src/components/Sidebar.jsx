@@ -1,6 +1,6 @@
 import { useToast } from '../context/ToastProvider';
 
-export default function Sidebar({ view, onChange, theme, setTheme, onLogout, bookingLink, isOpen, onClose, isUnconfigured }) {
+export default function Sidebar({ view, onChange, theme, setTheme, onLogout, bookingLink, isOpen, onClose, isUnconfigured, pendingRequestsCount }) {
   const { addToast } = useToast();
   const items = [
     { id: 'calendar', label: 'Calendar', icon: 'calendar' },
@@ -111,6 +111,23 @@ export default function Sidebar({ view, onChange, theme, setTheme, onLogout, boo
             >
               {renderIcon(item.icon)}
               <span>{item.label}</span>
+              {item.id === 'requests' && pendingRequestsCount > 0 && (
+                <span style={{
+                  marginLeft: 'auto',
+                  background: '#ef4444',
+                  color: '#fff',
+                  borderRadius: '999px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  padding: '3px 7px',
+                  minWidth: '18px',
+                  textAlign: 'center',
+                  display: 'inline-block',
+                }}>
+                  {pendingRequestsCount > 99 ? '99+' : pendingRequestsCount}
+                </span>
+              )}
             </button>
           );
         })}
