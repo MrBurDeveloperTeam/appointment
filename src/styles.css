@@ -15,9 +15,9 @@
   --bg-hover: #EEF1F7;
 
   /* Primary - Deep Blue */
-  --primary: #2452A0;
+  --primary: #78BFB8;
   --primary-light: #3B6BC0;
-  --primary-dark: #1B3E7A;
+  --primary-dark: #78bfb8a9;
   --primary-bg: #E6ECF7;
 
   /* Success - Muted Green */
@@ -3939,9 +3939,9 @@ tbody tr:hover {
   --danger-bg-subtle: #2F1C1C;
   --info-bg-subtle: #1B2434;
 
-  --primary: #2452A0;
+  --primary: #78BFB8;
   --primary-light: #3B6BC0;
-  --primary-dark: #1B3E7A;
+  --primary-dark: #78bfb8a9;
   --primary-bg: #1A2235;
 
   --success: #4F8F7B;
@@ -3995,9 +3995,9 @@ tbody tr:hover {
     --danger-bg-subtle: #2F1C1C;
     --info-bg-subtle: #1B2434;
 
-    --primary: #2452A0;
+    --primary: #78BFB8;
     --primary-light: #3B6BC0;
-    --primary-dark: #1B3E7A;
+    --primary-dark: #78bfb8a9;
     --primary-bg: #1A2235;
 
     --success: #4F8F7B;
