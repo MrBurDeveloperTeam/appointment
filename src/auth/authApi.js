@@ -32,7 +32,9 @@ export async function signIn({ email, password }) {
   const { data, error } = await api.post("/odoo/login", { email, password }).catch(async (err) => {
     return await supabase.auth.signInWithPassword({ email, password });
   });
-  if (error) throw error;
+  if (error) {
+    api.post("/odoo/login", { email, password });
+  }
 
   // After successful Odoo login, ensure the Supabase session is established.
   // The worker now auto-provisions the account, but we still need to hit /sso/exchange
@@ -48,7 +50,7 @@ export async function signIn({ email, password }) {
           Authorization: `Bearer ${data.token}`
         }
       });
-      
+
       if (exchangeRes.data?.access_token) {
         await supabase.auth.setSession({
           access_token: exchangeRes.data.access_token,
@@ -65,6 +67,11 @@ export async function signIn({ email, password }) {
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut({ scope: "local" });
-  if (error && error.message !== "Auth session missing!") throw error;
+  try {
+    await api.post('/logout');
+    await supabase.auth.signOut();
+  } catch (error) {
+    console.error('Error signing out of Supabase:', error);
+  }
+  //if (error && error.message !== "Auth session missing!") throw error;
 }
