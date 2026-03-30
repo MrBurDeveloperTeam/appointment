@@ -34,7 +34,27 @@ export function AuthProvider({ children }) {
                     }
                 } catch (ssoErr) {
                     console.error('SSO exchange failed in AuthProvider:', ssoErr);
-                    // If SSO fails, we might still have a local session, so we don't return immediately
+                    
+                    if (ssoErr.status === 401) {
+                        console.log('Clearing local auth session due to SSO 401');
+                        try {
+                            await supabase.auth.signOut();
+                        } catch (e) {
+                            console.error('Error auto-signing out on 401:', e);
+                        }
+                        
+                        if (mounted) {
+                            setSession(null);
+                            setUser(null);
+                            setProfile(null);
+                            setRole(null);
+                            DataStore.setActiveClinicId(null);
+                            setActiveClinicId(null);
+                            setLoading(false);
+                        }
+                        return; 
+                    }
+                    // For network errors, we fall back to existing local session
                 }
 
                 // 2. Now get the session (either from SSO update or local storage)
