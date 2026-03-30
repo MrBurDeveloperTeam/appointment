@@ -417,7 +417,7 @@ function AppContent() {
     return (
       <div className="login-page">
         <div className="login-card">
-          <h1 className="login-title">Loading your clinic…</h1>
+          <h1 className="login-title">Loading your clinic… </h1>
           <p className="login-subtitle">We are fetching your appointments and settings.</p>
         </div>
       </div>
