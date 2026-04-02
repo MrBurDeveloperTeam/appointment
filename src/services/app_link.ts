@@ -6,7 +6,7 @@ const applink = async (param: any) => {
                     "jsonrpc": "2.0",
                     "method": "call",
                     "params": {
-                      "app_code": "inventory",
+                      "app_code": "appointment",
                       "email": param.username,
                       "name": param.name,
                       "company_id": 2,
