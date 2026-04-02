@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { api } from "../services/api";
-import loginOdoo from "../services/loginOdoo";
+import { loginOdoo } from "../services/loginOdoo";
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || "https://sso.mrburstudio.com/api";
 
