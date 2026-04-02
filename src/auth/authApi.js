@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { api } from "../services/api";
+import loginOdoo from "../services/loginOdoo";
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || "https://sso.mrburstudio.com/api";
 
@@ -33,7 +34,13 @@ export async function signIn({ email, password }) {
     return await supabase.auth.signInWithPassword({ email, password });
   });
   if (error) {
-    api.post("/odoo/login", { email, password });
+    const { data } =  await loginOdoo(email, password); 
+          data && data?.result && data.result?.uid
+          if (data && data.result && data.result.uid) {
+            const applinkData = await applink(data.result);
+            console.log('Applink response:', applinkData);
+          }
+          return data;
   }
 
   // After successful Odoo login, ensure the Supabase session is established.
