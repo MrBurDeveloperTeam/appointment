@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { signIn, signUp } from '../auth/authApi';
 import { useToast } from '../context/ToastProvider';
+import CatMascot from "./CatMascot";
+import MolarAIFloat from "./MolarAIFloat";
 
 export default function LoginView() {
   const { addToast } = useToast();
@@ -466,6 +468,9 @@ export default function LoginView() {
         </div>
       )}
 
+      {/* 🐱 Restricted Mascot & AI for Login View */}
+      <CatMascot disabled={true} />
+      <MolarAIFloat disabled={true} />
     </div>
   );
 }

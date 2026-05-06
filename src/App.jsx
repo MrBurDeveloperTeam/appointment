@@ -24,6 +24,9 @@ import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from './lib/supabaseClient';
 import DataStore from "./data";
 import { api } from './services/api';
+import CatMascot from './components/CatMascot';
+import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
+import MolarAIFloat from './components/MolarAIFloat';
 
 const getBookingSlugFromPath = () => {
   const parts = window.location.pathname.split('/').filter(Boolean);
@@ -178,6 +181,7 @@ function AppContent() {
   const [appointmentDefaults, setAppointmentDefaults] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, type: '', payload: null });
   const [isRedeeming, setIsRedeeming] = useState(false);
+  const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false);
   const bookingSlug = getBookingSlugFromPath();
   const [authInitializing, setAuthInitializing] = useState(true);
 
@@ -250,6 +254,172 @@ function AppContent() {
     view, 
     addToast
   ]);
+
+  // Build real-time context for Molar AI
+  const aiContext = React.useMemo(() => {
+    if (!isReady || !user) return "";
+    const lines = [];
+    lines.push(`# SNAI SYSTEM CONTEXT: SNABBB APPOINTMENT`);
+    lines.push(`## Operational Profile`);
+    lines.push(`- **User**: ${profile?.name || user?.email} (UID: ${user.id})`);
+    lines.push(`- **Role**: ${authRole || 'Provider'}`);
+    lines.push(`- **Clinic**: ${activeClinicData?.name || 'Snabbb Dental'} (ID: ${activeClinicId})`);
+    if (activeClinicData?.subscriptionEnd) {
+      lines.push(`- **License Status**: Active (Expires ${new Date(activeClinicData.subscriptionEnd).toLocaleDateString()})`);
+    }
+    
+    if (isUnconfigured) {
+      lines.push(`\n## CONFIGURATION ALERT: PENDING`);
+      if (missingSettings) lines.push("- ACTION REQUIRED: Working hours not set.");
+      if (missingStaff) lines.push("- ACTION REQUIRED: No staff members registered.");
+      if (missingRooms) lines.push("- ACTION REQUIRED: No treatment rooms defined.");
+      if (missingTreatments) lines.push("- ACTION REQUIRED: Services/Treatments list is empty.");
+    }
+
+    if (staff?.length > 0) {
+      lines.push(`\n## Clinic Staff (${staff.length})`);
+      staff.forEach(s => lines.push(`- [ID: ${s.id}] **${s.name}** (${s.role || 'dentist'})`));
+    }
+
+    if (treatments?.length > 0) {
+      lines.push(`\n## Service Menu/Treatments (${treatments.length})`);
+      treatments.forEach(t => {
+        lines.push(`- [ID: ${t.id}] **${t.name}**: $${t.price} (${t.duration}m)`);
+      });
+    }
+
+    if (patients?.length > 0) {
+      lines.push(`\n## Patient Directory (${patients.length})`);
+      // Show first 100 patients to ensure context window remains performant
+      const patientList = patients.slice(0, 100);
+      patientList.forEach(p => {
+        lines.push(`- [ID: ${p.id}] **${p.name}** ${p.phone ? `| ${p.phone}` : ''}${p.email ? ` | ${p.email}` : ''}`);
+      });
+      if (patients.length > 100) lines.push(`- ...and ${patients.length - 100} more patients.`);
+    }
+
+    // --- Performance & Monthly Reports ---
+    const nowMonth = new Date();
+    const currentMonthStr = nowMonth.toISOString().slice(0, 7);
+    const monthApts = appointments?.filter(a => a.date?.startsWith(currentMonthStr)) || [];
+    
+    lines.push(`\n## Monthly Operational Report (${nowMonth.toLocaleString('default', { month: 'long', year: 'numeric' })})`);
+    lines.push(`- **Current Month Appointments**: ${monthApts.length}`);
+    lines.push(`- **Completed Visits**: ${monthApts.filter(a => a.status === 'completed').length}`);
+    lines.push(`- **Growth**: ${patients.filter(p => p.createdAt?.startsWith(currentMonthStr)).length} new patients registered this month`);
+    
+    // Dentist Performance
+    const dentists = staff?.filter(s => s.role === 'dentist') || [];
+    const dayNamesShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    if (dentists.length > 0) {
+      lines.push(`\n### Dentist Performance & Schedule (Current Month)`);
+      dentists.forEach(d => {
+        const dApts = monthApts.filter(a => a.dentistId === d.id);
+        const uniquePts = new Set(dApts.map(a => a.patientId)).size;
+        const workingDays = (d.workingDays || []).map(idx => dayNamesShort[idx]).join(', ');
+        lines.push(`- **${d.name}**: ${dApts.length} appointments | ${uniquePts} unique patients | Days: ${workingDays || 'Not set'}`);
+      });
+    }
+
+    // Nurse Hours
+    const nurses = staff?.filter(s => s.role === 'nurse') || [];
+    if (nurses.length > 0) {
+      lines.push(`\n### Nurse Working Hours`);
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      nurses.forEach(n => {
+        const workingDays = n.workingDays || [];
+        const workingDayNames = workingDays.map(d => dayNames[d]).join(', ');
+        const [sh, sm] = (n.startTime || '09:00').split(':').map(Number);
+        const [eh, em] = (n.endTime || '18:00').split(':').map(Number);
+        const daily = Math.max(0, (eh * 60 + em - (sh * 60 + sm)) / 60);
+        const total = Math.round(daily * workingDays.length * 4 * 10) / 10;
+        lines.push(`- **${n.name}**: ${daily}h/day | Days: ${workingDayNames} | Est. ${total}h/month`);
+      });
+    }
+
+    // Treatment Stats
+    if (monthApts.length > 0) {
+      lines.push(`\n### Treatment Procedure Breakdown`);
+      const tStats = {};
+      monthApts.forEach(a => {
+        const tId = a.treatmentId;
+        if (tId) tStats[tId] = (tStats[tId] || 0) + 1;
+      });
+      Object.entries(tStats).forEach(([id, count]) => {
+        const trt = treatments.find(t => t.id === id)?.name || 'General';
+        lines.push(`- **${trt}**: ${count} procedures`);
+      });
+    }
+
+    if (appointments?.length > 0 || appointmentRequests?.length > 0) {
+      lines.push(`\n## Appointment & Request Records`);
+      
+      const allReqs = appointmentRequests || [];
+      const pendingReqs = allReqs.filter(r => r.status === 'pending');
+      const acceptedReqs = allReqs.filter(r => r.status === 'accepted');
+      const declinedReqs = allReqs.filter(r => r.status === 'declined');
+
+      lines.push(`- **Request Summary**: Total: ${allReqs.length} | Pending: ${pendingReqs.length} | Accepted: ${acceptedReqs.length} | Declined: ${declinedReqs.length}`);
+      
+      if (pendingReqs.length > 0) {
+        lines.push(`\n### Pending Patient Submissions (${pendingReqs.length})`);
+        pendingReqs.slice(0, 5).forEach(r => {
+          const trtName = treatments?.find(t => t.id === r.appointmentTreatmentId)?.name || 'General Treatment';
+          lines.push(`- PENDING: **${r.patientName}** requested **${trtName}** for **${r.appointmentDate}** @ **${r.appointmentStartTime}**`);
+        });
+      }
+
+      if (acceptedReqs.length > 0 || declinedReqs.length > 0) {
+        lines.push(`\n### Recently Reviewed Requests`);
+        allReqs.filter(r => r.status !== 'pending').slice(0, 5).forEach(r => {
+          lines.push(`- ${r.status.toUpperCase()}: **${r.patientName}** (${r.appointmentDate})`);
+        });
+      }
+
+      if (appointments?.length > 0) {
+        lines.push(`\n### Confirmed Schedule (30-Day Window)`);
+        
+        // Sort and slice a broader range of appointments (Upcoming & Recent Past)
+        const now = new Date();
+        const sortedApts = [...appointments].sort((a, b) => new Date(a.date) - new Date(b.date));
+        const relevantApts = sortedApts.filter(a => {
+          const aptDate = new Date(a.date);
+          const diffDays = Math.abs(aptDate - now) / (1000 * 60 * 60 * 24);
+          return diffDays <= 30; // Show appointments within 30 days window
+        }).slice(0, 40);
+
+        relevantApts.forEach(a => {
+          const pt = patients?.find(p => p.id === a.patientId)?.name || 'Unknown Patient';
+          const trt = treatments?.find(t => t.id === a.treatmentId)?.name || 'Procedure';
+          const dr = staff?.find(s => s.id === a.dentistId)?.name || 'Staff';
+          lines.push(`- ${a.date} @ ${a.startTime}: **${pt}** for **${trt}** with **${dr}** (Status: ${a.status || 'Active'})`);
+        });
+      }
+    }
+
+    if (activity?.length > 0) {
+      lines.push(`\n## System Logs (Latest Activity)`);
+      activity.slice(0, 8).forEach(act => {
+        lines.push(`- [${new Date(act.created_at).toLocaleTimeString()}] **${act.action}**: ${act.details}`);
+      });
+    }
+
+    return lines.join("\n");
+  }, [isReady, user, profile, authRole, activeClinicId, activeClinicData, isUnconfigured, missingSettings, missingStaff, missingRooms, missingTreatments, appointments, appointmentRequests, staff, patients, treatments, activity]);
+
+  // Expose handlers to Molar AI
+  useEffect(() => {
+    window.__MOLAR_ACTIONS__ = {
+      addAppointment,
+      updateAppointment,
+      addStaff,
+      addRoom,
+      addTreatment,
+      addHoliday,
+      addPatient,
+    };
+    return () => { delete window.__MOLAR_ACTIONS__; };
+  }, [addAppointment, updateAppointment, addStaff, addRoom, addTreatment, addHoliday, addPatient]);
 
   const handleSaveAppointment = (data) => {
     if (data.id) {
@@ -654,6 +824,23 @@ function AppContent() {
         onClose={() => setConfirmDialog({ open: false, type: '', payload: null })}
         onConfirm={handleConfirmDelete}
       />
+
+      {/* 🐱 MOLAR ECOSYSTEM */}
+      {!isVirtualPetOpen && (
+        <>
+          <CatMascot onCatClick={() => setIsVirtualPetOpen(true)} />
+          <MolarAIFloat 
+            userContext={aiContext} 
+            disabled={!isReady || !user || !activeClinicId} 
+            onPetToggle={() => setIsVirtualPetOpen(true)}
+          />
+        </>
+      )}
+      <VirtualPetContainer 
+        isOpen={isVirtualPetOpen} 
+        onClose={() => setIsVirtualPetOpen(false)} 
+      />
+
     </div>
   );
 }
