@@ -120,24 +120,50 @@ export default function CatMascot({ onCatClick, disabled = false }) {
     const initDialog = async () => {
       setIsDialogActive(true);
 
-      try {
-        const { data, error } = await supabase
-          .from('aiboard_simulator_dialog_steps')
-          .select('step_text, sort_order')
-          .eq('config_id', 'c3c5e6b8-03fa-496f-b52c-1d46dd56bcbd')
-          .eq('is_post_login', !disabled)
-          .order('sort_order', { ascending: true });
+      // Default fallback dialogs
+      const fallbackPreLogin = [
+        "👋 Welcome to Snabbb Appointment!",
+        "Please sign in to manage your appointments and clinic."
+      ];
+      
+      const fallbackPostLogin = [
+        "👋 Welcome back! I'm your Appointment Assistant.",
+        "Click on me to open the Virtual Pet ecosystem, or ask me for help!"
+      ];
 
-        if (error) throw error;
-        if (data && data.length > 0) {
-          setDialogSteps(data.map(d => d.step_text));
-          setDialogStep(0);
-        } else {
-          setIsDialogActive(false);
+      try {
+        const { data: configs } = await supabase
+          .from('aiboard_simulator_configs')
+          .select('id')
+          .eq('module_name', 'Appointment')
+          .limit(1);
+
+        if (configs && configs.length > 0) {
+          const configId = configs[0].id;
+
+          const { data, error } = await supabase
+            .from('aiboard_simulator_dialog_steps')
+            .select('step_text, sort_order')
+            .eq('config_id', configId)
+            .eq('is_post_login', !disabled)
+            .order('sort_order', { ascending: true });
+
+          if (!error && data && data.length > 0) {
+            setDialogSteps(data.map(d => d.step_text));
+            setDialogStep(0);
+            return;
+          }
         }
+        
+        // If no config found or no steps returned, use fallback based on login state
+        setDialogSteps(disabled ? fallbackPreLogin : fallbackPostLogin);
+        setDialogStep(0);
+
       } catch (err) {
         console.error("Error fetching dialog steps:", err);
-        setIsDialogActive(false);
+        // Fallback on error
+        setDialogSteps(disabled ? fallbackPreLogin : fallbackPostLogin);
+        setDialogStep(0);
       }
     };
     
@@ -373,7 +399,10 @@ export default function CatMascot({ onCatClick, disabled = false }) {
 
   const handleCatClick = (e) => {
     e.stopPropagation();
-    closeDialog();
+    // Only close the dialog on click if we are NOT in pre-login mode (disabled=true)
+    if (!disabled) {
+      closeDialog();
+    }
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => { });
