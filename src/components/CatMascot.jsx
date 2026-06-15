@@ -2,23 +2,119 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { getPetOption, normalizePetId } from '../VirtualPet/petOptions';
 
-const CAT_SPEED = 0.08;
-const CAT_IMAGE_URL = '/images/cat.gif';
-const CAT_WALK_IMAGE_URL = '/images/catwalk.gif';
+const MALLOW_FRAME_WIDTH = 192;
+const MALLOW_FRAME_HEIGHT = 208;
+const MALLOW_SCALE = 0.42;
+const PET_SLEEPING_KEY = 'pet_is_sleeping';
+const PET_SLEEPING_UPDATED_AT_KEY = 'pet_is_sleeping_updated_at';
+const MALLOW_ROWS = {
+  idle: { row: 0, frames: 6, duration: '1.1s' },
+  runRight: { row: 1, frames: 8, duration: '0.7s' },
+  runLeft: { row: 2, frames: 8, duration: '0.7s' },
+  wave: { row: 3, frames: 4, duration: '0.8s' },
+  review: { row: 3, frames: 4, duration: '0.8s' },
+  sleep: { row: 5, frames: 1, duration: '1s', frame: 4 },
+};
+
+function MallowMascotSprite({
+  spriteSheetUrl,
+  sleepHoldFrame,
+  idleFrames,
+  idleDuration,
+  hoverRow,
+  hoverFrames,
+  hoverDuration,
+  clickRow,
+  clickFrames,
+  clickDuration,
+  isWalking,
+  facingLeft,
+  isMeowing,
+  isHovered,
+  isSleeping,
+  onHoverStart,
+  onHoverEnd,
+}) {
+  const shouldSleep = isSleeping && !isWalking && !isMeowing;
+  const shouldReview = isHovered && !isWalking && !shouldSleep;
+  const stateClass = shouldSleep ? 'sleep' : shouldReview ? 'review' : isWalking ? (facingLeft ? 'run-left' : 'run-right') : 'idle';
+  const reviewConfig = {
+    row: hoverRow ?? MALLOW_ROWS.review.row,
+    frames: hoverFrames ?? MALLOW_ROWS.review.frames,
+    duration: hoverDuration ?? MALLOW_ROWS.review.duration,
+  };
+  const clickConfig = {
+    row: clickRow ?? MALLOW_ROWS.wave.row,
+    frames: clickFrames ?? MALLOW_ROWS.wave.frames,
+    duration: clickDuration ?? MALLOW_ROWS.wave.duration,
+  };
+  const idleConfig = {
+    ...MALLOW_ROWS.idle,
+    frames: idleFrames ?? MALLOW_ROWS.idle.frames,
+    duration: idleDuration ?? MALLOW_ROWS.idle.duration,
+  };
+  const config = shouldSleep
+    ? { ...MALLOW_ROWS.sleep, frame: sleepHoldFrame ?? MALLOW_ROWS.sleep.frame }
+    : shouldReview
+      ? reviewConfig
+      : isMeowing && !isWalking
+        ? clickConfig
+        : facingLeft && isWalking
+          ? MALLOW_ROWS.runLeft
+          : isWalking
+            ? MALLOW_ROWS.runRight
+            : idleConfig;
+
+  return (
+    <div
+      className={`mallow-mascot ${stateClass} frames-${config.frames} ${isMeowing ? 'is-talking' : ''}`}
+      aria-label={`Mallow pet ${stateClass}`}
+      onPointerEnter={onHoverStart}
+      onMouseEnter={onHoverStart}
+      onMouseOver={onHoverStart}
+      onPointerLeave={onHoverEnd}
+      onMouseLeave={onHoverEnd}
+      style={{
+        '--sprite-row': config.row,
+        '--sprite-frames': config.frames,
+        '--sprite-duration': config.duration,
+        '--sprite-frame': config.frame ?? 0,
+        '--pet-spritesheet': `url("${spriteSheetUrl}")`,
+      }}
+    />
+  );
+}
 
 export default function CatMascot({ onCatClick, disabled = false }) {
   const [catPos, setCatPos] = useState({ x: -10, y: 85 });
   const [isWalking, setIsWalking] = useState(false);
   const [facingLeft, setFacingLeft] = useState(false);
   const [isMeowing, setIsMeowing] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPetSleeping, setIsPetSleeping] = useState(false);
+  const [selectedPetId, setSelectedPetId] = useState(() => normalizePetId(localStorage.getItem('pet_name')));
   const [walkDuration, setWalkDuration] = useState(0.8);
+  const selectedPet = getPetOption(selectedPetId);
 
   const [dialogStep, setDialogStep] = useState(0);
   const [isDialogActive, setIsDialogActive] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const autoCloseTimerRef = useRef(null);
+  const isEntryWalkComplete = useRef(false);
+  const hasDismissedDialog = useRef(false);
 
   const closeDialog = () => {
+    hasDismissedDialog.current = true;
     setIsDialogActive(false);
+    if (autoCloseTimerRef.current) {
+      clearTimeout(autoCloseTimerRef.current);
+      autoCloseTimerRef.current = null;
+    }
+    if (!disabled && currentUserId) {
+      localStorage.setItem(`intro_shown_${currentUserId}`, 'true');
+    }
   };
 
   const [dialogSteps, setDialogSteps] = useState([
@@ -29,7 +125,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
   const [meowMsg, setMeowMsg] = useState(null);
   const [petStates, setPetStates] = useState(['Normal']);
   const meowTimerRef = useRef(null);
-  
+
   // Clear message bubble immediately when state changes
   useEffect(() => {
     setMeowMsg(null);
@@ -42,14 +138,14 @@ export default function CatMascot({ onCatClick, disabled = false }) {
 
     const computeStates = (stats, prevStates) => {
       const HUNGRY_ENTER = 30, HUNGRY_EXIT = 35;
-      const DIRTY_ENTER = 30,  DIRTY_EXIT = 35;
+      const DIRTY_ENTER = 30, DIRTY_EXIT = 35;
       const ENERGY_ENTER = 30, ENERGY_EXIT = 35;
-      const HAPPY_ENTER = 40,  HAPPY_EXIT = 45;
+      const HAPPY_ENTER = 40, HAPPY_EXIT = 45;
 
       const active = [];
       if (stats.hunger < HUNGRY_ENTER || (prevStates.includes('Hungry') && stats.hunger < HUNGRY_EXIT)) active.push('Hungry');
-      if (stats.hygiene < DIRTY_ENTER  || (prevStates.includes('Dirty')  && stats.hygiene < DIRTY_EXIT))  active.push('Dirty');
-      if (stats.energy < ENERGY_ENTER  || (prevStates.includes('Low Energy') && stats.energy < ENERGY_EXIT)) active.push('Low Energy');
+      if (stats.hygiene < DIRTY_ENTER || (prevStates.includes('Dirty') && stats.hygiene < DIRTY_EXIT)) active.push('Dirty');
+      if (stats.energy < ENERGY_ENTER || (prevStates.includes('Low Energy') && stats.energy < ENERGY_EXIT)) active.push('Low Energy');
       if (stats.happiness < HAPPY_ENTER || (prevStates.includes('Unhappy') && stats.happiness < HAPPY_EXIT)) active.push('Unhappy');
 
       if (active.length === 0) active.push('Normal');
@@ -74,7 +170,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
 
       const newStates = computeStates(finalStats, petStatesRef.current);
       const isDifferent = newStates.length !== petStatesRef.current.length || !newStates.every((v, i) => v === petStatesRef.current[i]);
-      
+
       if (isDifferent) {
         console.log('[CatMascot] States: ' + petStatesRef.current.join(', ') + ' -> ' + newStates.join(', '));
         petStatesRef.current = newStates;
@@ -90,6 +186,37 @@ export default function CatMascot({ onCatClick, disabled = false }) {
       try { updateStateFromStats(JSON.parse(saved), lastSavedAt); } catch (e) { /* ignore */ }
     }
 
+    const readLocalSleepState = () => {
+      const savedSleeping = localStorage.getItem(PET_SLEEPING_KEY);
+      if (savedSleeping !== null) {
+        setIsPetSleeping(savedSleeping === 'true');
+      }
+    };
+
+    readLocalSleepState();
+    setSelectedPetId(normalizePetId(localStorage.getItem('pet_name')));
+
+    const handlePetSleepChange = (event) => {
+      setIsPetSleeping(!!event.detail);
+    };
+
+    const handlePetSelectionChange = (event) => {
+      setSelectedPetId(normalizePetId(event.detail));
+    };
+
+    const handleStorage = (event) => {
+      if (event.key === PET_SLEEPING_KEY) {
+        setIsPetSleeping(event.newValue === 'true');
+      }
+      if (event.key === 'pet_name') {
+        setSelectedPetId(normalizePetId(event.newValue));
+      }
+    };
+
+    window.addEventListener('virtual-pet-sleep-change', handlePetSleepChange);
+    window.addEventListener('virtual-pet-selection-change', handlePetSelectionChange);
+    window.addEventListener('storage', handleStorage);
+
     // 2. Fetch from Supabase for latest data
     const fetchStats = async () => {
       if (document.visibilityState !== 'visible') return;
@@ -99,11 +226,16 @@ export default function CatMascot({ onCatClick, disabled = false }) {
 
         const { data, error } = await supabase
           .from('inventory_pet')
-          .select('hunger, hygiene, energy, happiness, updated_at')
+          .select('hunger, hygiene, energy, happiness, is_sleeping, pet_name, updated_at')
           .eq('user_id', session.user.id)
           .maybeSingle();
 
-        if (data && !error) {
+          if (data && !error) {
+          const nextSleeping = !!data.is_sleeping;
+          setIsPetSleeping(nextSleeping);
+          localStorage.setItem(PET_SLEEPING_KEY, String(nextSleeping));
+          localStorage.setItem(PET_SLEEPING_UPDATED_AT_KEY, data.updated_at || new Date().toISOString());
+          setSelectedPetId(normalizePetId(data.pet_name));
           updateStateFromStats(data, data.updated_at);
         }
       } catch (err) {
@@ -113,19 +245,50 @@ export default function CatMascot({ onCatClick, disabled = false }) {
 
     fetchStats();
     const interval = setInterval(fetchStats, 120000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('virtual-pet-sleep-change', handlePetSleepChange);
+      window.removeEventListener('virtual-pet-selection-change', handlePetSelectionChange);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, [disabled]);
 
   useEffect(() => {
     const initDialog = async () => {
-      setIsDialogActive(true);
+      let userId = null;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        userId = session?.user?.id || null;
+        setCurrentUserId(userId);
+      } catch (err) {
+        console.error("Error fetching session in initDialog:", err);
+      }
+
+      // If user is logged in (disabled = false) and has seen the intro, show Welcome Back and auto-close
+      if (!disabled && userId && localStorage.getItem(`intro_shown_${userId}`) === 'true') {
+        setDialogSteps(["Welcome back! 👋"]);
+        setDialogStep(0);
+
+        if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
+          setIsDialogActive(true);
+        }
+
+        if (autoCloseTimerRef.current) {
+          clearTimeout(autoCloseTimerRef.current);
+        }
+        autoCloseTimerRef.current = setTimeout(() => {
+          hasDismissedDialog.current = true;
+          setIsDialogActive(false);
+        }, 6000); // disappear after 6 seconds
+        return;
+      }
 
       // Default fallback dialogs
       const fallbackPreLogin = [
         "👋 Welcome to Snabbb Appointment!",
         "Please sign in to manage your appointments and clinic."
       ];
-      
+
       const fallbackPostLogin = [
         "👋 Welcome back! I'm your Appointment Assistant.",
         "Click on me to open the Virtual Pet ecosystem, or ask me for help!"
@@ -151,22 +314,31 @@ export default function CatMascot({ onCatClick, disabled = false }) {
           if (!error && data && data.length > 0) {
             setDialogSteps(data.map(d => d.step_text));
             setDialogStep(0);
+            if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
+              setIsDialogActive(true);
+            }
             return;
           }
         }
-        
+
         // If no config found or no steps returned, use fallback based on login state
         setDialogSteps(disabled ? fallbackPreLogin : fallbackPostLogin);
         setDialogStep(0);
+        if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
+          setIsDialogActive(true);
+        }
 
       } catch (err) {
         console.error("Error fetching dialog steps:", err);
         // Fallback on error
         setDialogSteps(disabled ? fallbackPreLogin : fallbackPostLogin);
         setDialogStep(0);
+        if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
+          setIsDialogActive(true);
+        }
       }
     };
-    
+
     initDialog();
   }, [disabled]);
 
@@ -188,9 +360,10 @@ export default function CatMascot({ onCatClick, disabled = false }) {
           .select('message_duration_minutes, message_interval_minutes, disabled')
           .eq('config_id', configId)
           .eq('state', primaryState)
-          .single();
+          .order('updated_at', { ascending: false })
+          .limit(1);
 
-        let activeTiming = timingData;
+        let activeTiming = timingData?.[0];
 
         if (timingError || !activeTiming || activeTiming.disabled) {
           if (primaryState !== 'Normal') {
@@ -201,10 +374,11 @@ export default function CatMascot({ onCatClick, disabled = false }) {
             .select('message_duration_minutes, message_interval_minutes, disabled')
             .eq('config_id', configId)
             .eq('state', 'Normal')
-            .single();
-          
-          if (normalTiming && !normalTiming.disabled) {
-            activeTiming = normalTiming;
+            .order('updated_at', { ascending: false })
+            .limit(1);
+
+          if (normalTiming?.[0] && !normalTiming[0].disabled) {
+            activeTiming = normalTiming[0];
           } else {
             console.warn("[CatMascot] No active or Normal timing found. Meow loop aborted.", nError);
             return;
@@ -234,7 +408,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
         const intervalMs = (activeTiming.message_interval_minutes || 0.25) * 60 * 1000;
         const durationMs = (activeTiming.message_duration_minutes || 0.1) * 60 * 1000;
 
-        console.log(`[CatMascot] Loop started: States=[${petStates.join(', ')}], Msgs=${msgsData.length}, Interval=${intervalMs/1000}s, Duration=${durationMs/1000}s`);
+        console.log(`[CatMascot] Loop started: States=[${petStates.join(', ')}], Msgs=${msgsData.length}, Interval=${intervalMs / 1000}s, Duration=${durationMs / 1000}s`);
 
         let currentIndex = 0;
 
@@ -269,6 +443,8 @@ export default function CatMascot({ onCatClick, disabled = false }) {
   const audioLoopTimerRef = useRef(null);
 
   useEffect(() => {
+    if (disabled) return;
+
     let isSubscribed = true;
 
     const runAudioLoop = async () => {
@@ -282,9 +458,11 @@ export default function CatMascot({ onCatClick, disabled = false }) {
           .select('message_interval_minutes, disabled')
           .eq('config_id', configId)
           .eq('state', 'Audio')
-          .single();
+          .order('updated_at', { ascending: false })
+          .limit(1);
 
-        if (!timingData || timingData.disabled) return;
+        const audioTiming = timingData?.[0];
+        if (!audioTiming || audioTiming.disabled) return;
 
         const { data: msgsData } = await supabase
           .from('aiboard_meow_messages')
@@ -295,7 +473,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
 
         if (!msgsData || msgsData.length === 0) return;
 
-        const intervalMs = (timingData.message_interval_minutes || 0.1) * 60 * 1000;
+        const intervalMs = (audioTiming.message_interval_minutes || 0.1) * 60 * 1000;
 
         const loop = () => {
           audioLoopTimerRef.current = setTimeout(() => {
@@ -321,7 +499,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
       isSubscribed = false;
       if (audioLoopTimerRef.current) clearTimeout(audioLoopTimerRef.current);
     };
-  }, []);
+  }, [disabled]);
 
   const walkTimeoutRef = useRef(null);
   const audioRef = useRef(null);
@@ -336,7 +514,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
     // Walk into screen from left
     const destX = 20 + Math.random() * 60;
     const destY = 80 + Math.random() * 10;
-    const duration = 2.5; // Entry walk duration
+    const duration = 2.8; // Entry walk duration
 
     lastMoveStartPos.current = { x: -10, y: 85 };
     lastMoveTarget.current = { x: destX, y: destY };
@@ -349,7 +527,13 @@ export default function CatMascot({ onCatClick, disabled = false }) {
     setIsWalking(true);
 
     if (walkTimeoutRef.current) clearTimeout(walkTimeoutRef.current);
-    walkTimeoutRef.current = setTimeout(() => setIsWalking(false), duration * 1000);
+    walkTimeoutRef.current = setTimeout(() => {
+      setIsWalking(false);
+      isEntryWalkComplete.current = true;
+      if (!hasDismissedDialog.current) {
+        setIsDialogActive(true);
+      }
+    }, duration * 1000);
 
     const getInterpolatedPos = () => {
       const elapsed = (Date.now() - lastMoveStartTime.current) / 1000;
@@ -364,12 +548,12 @@ export default function CatMascot({ onCatClick, disabled = false }) {
       const target = e.target;
       if (target.closest('button') || target.closest('a') || target.closest('input') || target.closest('[data-cat]')) return;
 
-      const targetX = (e.clientX / window.innerWidth) * 100;
-      const targetY = (e.clientY / window.innerHeight) * 100;
-      const currentPos = getInterpolatedPos();
-
       const targetX_px = e.clientX;
       const targetY_px = e.clientY;
+
+      const targetX = (targetX_px / window.innerWidth) * 100;
+      const targetY = (targetY_px / window.innerHeight) * 100;
+      const currentPos = getInterpolatedPos();
       const currentX_px = (currentPos.x / 100) * window.innerWidth;
       const currentY_px = (currentPos.y / 100) * window.innerHeight;
 
@@ -377,24 +561,36 @@ export default function CatMascot({ onCatClick, disabled = false }) {
 
       if (distance_px < 5) return;
 
-      const duration = distance_px / 150;
+      const duration = distance_px / 200;
 
       lastMoveStartPos.current = currentPos;
       lastMoveTarget.current = { x: targetX, y: targetY };
       lastMoveStartTime.current = Date.now();
       lastMoveDuration.current = duration;
 
-      setFacingLeft(targetX < currentPos.x);
+      const nextFacingLeft = targetX < currentPos.x;
+      setFacingLeft(nextFacingLeft);
       setWalkDuration(duration);
       setCatPos({ x: targetX, y: targetY });
       setIsWalking(true);
 
       if (walkTimeoutRef.current) clearTimeout(walkTimeoutRef.current);
-      walkTimeoutRef.current = setTimeout(() => setIsWalking(false), duration * 1000);
+      walkTimeoutRef.current = setTimeout(() => {
+        setIsWalking(false);
+        isEntryWalkComplete.current = true;
+        if (!hasDismissedDialog.current) {
+          setIsDialogActive(true);
+        }
+      }, duration * 1000);
     };
 
     document.addEventListener('click', handleGlobalClick);
-    return () => document.removeEventListener('click', handleGlobalClick);
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current);
+      }
+    };
   }, []);
 
   const handleCatClick = (e) => {
@@ -403,7 +599,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
     if (!disabled) {
       closeDialog();
     }
-    if (audioRef.current) {
+    if (!isPetSleeping && audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => { });
       setIsMeowing(true);
@@ -429,6 +625,53 @@ export default function CatMascot({ onCatClick, disabled = false }) {
         }
         .cat-mascot-wrapper:hover .cat-tooltip {
           opacity: 1;
+        }
+        .mallow-mascot {
+          position: relative;
+          width: ${MALLOW_FRAME_WIDTH * MALLOW_SCALE}px;
+          height: ${MALLOW_FRAME_HEIGHT * MALLOW_SCALE}px;
+          background-image: var(--pet-spritesheet);
+          background-repeat: no-repeat;
+          background-size: ${MALLOW_FRAME_WIDTH * 8 * MALLOW_SCALE}px ${MALLOW_FRAME_HEIGHT * 9 * MALLOW_SCALE}px;
+          background-position-y: calc(-1 * var(--sprite-row) * ${MALLOW_FRAME_HEIGHT * MALLOW_SCALE}px);
+          image-rendering: pixelated;
+          pointer-events: auto;
+          cursor: pointer;
+          filter: drop-shadow(0 5px 8px rgba(15, 23, 42, 0.1));
+          animation-duration: var(--sprite-duration);
+          animation-iteration-count: infinite;
+          animation-timing-function: steps(var(--sprite-frames));
+        }
+        .mallow-mascot.idle {
+          animation-name: mallow-sprite;
+        }
+        .mallow-mascot.run-left,
+        .mallow-mascot.run-right,
+        .mallow-mascot.review {
+          animation-name: mallow-sprite;
+        }
+        .mallow-mascot.sleep {
+          animation-name: none;
+          background-position-x: calc(-1 * var(--sprite-frame) * ${MALLOW_FRAME_WIDTH * MALLOW_SCALE}px);
+        }
+        .mallow-mascot.sleep::after {
+          content: 'Zzz...';
+          position: absolute;
+          left: 64%;
+          top: -5px;
+          color: #94a3b8;
+          font-size: 14px;
+          font-weight: 800;
+          letter-spacing: 0.02em;
+          animation: mascot-sleep-float 1.8s ease-in-out infinite;
+        }
+        @keyframes mallow-sprite {
+          from { background-position-x: 0; }
+          to { background-position-x: calc(-1 * var(--sprite-frames) * ${MALLOW_FRAME_WIDTH * MALLOW_SCALE}px); }
+        }
+        @keyframes mascot-sleep-float {
+          0%, 100% { transform: translateY(0); opacity: 0.65; }
+          50% { transform: translateY(-4px); opacity: 1; }
         }
       `}</style>
 
@@ -457,10 +700,10 @@ export default function CatMascot({ onCatClick, disabled = false }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="max-w-[280px] bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-visible relative pointer-events-auto mb-0 cursor-default"
+              className="w-max shrink-0 max-w-[280px] bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-visible relative pointer-events-auto mb-4 mr-1 cursor-default"
               onClick={(e) => e.stopPropagation()}
             >
-              <div 
+              <div
                 className="p-4 text-sm font-semibold leading-relaxed flex flex-col relative z-10 bg-white rounded-lg"
                 style={{ color: '#334155', backgroundColor: '#ffffff' }}
               >
@@ -505,26 +748,46 @@ export default function CatMascot({ onCatClick, disabled = false }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -5, scale: 0.95 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg shadow-sm relative pointer-events-auto mb-0 cursor-default"
+              className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg shadow-sm relative pointer-events-auto mb-4 mr-1 cursor-default"
             >
               <span className="text-sm font-semibold text-slate-700 whitespace-nowrap">{meowMsg}</span>
-              <div className="absolute -bottom-1.5 left-1/2 w-3 h-3 bg-white transform rotate-45 -translate-x-1/2 border-r border-b border-slate-200 z-0"></div>
+              <div className="absolute -bottom-2 left-1/2 w-4 h-4 bg-white transform rotate-45 -translate-x-1/2 shadow-md border-r border-b border-slate-100 z-0"></div>
             </motion.div>
           )}
         </AnimatePresence>
 
-         {/* Cat Image */}
-        <img
+        {/* Mallow pet mascot */}
+        <div
           data-cat="true"
           onClick={(e) => {
             e.stopPropagation();
             handleCatClick(e);
           }}
-          src={isWalking ? CAT_WALK_IMAGE_URL : CAT_IMAGE_URL}
-          alt="Molar Cat"
-          draggable={false}
-          style={{ width: 64, height: 64, objectFit: 'contain', display: 'block', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))', transform: `scaleX(${facingLeft ? -1 : 1})`, pointerEvents: 'auto', cursor: 'pointer' }}
-        />
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseOver={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          style={{ pointerEvents: 'auto' }}
+        >
+          <MallowMascotSprite
+            spriteSheetUrl={selectedPet.spriteSheetUrl}
+            sleepHoldFrame={selectedPet.sleepHoldFrame}
+            idleFrames={selectedPet.idleFrames}
+            idleDuration={selectedPet.idleDuration}
+            hoverRow={selectedPet.hoverRow}
+            hoverFrames={selectedPet.hoverFrames}
+            hoverDuration={selectedPet.hoverDuration}
+            clickRow={selectedPet.clickRow}
+            clickFrames={selectedPet.clickFrames}
+            clickDuration={selectedPet.clickDuration}
+            isWalking={isWalking}
+            facingLeft={facingLeft}
+            isMeowing={isMeowing}
+            isHovered={isHovered}
+            isSleeping={isPetSleeping}
+            onHoverStart={() => setIsHovered(true)}
+            onHoverEnd={() => setIsHovered(false)}
+          />
+        </div>
       </div>
     </>
   );

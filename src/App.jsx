@@ -826,16 +826,14 @@ function AppContent() {
       />
 
       {/* 🐱 MOLAR ECOSYSTEM */}
-      {!isVirtualPetOpen && (
-        <>
-          <CatMascot onCatClick={() => setIsVirtualPetOpen(true)} />
-          <MolarAIFloat 
-            userContext={aiContext} 
-            disabled={!isReady || !user || !activeClinicId} 
-            onPetToggle={() => setIsVirtualPetOpen(true)}
-          />
-        </>
-      )}
+      <div className={isVirtualPetOpen ? 'hidden' : 'contents'}>
+        <CatMascot onCatClick={() => setIsVirtualPetOpen(true)} />
+        <MolarAIFloat 
+          userContext={aiContext} 
+          disabled={!isReady || !user || !activeClinicId} 
+          onPetToggle={() => setIsVirtualPetOpen(true)}
+        />
+      </div>
       <VirtualPetContainer 
         isOpen={isVirtualPetOpen} 
         onClose={() => setIsVirtualPetOpen(false)} 

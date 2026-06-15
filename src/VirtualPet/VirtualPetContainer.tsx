@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FcHome } from "react-icons/fc";
+import { ArrowLeft } from 'lucide-react';
 import { PetRoom } from './PetRoom';
 import { GamePage } from './components/GamePage';
 import { GameStateProvider } from './context/GameStateContext';
 import { RoomType } from './types';
 import { useGameState } from './hooks/useGameState';
 import { supabase } from '../lib/supabaseClient';
+import { TiArrowBackOutline } from "react-icons/ti";
+import { TiArrowBack } from "react-icons/ti";
 
 // Inner component to access context
 const VirtualPetContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
@@ -29,10 +31,11 @@ const VirtualPetContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             {/* Close Overlay Button (Global) */}
             <button
                 onClick={onClose}
-                className="absolute top-5 left-5 z-[100] w-20 h-20 flex items-center justify-center text-slate-800/80 hover:scale-110 transition-all drop-shadow-lg"
-                title="Back to Inventory"
+                className="absolute left-6 top-6 z-50 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/60 bg-white/75 text-slate-700 shadow-xl shadow-slate-900/10 backdrop-blur-md transition-all hover:-translate-x-0.5 hover:scale-105 hover:bg-white active:scale-95"
+                title="Back"
+                aria-label="Back"
             >
-                <FcHome size={80} />
+                <TiArrowBack className="h-12 w-12" strokeWidth={0} />
             </button>
 
             {view === 'ROOM' ? (
