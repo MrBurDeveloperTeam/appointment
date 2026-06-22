@@ -1,49 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Appointment BY MR BUR</title>
-
-  <script>
-    (function () {
-      var cookieName = 'snabbb-theme';
-      var theme = null;
-
-      try {
-        var cookie = document.cookie.split(';').map(function (item) { return item.trim(); }).find(function (item) { return item.indexOf(cookieName + '=') === 0; });
-        if (cookie) theme = decodeURIComponent(cookie.split('=').slice(1).join('='));
-
-        if (!theme) theme = localStorage.getItem('snabbb-theme') || localStorage.getItem('theme');
-
-        try {
-          var parsed = JSON.parse(theme);
-          if (typeof parsed === 'string') theme = parsed;
-          else if (parsed && parsed.state && parsed.state.theme) theme = parsed.state.theme;
-          else if (parsed && parsed.theme) theme = parsed.theme;
-        } catch (e) {}
-
-        theme = String(theme || '').toLowerCase();
-        if (theme !== 'light' && theme !== 'dark' && theme !== 'system') theme = null;
-
-        var resolvedTheme = theme === 'system'
-          ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-          : theme;
-
-        if (!resolvedTheme) {
-          resolvedTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-
-        document.documentElement.setAttribute('data-theme', resolvedTheme);
-        document.documentElement.setAttribute('data-theme-preference', theme || resolvedTheme);
-        document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
-        document.documentElement.style.colorScheme = resolvedTheme;
-      } catch (e) {}
-    })();
-  </script>
+  <title>Snabbb Appointment</title>
+  <link rel="icon" type="image/png" href="/assets/appointment.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
+
 </html>
