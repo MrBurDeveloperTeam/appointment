@@ -34,6 +34,96 @@ const getBookingSlugFromPath = () => {
   return null;
 };
 
+
+const SHARED_THEME_COOKIE = 'snabbb-theme';
+const LEGACY_THEME_KEY = 'theme';
+const SHARED_THEME_KEY = 'snabbb-theme';
+const THEME_VALUES = new Set(['light', 'dark', 'system']);
+
+const normalizeTheme = (value) => {
+  return THEME_VALUES.has(value) ? value : 'light';
+};
+
+const getCookieValue = (name) => {
+  if (typeof document === 'undefined') return null;
+
+  const cookie = document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`));
+
+  return cookie ? decodeURIComponent(cookie.slice(name.length + 1)) : null;
+};
+
+const setThemeCookie = (theme) => {
+  if (typeof document === 'undefined') return;
+
+  document.cookie = [
+    `${SHARED_THEME_COOKIE}=${encodeURIComponent(theme)}`,
+    'Path=/',
+    'Domain=.snabbb.com',
+    'Max-Age=31536000',
+    'SameSite=Lax',
+    'Secure',
+  ].join('; ');
+};
+
+const getInitialTheme = () => {
+  if (typeof window === 'undefined') return 'light';
+
+  const cookieTheme = getCookieValue(SHARED_THEME_COOKIE);
+  if (THEME_VALUES.has(cookieTheme)) return cookieTheme;
+
+  const sharedLocalTheme = window.localStorage.getItem(SHARED_THEME_KEY);
+  if (THEME_VALUES.has(sharedLocalTheme)) return sharedLocalTheme;
+
+  const legacyLocalTheme = window.localStorage.getItem(LEGACY_THEME_KEY);
+  if (THEME_VALUES.has(legacyLocalTheme)) return legacyLocalTheme;
+
+  return 'light';
+};
+
+const resolveTheme = (theme) => {
+  if (typeof window === 'undefined') return theme === 'dark' ? 'dark' : 'light';
+
+  if (theme === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  return theme === 'dark' ? 'dark' : 'light';
+};
+
+const applyThemeToDocument = (theme) => {
+  if (typeof document === 'undefined') return;
+
+  const resolvedTheme = resolveTheme(theme);
+  document.documentElement.setAttribute('data-theme', resolvedTheme);
+  document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
+};
+
+const persistTheme = (theme) => {
+  if (typeof window === 'undefined') return;
+
+  window.localStorage.setItem(LEGACY_THEME_KEY, theme);
+  window.localStorage.setItem(SHARED_THEME_KEY, theme);
+  setThemeCookie(theme);
+};
+
+const emitThemeSync = (theme) => {
+  if (typeof window === 'undefined') return;
+
+  const resolvedTheme = resolveTheme(theme);
+  const payload = {
+    type: 'SNABBB_THEME_SYNC',
+    theme,
+    resolvedTheme,
+    source: 'appointment',
+    ts: Date.now(),
+  };
+
+  window.postMessage(payload, window.location.origin);
+};
+
 export default function App() {
 
   return (
@@ -64,20 +154,68 @@ function AppContent() {
     signOut
   } = useAuth();
 
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved === 'light' || saved === 'dark') return saved;
-    return 'light';
-  });
+  const [theme, setTheme] = useState(getInitialTheme);
 
   useEffect(() => {
     DataStore.clearLegacyLocalData();
   }, []);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
+    const normalizedTheme = normalizeTheme(theme);
+
+    applyThemeToDocument(normalizedTheme);
+    persistTheme(normalizedTheme);
+    emitThemeSync(normalizedTheme);
   }, [theme]);
+
+  useEffect(() => {
+    const handleStorageSync = (event) => {
+      if (event.key !== SHARED_THEME_KEY && event.key !== LEGACY_THEME_KEY) return;
+
+      const nextTheme = normalizeTheme(event.newValue);
+      setTheme((currentTheme) => (currentTheme === nextTheme ? currentTheme : nextTheme));
+    };
+
+    const handleMessageSync = (event) => {
+      const data = event.data;
+      if (!data || data.type !== 'SNABBB_THEME_SYNC') return;
+      if (data.source === 'appointment') return;
+
+      const nextTheme = normalizeTheme(data.theme);
+      setTheme((currentTheme) => (currentTheme === nextTheme ? currentTheme : nextTheme));
+    };
+
+    const handleSystemThemeChange = () => {
+      setTheme((currentTheme) => {
+        if (currentTheme === 'system') applyThemeToDocument('system');
+        return currentTheme;
+      });
+    };
+
+    const syncFromCookie = () => {
+      const cookieTheme = getCookieValue(SHARED_THEME_COOKIE);
+      if (!THEME_VALUES.has(cookieTheme)) return;
+
+      setTheme((currentTheme) => (currentTheme === cookieTheme ? currentTheme : cookieTheme));
+    };
+
+    window.addEventListener('storage', handleStorageSync);
+    window.addEventListener('message', handleMessageSync);
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener?.('change', handleSystemThemeChange);
+    mediaQuery.addListener?.(handleSystemThemeChange);
+
+    const cookieInterval = window.setInterval(syncFromCookie, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageSync);
+      window.removeEventListener('message', handleMessageSync);
+      mediaQuery.removeEventListener?.('change', handleSystemThemeChange);
+      mediaQuery.removeListener?.(handleSystemThemeChange);
+      window.clearInterval(cookieInterval);
+    };
+  }, []);
 
   const [bookingLink, setBookingLink] = useState('');
 

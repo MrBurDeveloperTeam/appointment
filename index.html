@@ -1,19 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Snabbb Appointment</title>
-  <link rel="icon" type="image/png" href="/assets/appointment.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-</head>
 
+  <script>
+    (function () {
+      var ALLOWED_THEMES = { light: true, dark: true, system: true };
+
+      function readCookie(name) {
+        var parts = document.cookie ? document.cookie.split(';') : [];
+        for (var i = 0; i < parts.length; i += 1) {
+          var part = parts[i].trim();
+          if (part.indexOf(name + '=') === 0) {
+            return decodeURIComponent(part.slice(name.length + 1));
+          }
+        }
+        return null;
+      }
+
+      function safeLocalStorageGet(key) {
+        try {
+          return window.localStorage.getItem(key);
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function normalizeTheme(value) {
+        return ALLOWED_THEMES[value] ? value : 'light';
+      }
+
+      function resolveTheme(theme) {
+        if (theme === 'system') {
+          return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        }
+        return theme === 'dark' ? 'dark' : 'light';
+      }
+
+      var theme = normalizeTheme(
+        readCookie('snabbb-theme') ||
+        safeLocalStorageGet('snabbb-theme') ||
+        safeLocalStorageGet('theme') ||
+        'light'
+      );
+
+      var resolvedTheme = resolveTheme(theme);
+
+      document.documentElement.setAttribute('data-theme', resolvedTheme);
+      document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
+    })();
+  </script>
+
+  <title>Appointment BY MR BUR</title>
+</head>
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
-
 </html>
