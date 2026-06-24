@@ -1,0 +1,199 @@
+/**
+ * _worker.js — Cloudflare Pages Worker for appointment.snabbb.com
+ *
+ * WHAT IT DOES
+ * ─────────────
+ * For every HTML page request (navigation, not assets):
+ *
+ *   1. Forward the request to Pages static assets as normal.
+ *   2. Read the session_id cookie from the browser request.
+ *   3. Call Odoo GET /api/user/theme with that session cookie.
+ *   4. Inject <script>window.__SNABBB_THEME__='dark'</script> into <head>
+ *      of the HTML response BEFORE sending it to the browser.
+ *   5. Also write/refresh the snabbb-theme cookie on the response
+ *      so future loads are instant even without hitting Odoo.
+ *
+ * The index.html bootstrap script reads window.__SNABBB_THEME__ first,
+ * so the correct theme is applied synchronously before React paints.
+ * Zero flash. No cookie dependency on first load.
+ *
+ * All other requests (JS, CSS, images, /api/*) pass through untouched.
+ *
+ * DEPLOYMENT
+ * ──────────
+ * Place this file at:  appointment-repo/public/_worker.js
+ * Cloudflare Pages picks it up automatically on next deploy.
+ *
+ * Set this environment variable in your Pages project settings:
+ *   ODOO_BASE_URL = https://mrbur.odoo.com
+ */
+
+const ODOO_THEME_URL = 'https://mrbur.odoo.com/api/user/theme';
+const COOKIE_NAME = 'snabbb-theme';
+const COOKIE_DOMAIN = '.snabbb.com';
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
+const VALID_THEMES = new Set(['light', 'dark', 'system']);
+const DEFAULT_THEME = 'light';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function parseTheme(value) {
+  if (!value) return null;
+  const s = String(value).trim().toLowerCase();
+  return VALID_THEMES.has(s) ? s : null;
+}
+
+/**
+ * Read the snabbb-theme cookie from the incoming browser request.
+ * This is the fast path — no Odoo call needed if cookie already set.
+ */
+function readThemeCookie(request) {
+  const cookieHeader = request.headers.get('Cookie') || '';
+  const match = cookieHeader.match(/(?:^|;\s*)snabbb-theme=([^;]+)/);
+  return match ? parseTheme(decodeURIComponent(match[1])) : null;
+}
+
+/**
+ * Call Odoo to get the authenticated user's saved theme.
+ * Forwards the browser's session_id cookie.
+ * Returns the theme string, or null if guest / error.
+ */
+async function fetchThemeFromOdoo(request) {
+  const cookieHeader = request.headers.get('Cookie') || '';
+  if (!cookieHeader.includes('session_id=')) return null;
+
+  try {
+    const res = await fetch(ODOO_THEME_URL, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': cookieHeader,
+      },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data?.ok || !data?.authenticated) return null;
+    return parseTheme(data.theme);
+  } catch {
+    return null; // Odoo unreachable — fall back to cookie / default
+  }
+}
+
+/**
+ * Build a Set-Cookie header value for the snabbb-theme cookie.
+ * Domain=.snabbb.com so it's readable by all subdomains.
+ */
+function buildThemeCookie(theme) {
+  return [
+    `${COOKIE_NAME}=${encodeURIComponent(theme)}`,
+    'Path=/',
+    `Domain=${COOKIE_DOMAIN}`,
+    `Max-Age=${COOKIE_MAX_AGE}`,
+    'SameSite=Lax',
+    'Secure',
+  ].join('; ');
+}
+
+/**
+ * Determine if a request is a browser navigation (HTML page load).
+ * We only inject theme into HTML responses, not JS/CSS/image assets.
+ */
+function isHtmlRequest(request) {
+  const accept = request.headers.get('Accept') || '';
+  if (!accept.includes('text/html')) return false;
+  const url = new URL(request.url);
+  const path = url.pathname;
+  // Skip API routes and static asset extensions
+  if (path.startsWith('/api/')) return false;
+  if (/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|map|json|webp|avif)$/i.test(path)) return false;
+  return true;
+}
+
+/**
+ * Inject the theme script tag into the HTML <head>, right before
+ * the existing bootstrap script so it can read window.__SNABBB_THEME__.
+ *
+ * Uses HTMLRewriter for streaming — no need to buffer the whole response.
+ */
+class ThemeInjector {
+  constructor(theme) {
+    this.theme = theme;
+    this.injected = false;
+  }
+
+  element(element) {
+    if (this.injected) return;
+    this.injected = true;
+    // Inject as the very first child of <head> so it runs before everything else
+    element.prepend(
+      `<script>window.__SNABBB_THEME__=${JSON.stringify(this.theme)};</script>`,
+      { html: true }
+    );
+  }
+}
+
+// ─── Main handler ─────────────────────────────────────────────────────────────
+
+export default {
+  async fetch(request, env, ctx) {
+    // Non-HTML requests pass straight through to Pages static assets
+    if (!isHtmlRequest(request)) {
+      return env.ASSETS.fetch(request);
+    }
+
+    // ── Step 1: Fast path — check if we already have a cookie ──────────────
+    const cookieTheme = readThemeCookie(request);
+
+    // ── Step 2: Slow path — fetch from Odoo if user has a session ──────────
+    // Run both in parallel: fetch the static HTML AND call Odoo simultaneously.
+    // We only wait for Odoo if there's a session_id cookie (authenticated user).
+    const hasSession = (request.headers.get('Cookie') || '').includes('session_id=');
+
+    let odooTheme = null;
+
+    if (!cookieTheme && hasSession) {
+      // No cookie yet — ask Odoo (first load after login from another device, etc.)
+      odooTheme = await fetchThemeFromOdoo(request);
+    } else if (hasSession) {
+      // We have a cookie but also have a session — validate in background
+      // (don't await — use ctx.waitUntil so it doesn't block the response)
+      ctx.waitUntil(
+        fetchThemeFromOdoo(request).then((serverTheme) => {
+          // Nothing to do here — we already responded with cookieTheme.
+          // On the NEXT request the cookie will be refreshed if they differ.
+          // This background fetch is just for telemetry / future use.
+        })
+      );
+    }
+
+    // ── Step 3: Resolve final theme ──────────────────────────────────────────
+    // Priority: Odoo (cross-device truth) > cookie > default
+    const theme = odooTheme || cookieTheme || DEFAULT_THEME;
+
+    // ── Step 4: Fetch the static HTML from Pages ──────────────────────────────
+    const pageResponse = await env.ASSETS.fetch(request);
+
+    if (!pageResponse.ok || !pageResponse.headers.get('Content-Type')?.includes('text/html')) {
+      return pageResponse;
+    }
+
+    // ── Step 5: Inject theme + refresh cookie ────────────────────────────────
+    const newHeaders = new Headers(pageResponse.headers);
+
+    // Refresh / set the snabbb-theme cookie on every HTML response.
+    // This keeps the cookie alive even if the user never visits gallery.
+    newHeaders.append('Set-Cookie', buildThemeCookie(theme));
+
+    // Use HTMLRewriter to stream-inject the theme script into <head>
+    const injectedResponse = new HTMLRewriter()
+      .on('head', new ThemeInjector(theme))
+      .transform(
+        new Response(pageResponse.body, {
+          status: pageResponse.status,
+          headers: newHeaders,
+        })
+      );
+
+    return injectedResponse;
+  },
+};

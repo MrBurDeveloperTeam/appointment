@@ -8,7 +8,6 @@
     (function () {
       var ALLOWED = { light: true, dark: true, system: true };
 
-      // Read a cookie by name
       function readCookie(name) {
         var parts = document.cookie ? document.cookie.split(';') : [];
         for (var i = 0; i < parts.length; i++) {
@@ -24,20 +23,9 @@
         try { return window.localStorage.getItem(key); } catch (e) { return null; }
       }
 
-      // Accepts plain string OR Zustand JSON {"state":{"theme":"dark"},"version":0}
       function parseTheme(raw) {
         if (!raw) return null;
-        var str = String(raw).trim();
-        // Try JSON parse (handles Zustand persist format from app.snabbb.com)
-        if (str.charAt(0) === '{') {
-          try {
-            var p = JSON.parse(str);
-            if (p && p.state && p.state.theme) str = p.state.theme;
-            else if (p && p.theme) str = p.theme;
-            else if (typeof p === 'string') str = p;
-          } catch (e) {}
-        }
-        str = str.trim().toLowerCase();
+        var str = String(raw).trim().toLowerCase();
         return ALLOWED[str] ? str : null;
       }
 
@@ -50,11 +38,17 @@
       }
 
       // Priority:
-      // 1. Cookie (set by gallery on theme change — most authoritative)
-      // 2. localStorage['snabbb-theme'] (Zustand JSON from gallery — parse it)
-      // 3. localStorage['theme'] (appointment's own stale value — last resort)
-      var theme = parseTheme(readCookie('snabbb-theme'))
-               || parseTheme(safeGet('snabbb-theme'))
+      // 1. window.__SNABBB_THEME__ — injected by the Cloudflare Pages Worker
+      //    server-side before this script runs. Most authoritative: it came
+      //    directly from Odoo using the user's session cookie.
+      // 2. snabbb-theme cookie — written by gallery on theme change,
+      //    readable cross-subdomain via Domain=.snabbb.com.
+      //    Also refreshed by the Worker on every HTML response.
+      // 3. localStorage['theme'] — appointment's own last-used value.
+      // 4. 'light' fallback — only if nothing else is available
+      //    (e.g. brand new user who has never set a theme).
+      var theme = parseTheme(window.__SNABBB_THEME__)
+               || parseTheme(readCookie('snabbb-theme'))
                || parseTheme(safeGet('theme'))
                || 'light';
 
