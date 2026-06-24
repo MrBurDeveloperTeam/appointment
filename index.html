@@ -49,10 +49,13 @@
         return theme === 'dark' ? 'dark' : 'light';
       }
 
-      // Priority: cookie → localStorage['theme'] → localStorage['snabbb-theme'] (Zustand JSON)
+      // Priority:
+      // 1. Cookie (set by gallery on theme change — most authoritative)
+      // 2. localStorage['snabbb-theme'] (Zustand JSON from gallery — parse it)
+      // 3. localStorage['theme'] (appointment's own stale value — last resort)
       var theme = parseTheme(readCookie('snabbb-theme'))
-               || parseTheme(safeGet('theme'))
                || parseTheme(safeGet('snabbb-theme'))
+               || parseTheme(safeGet('theme'))
                || 'light';
 
       var resolved = resolveTheme(theme);

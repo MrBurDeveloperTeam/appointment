@@ -94,17 +94,19 @@ export const writeThemeCookie = (theme) => {
 export const readStoredTheme = () => {
   if (typeof window === 'undefined') return null;
 
-  // 1. Cookie is fastest and cross-subdomain
+  // 1. Cookie — set by gallery when user picks a theme (cross-subdomain, most authoritative)
   const cookieTheme = readThemeCookie();
   if (cookieTheme) return cookieTheme;
 
-  // 2. Mini-app's own localStorage key
-  const localTheme = normalizeTheme(window.localStorage?.getItem(LOCAL_THEME_KEY));
-  if (localTheme) return localTheme;
-
-  // 3. Try Zustand key READ-ONLY (parse JSON — do not write back as plain string)
+  // 2. Zustand key from app.snabbb.com (gallery) — READ-ONLY, parse JSON format
+  //    Priority over appointment's own 'theme' key because it reflects the user's
+  //    explicit choice in gallery, whereas 'theme' may be a stale appointment-local value.
   const zustandTheme = normalizeTheme(window.localStorage?.getItem('snabbb-theme'));
   if (zustandTheme) return zustandTheme;
+
+  // 3. Appointment's own localStorage key (fallback for users who have never used gallery)
+  const localTheme = normalizeTheme(window.localStorage?.getItem(LOCAL_THEME_KEY));
+  if (localTheme) return localTheme;
 
   return null;
 };
