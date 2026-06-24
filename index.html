@@ -6,11 +6,12 @@
 
   <script>
     (function () {
-      var ALLOWED_THEMES = { light: true, dark: true, system: true };
+      var ALLOWED = { light: true, dark: true, system: true };
 
+      // Read a cookie by name
       function readCookie(name) {
         var parts = document.cookie ? document.cookie.split(';') : [];
-        for (var i = 0; i < parts.length; i += 1) {
+        for (var i = 0; i < parts.length; i++) {
           var part = parts[i].trim();
           if (part.indexOf(name + '=') === 0) {
             return decodeURIComponent(part.slice(name.length + 1));
@@ -19,38 +20,47 @@
         return null;
       }
 
-      function safeLocalStorageGet(key) {
-        try {
-          return window.localStorage.getItem(key);
-        } catch (error) {
-          return null;
-        }
+      function safeGet(key) {
+        try { return window.localStorage.getItem(key); } catch (e) { return null; }
       }
 
-      function normalizeTheme(value) {
-        return ALLOWED_THEMES[value] ? value : 'light';
+      // Accepts plain string OR Zustand JSON {"state":{"theme":"dark"},"version":0}
+      function parseTheme(raw) {
+        if (!raw) return null;
+        var str = String(raw).trim();
+        // Try JSON parse (handles Zustand persist format from app.snabbb.com)
+        if (str.charAt(0) === '{') {
+          try {
+            var p = JSON.parse(str);
+            if (p && p.state && p.state.theme) str = p.state.theme;
+            else if (p && p.theme) str = p.theme;
+            else if (typeof p === 'string') str = p;
+          } catch (e) {}
+        }
+        str = str.trim().toLowerCase();
+        return ALLOWED[str] ? str : null;
       }
 
       function resolveTheme(theme) {
         if (theme === 'system') {
           return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-            ? 'dark'
-            : 'light';
+            ? 'dark' : 'light';
         }
         return theme === 'dark' ? 'dark' : 'light';
       }
 
-      var theme = normalizeTheme(
-        readCookie('snabbb-theme') ||
-        safeLocalStorageGet('snabbb-theme') ||
-        safeLocalStorageGet('theme') ||
-        'light'
-      );
+      // Priority: cookie → localStorage['theme'] → localStorage['snabbb-theme'] (Zustand JSON)
+      var theme = parseTheme(readCookie('snabbb-theme'))
+               || parseTheme(safeGet('theme'))
+               || parseTheme(safeGet('snabbb-theme'))
+               || 'light';
 
-      var resolvedTheme = resolveTheme(theme);
+      var resolved = resolveTheme(theme);
 
-      document.documentElement.setAttribute('data-theme', resolvedTheme);
-      document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
+      document.documentElement.setAttribute('data-theme', resolved);
+      document.documentElement.dataset.themePreference = theme;
+      document.documentElement.classList.toggle('dark', resolved === 'dark');
+      document.documentElement.style.colorScheme = resolved;
     })();
   </script>
 
