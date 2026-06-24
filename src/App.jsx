@@ -27,101 +27,23 @@ import { api } from './services/api';
 import CatMascot from './components/CatMascot';
 import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
 import MolarAIFloat from './components/MolarAIFloat';
+import {
+  normalizeTheme,
+  readStoredTheme,
+  readThemeCookie,
+  writeThemeCookie,
+  writeStoredTheme,
+  applyThemeToDocument,
+  broadcastTheme,
+  syncThemeFromOdoo,
+  pushThemeToOdoo,
+  THEME_SYNC,
+} from './utils/themeSync';
 
 const getBookingSlugFromPath = () => {
   const parts = window.location.pathname.split('/').filter(Boolean);
   if (parts[0] === 'book' && parts[1]) return parts[1];
   return null;
-};
-
-
-const SHARED_THEME_COOKIE = 'snabbb-theme';
-const LEGACY_THEME_KEY = 'theme';
-const SHARED_THEME_KEY = 'snabbb-theme';
-const THEME_VALUES = new Set(['light', 'dark', 'system']);
-
-const normalizeTheme = (value) => {
-  return THEME_VALUES.has(value) ? value : 'light';
-};
-
-const getCookieValue = (name) => {
-  if (typeof document === 'undefined') return null;
-
-  const cookie = document.cookie
-    .split(';')
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${name}=`));
-
-  return cookie ? decodeURIComponent(cookie.slice(name.length + 1)) : null;
-};
-
-const setThemeCookie = (theme) => {
-  if (typeof document === 'undefined') return;
-
-  document.cookie = [
-    `${SHARED_THEME_COOKIE}=${encodeURIComponent(theme)}`,
-    'Path=/',
-    'Domain=.snabbb.com',
-    'Max-Age=31536000',
-    'SameSite=Lax',
-    'Secure',
-  ].join('; ');
-};
-
-const getInitialTheme = () => {
-  if (typeof window === 'undefined') return 'light';
-
-  const cookieTheme = getCookieValue(SHARED_THEME_COOKIE);
-  if (THEME_VALUES.has(cookieTheme)) return cookieTheme;
-
-  const sharedLocalTheme = window.localStorage.getItem(SHARED_THEME_KEY);
-  if (THEME_VALUES.has(sharedLocalTheme)) return sharedLocalTheme;
-
-  const legacyLocalTheme = window.localStorage.getItem(LEGACY_THEME_KEY);
-  if (THEME_VALUES.has(legacyLocalTheme)) return legacyLocalTheme;
-
-  return 'light';
-};
-
-const resolveTheme = (theme) => {
-  if (typeof window === 'undefined') return theme === 'dark' ? 'dark' : 'light';
-
-  if (theme === 'system') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-
-  return theme === 'dark' ? 'dark' : 'light';
-};
-
-const applyThemeToDocument = (theme) => {
-  if (typeof document === 'undefined') return;
-
-  const resolvedTheme = resolveTheme(theme);
-  document.documentElement.setAttribute('data-theme', resolvedTheme);
-  document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
-};
-
-const persistTheme = (theme) => {
-  if (typeof window === 'undefined') return;
-
-  window.localStorage.setItem(LEGACY_THEME_KEY, theme);
-  window.localStorage.setItem(SHARED_THEME_KEY, theme);
-  setThemeCookie(theme);
-};
-
-const emitThemeSync = (theme) => {
-  if (typeof window === 'undefined') return;
-
-  const resolvedTheme = resolveTheme(theme);
-  const payload = {
-    type: 'SNABBB_THEME_SYNC',
-    theme,
-    resolvedTheme,
-    source: 'appointment',
-    ts: Date.now(),
-  };
-
-  window.postMessage(payload, window.location.origin);
 };
 
 export default function App() {
@@ -154,59 +76,67 @@ function AppContent() {
     signOut
   } = useAuth();
 
-  const [theme, setTheme] = useState(getInitialTheme);
+  // ─── Theme — hybrid: cookie (instant) + Odoo (cross-device) ─────────────────
+  // Initial value comes from cookie/localStorage synchronously (no flash).
+  // Background Odoo fetch runs after mount to apply cross-device preference.
+  const [theme, setTheme] = useState(() => readStoredTheme() || 'light');
 
   useEffect(() => {
     DataStore.clearLegacyLocalData();
   }, []);
 
+  // Apply theme to DOM whenever it changes
   useEffect(() => {
-    const normalizedTheme = normalizeTheme(theme);
-
-    applyThemeToDocument(normalizedTheme);
-    persistTheme(normalizedTheme);
-    emitThemeSync(normalizedTheme);
+    const normalized = normalizeTheme(theme) || 'light';
+    applyThemeToDocument(normalized);
   }, [theme]);
 
+  // Background Odoo sync on first mount — cross-device source of truth
+  useEffect(() => {
+    syncThemeFromOdoo((odooTheme) => {
+      // Only fires if Odoo returned a DIFFERENT theme than the cookie
+      setTheme((current) => (current === odooTheme ? current : odooTheme));
+    });
+  }, []);
+
+  // Live sync: storage events (same-origin tabs) + cookie poll (cross-subdomain)
   useEffect(() => {
     const handleStorageSync = (event) => {
-      if (event.key !== SHARED_THEME_KEY && event.key !== LEGACY_THEME_KEY) return;
-
-      const nextTheme = normalizeTheme(event.newValue);
-      setTheme((currentTheme) => (currentTheme === nextTheme ? currentTheme : nextTheme));
+      if (event.key !== THEME_SYNC.localStorageKey && event.key !== 'snabbb-theme') return;
+      const next = normalizeTheme(event.newValue);
+      if (next) setTheme((cur) => (cur === next ? cur : next));
     };
 
     const handleMessageSync = (event) => {
       const data = event.data;
-      if (!data || data.type !== 'SNABBB_THEME_SYNC') return;
-      if (data.source === 'appointment') return;
-
-      const nextTheme = normalizeTheme(data.theme);
-      setTheme((currentTheme) => (currentTheme === nextTheme ? currentTheme : nextTheme));
+      if (!data || data.type !== THEME_SYNC.messageType) return;
+      if (data.source === 'appointment') return; // ignore own broadcasts
+      const next = normalizeTheme(data.theme);
+      if (next) setTheme((cur) => (cur === next ? cur : next));
     };
 
     const handleSystemThemeChange = () => {
-      setTheme((currentTheme) => {
-        if (currentTheme === 'system') applyThemeToDocument('system');
-        return currentTheme;
+      setTheme((cur) => {
+        if (cur === 'system') applyThemeToDocument('system');
+        return cur;
       });
     };
 
-    const syncFromCookie = () => {
-      const cookieTheme = getCookieValue(SHARED_THEME_COOKIE);
-      if (!THEME_VALUES.has(cookieTheme)) return;
-
-      setTheme((currentTheme) => (currentTheme === cookieTheme ? currentTheme : cookieTheme));
-    };
-
-    window.addEventListener('storage', handleStorageSync);
-    window.addEventListener('message', handleMessageSync);
+    // 1s cookie poll — catches theme changes from other subdomains (e.g. app.snabbb.com)
+    let lastCookie = readThemeCookie();
+    const cookieInterval = window.setInterval(() => {
+      const current = readThemeCookie();
+      if (current && current !== lastCookie) {
+        lastCookie = current;
+        setTheme((cur) => (cur === current ? cur : current));
+      }
+    }, 1000);
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    window.addEventListener('storage', handleStorageSync);
+    window.addEventListener('message', handleMessageSync);
     mediaQuery.addEventListener?.('change', handleSystemThemeChange);
     mediaQuery.addListener?.(handleSystemThemeChange);
-
-    const cookieInterval = window.setInterval(syncFromCookie, 1000);
 
     return () => {
       window.removeEventListener('storage', handleStorageSync);
@@ -216,6 +146,17 @@ function AppContent() {
       window.clearInterval(cookieInterval);
     };
   }, []);
+
+  // Called by UI (Sidebar, SettingsView, AdminDashboard) when user picks a theme.
+  // Writes cookie immediately + pushes to Odoo in background.
+  const handleSetTheme = (newTheme) => {
+    const normalized = normalizeTheme(newTheme) || 'light';
+    setTheme(normalized);
+    writeThemeCookie(normalized);
+    writeStoredTheme(normalized);
+    broadcastTheme(normalized);
+    pushThemeToOdoo(normalized); // fire and forget
+  };
 
   const [bookingLink, setBookingLink] = useState('');
 
@@ -738,7 +679,7 @@ function AppContent() {
 
   if (authRole === 'admin') {
     return (
-      <AdminDashboard onLogout={signOut} theme={theme} setTheme={setTheme} />
+      <AdminDashboard onLogout={signOut} theme={theme} setTheme={handleSetTheme} />
     );
   }
 
@@ -774,7 +715,7 @@ function AppContent() {
           closeSidebar(); // Close sidebar on mobile when navigating
         }}
         theme={theme}
-        setTheme={setTheme}
+        setTheme={handleSetTheme}
         onLogout={signOut}
         bookingLink={bookingLink}
         isOpen={sidebarOpen}
@@ -868,7 +809,7 @@ function AppContent() {
               clearAll={clearAll}
               onLogout={signOut}
               theme={theme}
-              setTheme={setTheme}
+              setTheme={handleSetTheme}
             />
           )}
           {view === 'reports' && (
