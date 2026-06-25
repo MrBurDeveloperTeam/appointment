@@ -451,7 +451,7 @@ textarea:focus-visible,
 
 .booking-choice {
   text-align: left;
-  background: white;
+  background: var(--surface, white);
   padding: var(--space-lg);
   border-radius: var(--radius-lg);
   cursor: pointer;
@@ -459,6 +459,7 @@ textarea:focus-visible,
   /* Mr Bur Product Card Style */
   border: 1px solid var(--border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
 }
 
 .booking-choice:hover {
@@ -467,6 +468,7 @@ textarea:focus-visible,
   /* Lift effect */
   box-shadow: 0 12px 24px rgba(42, 157, 143, 0.15);
   /* Blue-tinted shadow */
+  background: var(--bg-hover, var(--surface, white));
 }
 
 .booking-choice.active {
