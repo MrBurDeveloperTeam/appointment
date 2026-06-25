@@ -8,6 +8,7 @@ import {
   sanitizeName,
   validateNewPatient,
 } from '../utils/bookingValidation';
+import { filterAvailableSlots } from '../utils/availability';
 
 const emptyPatient = {
   name: '',
@@ -98,6 +99,9 @@ export default function PublicBookingView({ clinicSlug }) {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
+
+  const [busySlots, setBusySlots] = useState([]);
+  const [clinicCapacity, setClinicCapacity] = useState(1);
 
   // -----------------------------
   // Load clinic
@@ -275,6 +279,34 @@ export default function PublicBookingView({ clinicSlug }) {
   }, [appointment.treatmentId, treatments]);
 
   // -----------------------------
+  // Load busy slots for the selected date (capacity-aware availability)
+  // -----------------------------
+  useEffect(() => {
+    if (!clinic?.id || !appointment.date) {
+      setBusySlots([]);
+      return;
+    }
+    let isActive = true;
+    (async () => {
+      const { data, error: rpcError } = await supabase.rpc('booking_busy_slots_text', {
+        p_clinic_id: clinic.id,
+        p_date: appointment.date,
+      });
+      if (!isActive) return;
+      if (rpcError || !data) {
+        // Fail open: show all working-hours slots on error.
+        console.error('booking_busy_slots failed:', rpcError);
+        setBusySlots([]);
+        setClinicCapacity(1);
+        return;
+      }
+      setBusySlots(Array.isArray(data.busy) ? data.busy : []);
+      setClinicCapacity(Number(data.capacity) || 1);
+    })();
+    return () => { isActive = false; };
+  }, [clinic, appointment.date]);
+
+  // -----------------------------
   // Calendar month sync
   // -----------------------------
   useEffect(() => {
@@ -386,8 +418,8 @@ export default function PublicBookingView({ clinicSlug }) {
       if (t < minMinutes) continue;
       slots.push(minutesToTime(t));
     }
-    return slots;
-  }, [appointment.date, selectedDuration, slotDuration, workingHoursStart, workingHoursEnd]);
+    return filterAvailableSlots(slots, selectedDuration, busySlots, clinicCapacity);
+  }, [appointment.date, selectedDuration, slotDuration, workingHoursStart, workingHoursEnd, busySlots, clinicCapacity]);
 
   useEffect(() => {
     if (!appointment.date) return;
