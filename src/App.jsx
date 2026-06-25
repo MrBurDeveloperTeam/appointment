@@ -822,6 +822,7 @@ function AppContent() {
               patients={patients}
               treatments={treatments}
               settings={settings}
+              appointments={appointments}
               addPatient={addPatient}
               addAppointment={addAppointment}
               updateAppointmentRequest={updateAppointmentRequest}
