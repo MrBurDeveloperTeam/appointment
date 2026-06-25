@@ -32,7 +32,7 @@ begin
       'Content-Type', 'application/json'
     ),
     body := jsonb_build_object(
-      'from', 'Appointments <notifications@resend.dev>',
+      'from', 'Appointments <appointments@snabbb.com>',
       'to', jsonb_build_array(p_to),
       'subject', p_subject,
       'html', p_html_body
@@ -48,18 +48,18 @@ create or replace function public.send_appointment_confirmation(p_appointment_id
 returns void
 language plpgsql
 security definer
+set search_path = private, public, extensions
 as $$
 declare
   v_email text;
-  v_date text;
-  v_time text;
-  v_name text;
+  v_date  text;
+  v_time  text;
+  v_name  text;
 begin
-  -- Fetch patient email and appointment details
-  select 
-    p.email, 
-    a.date, 
-    a.start_time, 
+  select
+    p.email,
+    a.date::text,
+    a.start_time::text,
     p.name
   into v_email, v_date, v_time, v_name
   from public.appointments a
@@ -68,12 +68,12 @@ begin
 
   if v_email is not null and v_email like '%@%' then
     perform private.send_email_internal(
-      v_email,
-      'Appointment Confirmed',
+      v_email::text,
+      'Appointment Confirmed'::text,
       format(
         '<p>Hello %s,</p><p>Your appointment has been confirmed for <b>%s at %s</b>.</p><p>See you then!</p>',
         v_name, v_date, v_time
-      )
+      )::text
     );
   end if;
 end;
@@ -84,9 +84,10 @@ $$;
 create or replace function public.trigger_send_confirmation()
 returns trigger
 language plpgsql
+security definer
+set search_path = private, public, extensions
 as $$
 begin
-  -- Only send for new confirmed appointments
   if new.status = 'confirmed' then
     perform public.send_appointment_confirmation(new.id);
   end if;
