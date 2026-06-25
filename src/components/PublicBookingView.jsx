@@ -2,6 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { todayISO } from '../utils/date';
 import { addMinutes } from '../utils/time';
+import {
+  sanitizeIC,
+  sanitizePhone,
+  sanitizeName,
+  validateNewPatient,
+} from '../utils/bookingValidation';
 
 const emptyPatient = {
   name: '',
@@ -86,6 +92,7 @@ export default function PublicBookingView({ clinicSlug }) {
 
   const [patient, setPatient] = useState({ ...emptyPatient });
   const [appointment, setAppointment] = useState({ ...emptyAppointment });
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const today = new Date();
@@ -399,6 +406,11 @@ export default function PublicBookingView({ clinicSlug }) {
     setPatient((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
+  const updatePatientSanitized = (field, sanitizer) => (event) => {
+    const clean = sanitizer(event.target.value);
+    setPatient((prev) => ({ ...prev, [field]: clean }));
+  };
+
   const updateAppointment = (field) => (event) => {
     setAppointment((prev) => ({ ...prev, [field]: event.target.value }));
   };
@@ -566,12 +578,10 @@ export default function PublicBookingView({ clinicSlug }) {
       return true;
     }
 
-    if (!patient.name.trim()) {
-      setError('Please enter patient name.');
-      return false;
-    }
-    if (!patient.phone.trim()) {
-      setError('Please enter phone number.');
+    const { ok, fieldErrors: errs } = validateNewPatient(patient);
+    setFieldErrors(errs);
+    if (!ok) {
+      setError('Please complete all required fields correctly.');
       return false;
     }
     return true;
@@ -932,30 +942,34 @@ export default function PublicBookingView({ clinicSlug }) {
               {step === 1 && patientType === 'new' && (
                 <>
                   <div className="form-group">
-                    <label className="form-label">Name</label>
-                    <input className="form-input" value={patient.name} onChange={updatePatient('name')} required />
+                    <label className="form-label">Name *</label>
+                    <input className="form-input" value={patient.name} onChange={updatePatientSanitized('name', sanitizeName)} required />
+                    {fieldErrors.name && <div className="form-error">{fieldErrors.name}</div>}
                   </div>
 
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">IC/ID</label>
-                      <input className="form-input" value={patient.idNumber} onChange={updatePatient('idNumber')} />
+                      <label className="form-label">IC/ID *</label>
+                      <input className="form-input" inputMode="numeric" value={patient.idNumber} onChange={updatePatientSanitized('idNumber', sanitizeIC)} required />
+                      {fieldErrors.idNumber && <div className="form-error">{fieldErrors.idNumber}</div>}
                     </div>
                     <div className="form-group">
-                      <label className="form-label">DOB</label>
-                      <input className="form-input" type="date" value={patient.dob} onChange={updatePatient('dob')} />
+                      <label className="form-label">DOB *</label>
+                      <input className="form-input" type="date" max={todayISO()} value={patient.dob} onChange={updatePatient('dob')} required />
+                      {fieldErrors.dob && <div className="form-error">{fieldErrors.dob}</div>}
                     </div>
                   </div>
 
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">Gender</label>
-                      <select className="form-select" value={patient.gender} onChange={updatePatient('gender')}>
+                      <label className="form-label">Gender *</label>
+                      <select className="form-select" value={patient.gender} onChange={updatePatient('gender')} required>
                         <option value="">Select</option>
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                         <option value="other">Other</option>
                       </select>
+                      {fieldErrors.gender && <div className="form-error">{fieldErrors.gender}</div>}
                     </div>
                     <div className="form-group">
                       <label className="form-label">Tax Number</label>
@@ -965,36 +979,44 @@ export default function PublicBookingView({ clinicSlug }) {
 
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">Phone</label>
-                      <input className="form-input" value={patient.phone} onChange={updatePatient('phone')} required />
+                      <label className="form-label">Phone *</label>
+                      <input className="form-input" inputMode="tel" value={patient.phone} onChange={updatePatientSanitized('phone', sanitizePhone)} required />
+                      {fieldErrors.phone && <div className="form-error">{fieldErrors.phone}</div>}
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Email</label>
-                      <input className="form-input" type="email" value={patient.email} onChange={updatePatient('email')} />
+                      <label className="form-label">Email *</label>
+                      <input className="form-input" type="email" value={patient.email} onChange={updatePatient('email')} required />
+                      {fieldErrors.email && <div className="form-error">{fieldErrors.email}</div>}
                     </div>
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Address</label>
-                    <input className="form-input" value={patient.address} onChange={updatePatient('address')} />
+                    <label className="form-label">Address *</label>
+                    <input className="form-input" value={patient.address} onChange={updatePatient('address')} required />
+                    {fieldErrors.address && <div className="form-error">{fieldErrors.address}</div>}
                   </div>
 
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">Emergency Contact Name</label>
+                      <label className="form-label">Emergency Contact Name *</label>
                       <input
                         className="form-input"
                         value={patient.emergencyContactName}
                         onChange={updatePatient('emergencyContactName')}
+                        required
                       />
+                      {fieldErrors.emergencyContactName && <div className="form-error">{fieldErrors.emergencyContactName}</div>}
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Emergency Contact Phone</label>
+                      <label className="form-label">Emergency Contact Phone *</label>
                       <input
                         className="form-input"
+                        inputMode="tel"
                         value={patient.emergencyContactPhone}
-                        onChange={updatePatient('emergencyContactPhone')}
+                        onChange={updatePatientSanitized('emergencyContactPhone', sanitizePhone)}
+                        required
                       />
+                      {fieldErrors.emergencyContactPhone && <div className="form-error">{fieldErrors.emergencyContactPhone}</div>}
                     </div>
                   </div>
 
@@ -1023,8 +1045,8 @@ export default function PublicBookingView({ clinicSlug }) {
 
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">Source</label>
-                      <select className="form-select" value={patient.source} onChange={updatePatient('source')}>
+                      <label className="form-label">Source *</label>
+                      <select className="form-select" value={patient.source} onChange={updatePatient('source')} required>
                         <option value="">Select</option>
                         <option value="walk-in">Walk-in</option>
                         <option value="call">Call</option>
@@ -1035,22 +1057,25 @@ export default function PublicBookingView({ clinicSlug }) {
                         <option value="website">Website</option>
                         <option value="other">Other</option>
                       </select>
+                      {fieldErrors.source && <div className="form-error">{fieldErrors.source}</div>}
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Preferred Dentist</label>
+                      <label className="form-label">Preferred Dentist *</label>
                       <select
                         className="form-select"
                         value={patient.preferredDentist}
                         onChange={updatePatient('preferredDentist')}
+                        required
                       >
-                        <option value="">No preference</option>
+                        <option value="">Select</option>
                         {dentists.map((dentist) => (
                           <option key={dentist.id} value={dentist.id}>
                             {dentist.name}
                           </option>
                         ))}
                       </select>
+                      {fieldErrors.preferredDentist && <div className="form-error">{fieldErrors.preferredDentist}</div>}
                     </div>
                   </div>
 
