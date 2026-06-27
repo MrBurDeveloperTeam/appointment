@@ -5,3 +5,5 @@ node_modules/
 dist/
 # Local MCP config (may contain tokens)
 .mcp.json
+# Local-only project guide (not pushed to origin)
+CLAUDE.md
