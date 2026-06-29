@@ -1,6 +1,13 @@
 
 import { PetStats, RoomType, FoodItem, ToyItem, BedItem } from './types';
 
+export const DEFAULT_CURRENCY_CODE = 'USD';
+
+export const normalizeCurrencyCode = (currency?: string | null) => {
+    const normalized = (currency || '').trim().toUpperCase();
+    return /^[A-Z]{3}$/.test(normalized) ? normalized : DEFAULT_CURRENCY_CODE;
+};
+
 export const INITIAL_STATS: PetStats = {
   hunger: 80,
   energy: 90,

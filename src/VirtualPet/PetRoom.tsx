@@ -22,8 +22,6 @@ const POOP_NEXT_SPAWN_KEY = 'virtual_pet_next_poop_at';
 const OUTSIDE_PET_SCALE = 0.75;
 const SLEEP_WAKE_DURATION_MS = 760;
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-const SOAP_ITEM_IDS = ['soap', 'soap2'] as const;
-const isSoapId = (id: string): id is typeof SOAP_ITEM_IDS[number] => SOAP_ITEM_IDS.includes(id as typeof SOAP_ITEM_IDS[number]);
 
 interface PetRoomProps {
   onNavigateToGame: (gameId: string) => void;
@@ -38,7 +36,7 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
     isSleeping, setIsSleeping,
     isEating, setIsEating,
     isPlaying, setIsPlaying,
-    inventory, soapInventory, setSoapInventory, buyItem, consumeItem,
+    inventory, buyItem, consumeItem,
     addXP, activeBallId, setActiveBallId, activeBedId, setActiveBedId,
     foodItems, isFoodLoading, currencyRate
   } = useGameState();
@@ -95,7 +93,7 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
   const outsideWakeUntilRef = useRef(0);
   const isBallMovingRef = useRef(isBallMoving);
   const isDraggingBallRef = useRef(isDraggingBall);
-  const activeSoapType = useRef<'soap' | 'soap2' | null>(null);
+  const activeSoapType = useRef<'soap' | null>(null);
   const soapConsumedOnRinse = useRef(false);
   const activeSoapMultiplier = useRef(1);
 
@@ -115,7 +113,7 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
     isDraggingBallRef.current = isDraggingBall;
   }, [isDraggingBall]);
 
-  const getSoapItem = (tool: 'soap' | 'soap2') => foodItems.find((item) => item.id === tool && item.category === 'Soap');
+  const getSoapItem = () => foodItems.find((item) => item.id === 'soap' && item.category === 'Soap');
 
   const getBedItem = (id: string | null) => {
     if (!id) return null;
@@ -191,8 +189,6 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
 
   const handleDragStartTool = (e: React.PointerEvent, tool: ToolType) => {
     e.preventDefault();
-    if ((tool === 'soap' || tool === 'soap2') && (soapInventory[tool] || 0) <= 0) return;
-    if ((tool === 'soap' || tool === 'soap2') && activeSoapType.current && activeSoapType.current !== tool) return;
     setDraggedTool(tool);
     setDragPos({ x: e.clientX, y: e.clientY });
   };
@@ -238,15 +234,12 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
           const relX = ((e.clientX - rect.left) / rect.width) * 200;
           const relY = ((e.clientY - rect.top) / rect.height) * 200;
 
-          if (draggedTool === 'soap' || draggedTool === 'soap2') {
+          if (draggedTool === 'soap') {
             if (!activeSoapType.current) {
-              if ((soapInventory[draggedTool] || 0) <= 0) return;
-              activeSoapType.current = draggedTool;
+              activeSoapType.current = 'soap';
               soapConsumedOnRinse.current = false;
-              const soapItem = getSoapItem(draggedTool);
+              const soapItem = getSoapItem();
               activeSoapMultiplier.current = Math.max(1, (soapItem?.hygiene || 50) / 50);
-            } else if (activeSoapType.current !== draggedTool) {
-              return;
             }
 
             if (now - lastBubbleTime.current > 50) {
@@ -254,7 +247,7 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
                 id: now,
                 x: clamp(relX + (Math.random() * 20 - 10), 36, 164),
                 y: clamp(relY + (Math.random() * 20 - 10), 20, 190),
-                size: Math.random() * 12 + (activeSoapType.current === 'soap2' ? 10 : 7)
+                size: Math.random() * 12 + 7
               };
 
               setBubbles(prev => {
@@ -277,12 +270,7 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
                   setStats(s => ({ ...s, hygiene: Math.min(100, s.hygiene + (0.5 * activeSoapMultiplier.current)) }));
                 }
                 if (rinsedBubbles.length === 0 && prev.length > 0 && activeSoapType.current && !soapConsumedOnRinse.current) {
-                  const soapType = activeSoapType.current;
                   soapConsumedOnRinse.current = true;
-                  setSoapInventory(current => ({
-                    ...current,
-                    [soapType]: Math.max(0, (current[soapType] || 0) - 1)
-                  }));
                   activeSoapType.current = null;
                   activeSoapMultiplier.current = 1;
                 }
@@ -390,15 +378,6 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
     setStats(prev => ({ ...prev, coins: (prev.coins || 0) + POOP_REWARD_COINS }));
   };
 
-  const handleBuySoap = (item: FoodItem) => {
-    if (!isSoapId(item.id)) return;
-    const tool = item.id;
-    const price = item.price * currencyRate;
-    if ((stats.coins || 0) < price) return;
-
-    setStats(prev => ({ ...prev, coins: Math.max(0, (prev.coins || 0) - price) }));
-    setSoapInventory(prev => ({ ...prev, [tool]: (prev[tool] || 0) + 1 }));
-  };
 
 
   // Room switching cleanup & auto-show menus
@@ -772,7 +751,6 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
       {showBathroomMenu && currentRoom === RoomType.BATHROOM && (
         <BathroomMenu
           onDragStart={handleDragStartTool}
-          soapInventory={soapInventory}
           isSoapedUp={isSoapedUp}
           isDirty={stats.hygiene < 60}
         />
@@ -811,13 +789,11 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
         onClose={() => setShowShopModal(false)}
         items={foodItems}
         inventory={inventory}
-        soapInventory={soapInventory}
         activeBedId={activeBedId}
         activeBallId={activeBallId}
         coins={stats.coins}
         currentLevel={stats.level}
         onBuy={(item) => buyItem(item.id, item.price * currencyRate)}
-        onBuySoap={handleBuySoap}
         onBuyBed={(bed) => {
           if (buyItem(bed.id, bed.price * currencyRate)) {
             setActiveBedId(bed.id);

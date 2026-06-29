@@ -3,11 +3,13 @@ import { ArrowLeft } from 'lucide-react';
 import { PetRoom } from './PetRoom';
 import { GamePage } from './components/GamePage';
 import { GameStateProvider } from './context/GameStateContext';
+import PetAdoptionModal from './components/PetAdoptionModal';
 import { RoomType } from './types';
 import { useGameState } from './hooks/useGameState';
 import { supabase } from '../lib/supabaseClient';
 import { TiArrowBackOutline } from "react-icons/ti";
 import { TiArrowBack } from "react-icons/ti";
+import { DEFAULT_CURRENCY_CODE, normalizeCurrencyCode } from './constants';
 
 // Inner component to access context
 const VirtualPetContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
@@ -46,6 +48,7 @@ const VirtualPetContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     onClose={handleCloseGame}
                 />
             )}
+            <PetAdoptionModal />
         </div>
     );
 };
@@ -65,6 +68,29 @@ interface GeoInfo {
     currency: string; // e.g. "MYR", "USD", "EUR"
 }
 
+const getSupportedPricingCurrency = async (currency?: string | null): Promise<string> => {
+    const requestedCurrency = normalizeCurrencyCode(currency);
+    if (requestedCurrency === DEFAULT_CURRENCY_CODE) return DEFAULT_CURRENCY_CODE;
+
+    try {
+        const { data, error } = await supabase
+            .from('aiboard_pricing_currencies')
+            .select('currency_code')
+            .ilike('currency_code', requestedCurrency)
+            .maybeSingle();
+
+        if (!error && data?.currency_code) {
+            return normalizeCurrencyCode(data.currency_code);
+        }
+    } catch (err) {
+        console.warn('[Currency] Failed to verify pricing currency:', err);
+    }
+
+    console.warn(`[Currency] ${requestedCurrency} is not configured in aiboard_pricing_currencies. Using USD.`);
+    return DEFAULT_CURRENCY_CODE;
+};
+
+
 // Detect IP/country and log the visit to Supabase
 // Fallback chain: ipapi.co → last stored visit currency → 'USD'
 async function detectAndLogVisit(): Promise<string> {
@@ -77,20 +103,26 @@ async function detectAndLogVisit(): Promise<string> {
             const { data: sessionData } = await supabase.auth.getSession();
             const userId = sessionData?.session?.user?.id ?? null;
 
-            await supabase.from('virtual_pet_visits').upsert({
-                user_id: userId,
-                ip: geo.ip,
-                country: geo.country_name,
-                country_code: geo.country_code,
-                city: geo.city,
-                region: geo.region,
-                timezone: geo.timezone,
-                currency: geo.currency,
-                visited_at: new Date().toISOString(),
-            }, { onConflict: 'user_id' });
+            if (userId) {
+                const { error: visitError } = await supabase.from('virtual_pet_visits').upsert({
+                    user_id: userId,
+                    ip: geo.ip,
+                    country: geo.country_name,
+                    country_code: geo.country_code,
+                    city: geo.city,
+                    region: geo.region,
+                    timezone: geo.timezone,
+                    currency: normalizeCurrencyCode(geo.currency),
+                    visited_at: new Date().toISOString(),
+                }, { onConflict: 'user_id' });
+
+                if (visitError) {
+                    console.warn('[VirtualPet] Could not save visit location:', visitError.message);
+                }
+            }
 
             console.log(`[VirtualPet] Visit logged — ${geo.city}, ${geo.country_name} (${geo.currency})`);
-            return geo.currency || 'USD';
+            return getSupportedPricingCurrency(geo.currency);
         }
     } catch {
         console.warn('[VirtualPet] Geolocation failed, trying stored record...');
@@ -113,7 +145,7 @@ async function detectAndLogVisit(): Promise<string> {
 
             if (lastVisit?.currency) {
                 console.log(`[VirtualPet] Using stored currency: ${lastVisit.currency}`);
-                return lastVisit.currency;
+                return getSupportedPricingCurrency(lastVisit.currency);
             }
         }
     } catch {
@@ -121,13 +153,13 @@ async function detectAndLogVisit(): Promise<string> {
     }
 
     // --- Fallback: USD ---
-    return 'USD';
+    return DEFAULT_CURRENCY_CODE;
 }
 
 
 export const VirtualPetContainer: React.FC<VirtualPetContainerProps> = ({ isOpen, onClose }) => {
     const hasLoggedRef = useRef(false);
-    const [detectedCurrency, setDetectedCurrency] = useState('USD');
+    const [detectedCurrency, setDetectedCurrency] = useState(DEFAULT_CURRENCY_CODE);
 
     useEffect(() => {
         if (isOpen) {
