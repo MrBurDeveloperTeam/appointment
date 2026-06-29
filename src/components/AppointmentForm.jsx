@@ -40,6 +40,7 @@ export default function AppointmentForm({
     id: null,
   });
   const treatmentInitRef = useRef(false);
+  const hydratedInitialRef = useRef(null);
   const isEditing = Boolean(initialData && initialData.id);
   const [showPatientPicker, setShowPatientPicker] = useState(false);
   const [patientQuery, setPatientQuery] = useState('');
@@ -61,7 +62,11 @@ export default function AppointmentForm({
   const maxTime = workingEnd;
 
   useEffect(() => {
-    if (initialData) {
+    // Hydrate from initialData only once per initialData identity. Re-running on
+    // patients/rooms/treatments/dentists changes would clobber the user's edits
+    // (e.g. revert a changed time) when the data store re-renders.
+    if (initialData && hydratedInitialRef.current !== initialData) {
+      hydratedInitialRef.current = initialData;
       setForm((prev) => ({
         ...prev,
         ...initialData,
