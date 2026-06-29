@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { addMinutes } from '../utils/time';
+import { intervalsOverlap, toMinutes } from '../utils/availability';
 
 const normalizeEmail = (value) => (value || '').trim().toLowerCase();
 
@@ -11,6 +12,7 @@ export default function RequestsView({
   patients,
   treatments,
   settings,
+  appointments = [],
   addPatient,
   addAppointment,
   updateAppointmentRequest,
@@ -19,6 +21,22 @@ export default function RequestsView({
   const [filter, setFilter] = useState('pending');
   const [processing, setProcessing] = useState({});
   const [errors, setErrors] = useState({});
+  const [conflictPrompt, setConflictPrompt] = useState({});
+
+  const findConflicts = (request) => {
+    const date = getRequestDate(request);
+    const startTime = getRequestTime(request);
+    const start = toMinutes(startTime);
+    if (!date || start == null) return [];
+    const end = start + getDefaultDuration(request);
+    return (appointments || []).filter((a) => {
+      if (a.status !== 'confirmed' || a.date !== date) return false;
+      const aStart = toMinutes(a.startTime);
+      const aEnd = a.endTime ? toMinutes(a.endTime) : aStart + (a.duration || 30);
+      if (aStart == null || aEnd == null) return false;
+      return intervalsOverlap(start, end, aStart, aEnd);
+    });
+  };
 
   useEffect(() => {
     if (!refreshRequests) return;
@@ -124,6 +142,33 @@ export default function RequestsView({
     } finally {
       setBusy(request.id, false);
     }
+  };
+
+  const handleApproveClick = (request, options = {}) => {
+    const conflicts = findConflicts(request);
+    if (conflicts.length > 0) {
+      setConflictPrompt((prev) => ({ ...prev, [request.id]: { options, conflicts } }));
+      return;
+    }
+    approveRequest(request, options);
+  };
+
+  const confirmOverbook = (request) => {
+    const pending = conflictPrompt[request.id];
+    setConflictPrompt((prev) => {
+      const next = { ...prev };
+      delete next[request.id];
+      return next;
+    });
+    approveRequest(request, pending?.options || {});
+  };
+
+  const cancelOverbook = (request) => {
+    setConflictPrompt((prev) => {
+      const next = { ...prev };
+      delete next[request.id];
+      return next;
+    });
   };
 
   const declineRequest = async (request) => {
@@ -260,13 +305,31 @@ export default function RequestsView({
               <div className="card-footer request-card-footer">
                 {request.status === 'pending' ? (
                   <>
+                    {conflictPrompt[request.id] && (
+                      <div className="form-error" style={{ marginBottom: '0.5rem', width: '100%' }}>
+                        <div>
+                          This time overlaps {conflictPrompt[request.id].conflicts.length} confirmed appointment(s):{' '}
+                          {conflictPrompt[request.id].conflicts
+                            .map((c) => `${c.startTime}-${c.endTime || addMinutes(c.startTime, c.duration || 30)}`)
+                            .join(', ')}. Book anyway?
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                          <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => confirmOverbook(request)}>
+                            Book anyway
+                          </button>
+                          <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => cancelOverbook(request)}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     {request.isNewPatient ? (
                       <>
                         <button
                           type="button"
                           className="btn btn-primary"
                           disabled={busy}
-                          onClick={() => approveRequest(request, { addPatientRecord: true })}
+                          onClick={() => handleApproveClick(request, { addPatientRecord: true })}
                         >
                           Approve + Add patient
                         </button>
@@ -284,7 +347,7 @@ export default function RequestsView({
                         type="button"
                         className="btn btn-primary"
                         disabled={busy || !matchedPatient}
-                        onClick={() => approveRequest(request)}
+                        onClick={() => handleApproveClick(request)}
                       >
                         Approve appointment
                       </button>

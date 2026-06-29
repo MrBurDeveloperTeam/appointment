@@ -3,3 +3,7 @@ node_modules
 node_modules/
 .vite/
 dist/
+# Local MCP config (may contain tokens)
+.mcp.json
+# Local-only project guide (not pushed to origin)
+CLAUDE.md
