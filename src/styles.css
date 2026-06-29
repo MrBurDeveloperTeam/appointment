@@ -3613,12 +3613,19 @@ tbody tr:hover {
 
 .toast-container {
   position: fixed;
-  bottom: var(--space-lg);
-  right: var(--space-lg);
-  z-index: 2000;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  /* Above .modal-overlay (z-index: 10000) so toasts show centered over open dialogs */
+  z-index: 11000;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--space-sm);
+  width: max-content;
+  max-width: min(90vw, 440px);
+  /* Let clicks pass through the empty container; individual toasts re-enable below */
+  pointer-events: none;
 }
 
 .toast {
@@ -3630,29 +3637,31 @@ tbody tr:hover {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   border-left: 4px solid var(--primary);
-  animation: slideIn 0.3s ease;
+  animation: toastDropIn 0.25s ease;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
-.toast.success {
+.toast.toast-success {
   border-left-color: var(--success);
 }
 
-.toast.error {
+.toast.toast-error {
   border-left-color: var(--danger);
 }
 
-.toast.warning {
+.toast.toast-warning {
   border-left-color: var(--warning);
 }
 
-@keyframes slideIn {
+@keyframes toastDropIn {
   from {
-    transform: translateX(100%);
+    transform: translateY(-12px);
     opacity: 0;
   }
 
   to {
-    transform: translateX(0);
+    transform: translateY(0);
     opacity: 1;
   }
 }
