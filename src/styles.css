@@ -3613,9 +3613,11 @@ tbody tr:hover {
 
 .toast-container {
   position: fixed;
-  top: 24px;
+  /* Centered within the (viewport-centered) dialog, biased toward the upper area
+     so it sits inside the dialog without covering the action buttons. */
+  top: 28%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   /* Above .modal-overlay (z-index: 10000) so toasts show centered over open dialogs */
   z-index: 11000;
   display: flex;
