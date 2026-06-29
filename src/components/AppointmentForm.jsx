@@ -5,6 +5,7 @@ import { todayISO } from '../utils/date';
 import { getInitials } from '../utils/people';
 import { getColorBg } from '../utils/colors';
 import { useToast } from '../context/ToastProvider';
+import { findAppointmentConflicts } from '../utils/availability';
 
 export default function AppointmentForm({
   patients,
@@ -23,6 +24,9 @@ export default function AppointmentForm({
   const { addToast } = useToast();
   const defaultDuration = settings && settings.slotDuration ? settings.slotDuration : 30;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Overlap warning: holds the conflicting appointments after a first save attempt;
+  // a second submit while this is set proceeds (deliberate overbook).
+  const [pendingConflicts, setPendingConflicts] = useState(null);
   const [form, setForm] = useState({
     patientId: patients[0] ? patients[0].id : '',
     roomId: rooms[0] ? rooms[0].id : '',
@@ -100,6 +104,12 @@ export default function AppointmentForm({
   }, [form.treatmentId, treatments, isEditing]);
 
   const endTime = useMemo(() => addMinutes(form.startTime, form.duration), [form.startTime, form.duration]);
+
+  // If the slot changes, drop any stale overlap confirmation so the user must re-confirm.
+  useEffect(() => {
+    setPendingConflicts(null);
+  }, [form.date, form.startTime, form.duration]);
+
   const selectedPatient = patients.find((p) => String(p.id) === String(form.patientId));
   const selectedTreatment = treatments.find((t) => String(t.id) === String(form.treatmentId));
   const [searchResults, setSearchResults] = useState([]);
@@ -175,6 +185,21 @@ export default function AppointmentForm({
           addToast(`Appointment must be within working hours (${formatTime(start)} - ${formatTime(end)}).`, 'warning');
           return;
         }
+      }
+    }
+
+    // Overlap check (warn + allow override). Same clinic, any dentist; cancelled/no-show ignored.
+    // First attempt with conflicts shows the warning and stops; a second submit proceeds.
+    if (!pendingConflicts) {
+      const editingId = initialData && initialData.id ? initialData.id : form.id;
+      const conflicts = findAppointmentConflicts(
+        { date: form.date, startTime: form.startTime, duration: form.duration },
+        appointments,
+        editingId
+      );
+      if (conflicts.length > 0) {
+        setPendingConflicts(conflicts);
+        return;
       }
     }
 
@@ -471,6 +496,28 @@ export default function AppointmentForm({
           </div>
         </div>
 
+        {pendingConflicts && pendingConflicts.length > 0 && (
+          <div
+            className="form-error"
+            style={{ margin: '0 var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 4 }}
+          >
+            <strong>
+              This time overlaps {pendingConflicts.length} existing appointment
+              {pendingConflicts.length > 1 ? 's' : ''}:
+            </strong>
+            <span>
+              {pendingConflicts
+                .map((c) => {
+                  const cEnd = c.endTime || addMinutes(c.startTime, c.duration || 30);
+                  const who = patients.find((p) => String(p.id) === String(c.patientId));
+                  return `${formatTime(c.startTime)}–${formatTime(cEnd)}${who ? ` (${who.name})` : ''}`;
+                })
+                .join(', ')}
+            </span>
+            <span>Click “Book anyway” to overbook, or change the time.</span>
+          </div>
+        )}
+
         <div className="modal-footer">
           {showCreditWarning && (
             <div style={{ color: 'var(--danger)', fontWeight: 'bold', marginRight: 'auto', fontSize: 'var(--font-size-sm)' }}>
@@ -494,7 +541,9 @@ export default function AppointmentForm({
           <button type="submit" className="btn btn-primary" disabled={showCreditWarning || isSubmitting}>
             {isSubmitting
               ? (isEditing ? 'Saving...' : 'Creating...')
-              : (isEditing ? 'Save Appointment' : 'Create Appointment')
+              : pendingConflicts
+                ? 'Book anyway'
+                : (isEditing ? 'Save Appointment' : 'Create Appointment')
             }
           </button>
         </div>
