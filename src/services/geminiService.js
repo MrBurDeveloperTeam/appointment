@@ -1,7 +1,16 @@
 import { GoogleGenAI } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 const modelId = 'gemini-3-flash-preview';
+
+// Construct the client lazily so a missing VITE_GEMINI_API_KEY does not throw
+// at module load and crash the whole app — the AI features simply no-op instead.
+let _ai = null;
+function getAi() {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) return null;
+  if (!_ai) _ai = new GoogleGenAI({ apiKey });
+  return _ai;
+}
 
 /**
  * Chat with Molar AI, optionally injecting user/appointment context.
@@ -11,6 +20,11 @@ const modelId = 'gemini-3-flash-preview';
  */
 export async function chatWithMolarAI(history, message, userContext) {
   try {
+    const ai = getAi();
+    if (!ai) {
+      return "The Snabbb Assistant is not configured (missing API key). Please set VITE_GEMINI_API_KEY to enable AI features.";
+    }
+
     const isPersonalised = !!userContext && userContext.trim().length > 30;
 
     const systemInstruction = isPersonalised
