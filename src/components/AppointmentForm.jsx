@@ -189,7 +189,8 @@ export default function AppointmentForm({
     }
 
     // Overlap check (warn + allow override). Same clinic, any dentist; cancelled/no-show ignored.
-    // First attempt with conflicts shows the warning and stops; a second submit proceeds.
+    // First attempt with conflicts shows a centered toast + flips the button to
+    // "Book anyway"; a second submit proceeds (deliberate overbook).
     if (!pendingConflicts) {
       const editingId = initialData && initialData.id ? initialData.id : form.id;
       const conflicts = findAppointmentConflicts(
@@ -198,6 +199,18 @@ export default function AppointmentForm({
         editingId
       );
       if (conflicts.length > 0) {
+        const detail = conflicts
+          .map((c) => {
+            const cEnd = c.endTime || addMinutes(c.startTime, c.duration || 30);
+            const who = patients.find((p) => String(p.id) === String(c.patientId));
+            return `${formatTime(c.startTime)}–${formatTime(cEnd)}${who ? ` (${who.name})` : ''}`;
+          })
+          .join(', ');
+        addToast(
+          `This time overlaps ${conflicts.length} existing appointment${conflicts.length > 1 ? 's' : ''}: ${detail}. Click "Book anyway" to overbook.`,
+          'warning',
+          6000
+        );
         setPendingConflicts(conflicts);
         return;
       }
@@ -494,28 +507,6 @@ export default function AppointmentForm({
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
           </div>
-
-          {pendingConflicts && pendingConflicts.length > 0 && (
-            <div
-              className="form-error"
-              style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
-            >
-              <strong>
-                This time overlaps {pendingConflicts.length} existing appointment
-                {pendingConflicts.length > 1 ? 's' : ''}:
-              </strong>
-              <span>
-                {pendingConflicts
-                  .map((c) => {
-                    const cEnd = c.endTime || addMinutes(c.startTime, c.duration || 30);
-                    const who = patients.find((p) => String(p.id) === String(c.patientId));
-                    return `${formatTime(c.startTime)}–${formatTime(cEnd)}${who ? ` (${who.name})` : ''}`;
-                  })
-                  .join(', ')}
-              </span>
-              <span>Click “Book anyway” to overbook, or change the time.</span>
-            </div>
-          )}
         </div>
 
         <div className="modal-footer">
