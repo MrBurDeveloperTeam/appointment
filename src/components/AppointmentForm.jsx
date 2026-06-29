@@ -494,29 +494,29 @@ export default function AppointmentForm({
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
           </div>
-        </div>
 
-        {pendingConflicts && pendingConflicts.length > 0 && (
-          <div
-            className="form-error"
-            style={{ margin: '0 var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 4 }}
-          >
-            <strong>
-              This time overlaps {pendingConflicts.length} existing appointment
-              {pendingConflicts.length > 1 ? 's' : ''}:
-            </strong>
-            <span>
-              {pendingConflicts
-                .map((c) => {
-                  const cEnd = c.endTime || addMinutes(c.startTime, c.duration || 30);
-                  const who = patients.find((p) => String(p.id) === String(c.patientId));
-                  return `${formatTime(c.startTime)}–${formatTime(cEnd)}${who ? ` (${who.name})` : ''}`;
-                })
-                .join(', ')}
-            </span>
-            <span>Click “Book anyway” to overbook, or change the time.</span>
-          </div>
-        )}
+          {pendingConflicts && pendingConflicts.length > 0 && (
+            <div
+              className="form-error"
+              style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
+            >
+              <strong>
+                This time overlaps {pendingConflicts.length} existing appointment
+                {pendingConflicts.length > 1 ? 's' : ''}:
+              </strong>
+              <span>
+                {pendingConflicts
+                  .map((c) => {
+                    const cEnd = c.endTime || addMinutes(c.startTime, c.duration || 30);
+                    const who = patients.find((p) => String(p.id) === String(c.patientId));
+                    return `${formatTime(c.startTime)}–${formatTime(cEnd)}${who ? ` (${who.name})` : ''}`;
+                  })
+                  .join(', ')}
+              </span>
+              <span>Click “Book anyway” to overbook, or change the time.</span>
+            </div>
+          )}
+        </div>
 
         <div className="modal-footer">
           {showCreditWarning && (
