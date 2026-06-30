@@ -418,8 +418,10 @@ export default function PublicBookingView({ clinicSlug }) {
       if (t < minMinutes) continue;
       slots.push(minutesToTime(t));
     }
-    return filterAvailableSlots(slots, selectedDuration, busySlots, clinicCapacity);
-  }, [appointment.date, selectedDuration, slotDuration, workingHoursStart, workingHoursEnd, busySlots, clinicCapacity]);
+    // Capacity 1: a single confirmed appointment disables that slot so patients
+    // cannot book a time that is already taken (no public double-booking).
+    return filterAvailableSlots(slots, selectedDuration, busySlots, 1);
+  }, [appointment.date, selectedDuration, slotDuration, workingHoursStart, workingHoursEnd, busySlots]);
 
   useEffect(() => {
     if (!appointment.date) return;

@@ -733,7 +733,7 @@ function AppContent() {
       <main className="main-content">
         <Header
           title={viewTitle}
-          onNewAppointment={() => setShowAppointmentModal(true)}
+          onNewAppointment={() => { setAppointmentDefaults(null); setShowAppointmentModal(true); }}
           onToggleSidebar={toggleSidebar}
           isSidebarOpen={sidebarOpen}
           credits={credits}
@@ -766,7 +766,7 @@ function AppContent() {
               rooms={rooms}
               treatments={treatments}
               onAppointmentSelect={handleAppointmentClick}
-              onNewAppointment={() => setShowAppointmentModal(true)}
+              onNewAppointment={() => { setAppointmentDefaults(null); setShowAppointmentModal(true); }}
             />
           )}
           {view === 'patients' && (

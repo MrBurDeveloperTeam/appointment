@@ -3,6 +3,7 @@ import { buildHolidayMap } from '../utils/calendar';
 import { toISODate, todayISO, sameDate, startOfWeek, endOfWeek, eachDayOfInterval } from '../utils/date';
 import { addMinutes, formatTime, minutesToTime } from '../utils/time';
 import { getColorBg } from '../utils/colors';
+import { findAppointmentConflicts } from '../utils/availability';
 import Modal from './Modal';
 
 export default function WeekView({
@@ -183,9 +184,15 @@ export default function WeekView({
               startTime: newStart,
               endTime: addMinutes(newStart, duration),
             };
+            const conflicts = findAppointmentConflicts(
+              { date: iso, startTime: newStart, duration },
+              appointments,
+              dragged.id
+            );
             setPendingReschedule({
               appointment: dragged,
               updates,
+              conflicts,
               message: `Reschedule ${patientName(dragged.patientId)} to ${iso} at ${formatTime(newStart)}?`,
             });
             setDragPreview(null);
@@ -300,6 +307,19 @@ export default function WeekView({
         <Modal title="Confirm reschedule" onClose={() => setPendingReschedule(null)}>
           <div style={{ padding: '0 var(--space-lg) var(--space-lg)' }}>
             <p style={{ marginBottom: 'var(--space-md)' }}>{pendingReschedule.message}</p>
+            {pendingReschedule.conflicts && pendingReschedule.conflicts.length > 0 && (
+              <div className="form-error" style={{ marginBottom: 'var(--space-md)' }}>
+                This time overlaps {pendingReschedule.conflicts.length} existing appointment
+                {pendingReschedule.conflicts.length > 1 ? 's' : ''}:{' '}
+                {pendingReschedule.conflicts
+                  .map((c) => {
+                    const cEnd = c.endTime || addMinutes(c.startTime, c.duration || 30);
+                    return `${formatTime(c.startTime)}–${formatTime(cEnd)} (${patientName(c.patientId)})`;
+                  })
+                  .join(', ')}
+                . Reschedule anyway to overbook?
+              </div>
+            )}
             <div className="confirm-actions">
               <button className="btn btn-secondary" onClick={() => setPendingReschedule(null)}>
                 Cancel
@@ -311,7 +331,9 @@ export default function WeekView({
                   setPendingReschedule(null);
                 }}
               >
-                Confirm
+                {pendingReschedule.conflicts && pendingReschedule.conflicts.length > 0
+                  ? 'Reschedule anyway'
+                  : 'Confirm'}
               </button>
             </div>
           </div>

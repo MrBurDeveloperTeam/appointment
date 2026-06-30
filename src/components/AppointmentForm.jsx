@@ -5,6 +5,7 @@ import { todayISO } from '../utils/date';
 import { getInitials } from '../utils/people';
 import { getColorBg } from '../utils/colors';
 import { useToast } from '../context/ToastProvider';
+import { findAppointmentConflicts } from '../utils/availability';
 
 export default function AppointmentForm({
   patients,
@@ -23,6 +24,9 @@ export default function AppointmentForm({
   const { addToast } = useToast();
   const defaultDuration = settings && settings.slotDuration ? settings.slotDuration : 30;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Overlap warning: holds the conflicting appointments after a first save attempt;
+  // a second submit while this is set proceeds (deliberate overbook).
+  const [pendingConflicts, setPendingConflicts] = useState(null);
   const [form, setForm] = useState({
     patientId: patients[0] ? patients[0].id : '',
     roomId: rooms[0] ? rooms[0].id : '',
@@ -36,6 +40,7 @@ export default function AppointmentForm({
     id: null,
   });
   const treatmentInitRef = useRef(false);
+  const hydratedInitialRef = useRef(null);
   const isEditing = Boolean(initialData && initialData.id);
   const [showPatientPicker, setShowPatientPicker] = useState(false);
   const [patientQuery, setPatientQuery] = useState('');
@@ -57,7 +62,11 @@ export default function AppointmentForm({
   const maxTime = workingEnd;
 
   useEffect(() => {
-    if (initialData) {
+    // Hydrate from initialData only once per initialData identity. Re-running on
+    // patients/rooms/treatments/dentists changes would clobber the user's edits
+    // (e.g. revert a changed time) when the data store re-renders.
+    if (initialData && hydratedInitialRef.current !== initialData) {
+      hydratedInitialRef.current = initialData;
       setForm((prev) => ({
         ...prev,
         ...initialData,
@@ -100,6 +109,12 @@ export default function AppointmentForm({
   }, [form.treatmentId, treatments, isEditing]);
 
   const endTime = useMemo(() => addMinutes(form.startTime, form.duration), [form.startTime, form.duration]);
+
+  // If the slot changes, drop any stale overlap confirmation so the user must re-confirm.
+  useEffect(() => {
+    setPendingConflicts(null);
+  }, [form.date, form.startTime, form.duration]);
+
   const selectedPatient = patients.find((p) => String(p.id) === String(form.patientId));
   const selectedTreatment = treatments.find((t) => String(t.id) === String(form.treatmentId));
   const [searchResults, setSearchResults] = useState([]);
@@ -175,6 +190,34 @@ export default function AppointmentForm({
           addToast(`Appointment must be within working hours (${formatTime(start)} - ${formatTime(end)}).`, 'warning');
           return;
         }
+      }
+    }
+
+    // Overlap check (warn + allow override). Same clinic, any dentist; cancelled/no-show ignored.
+    // First attempt with conflicts shows a centered toast + flips the button to
+    // "Book anyway"; a second submit proceeds (deliberate overbook).
+    if (!pendingConflicts) {
+      const editingId = initialData && initialData.id ? initialData.id : form.id;
+      const conflicts = findAppointmentConflicts(
+        { date: form.date, startTime: form.startTime, duration: form.duration },
+        appointments,
+        editingId
+      );
+      if (conflicts.length > 0) {
+        const detail = conflicts
+          .map((c) => {
+            const cEnd = c.endTime || addMinutes(c.startTime, c.duration || 30);
+            const who = patients.find((p) => String(p.id) === String(c.patientId));
+            return `${formatTime(c.startTime)}–${formatTime(cEnd)}${who ? ` (${who.name})` : ''}`;
+          })
+          .join(', ');
+        addToast(
+          `This time overlaps ${conflicts.length} existing appointment${conflicts.length > 1 ? 's' : ''}: ${detail}. Click "Book anyway" to overbook.`,
+          'warning',
+          6000
+        );
+        setPendingConflicts(conflicts);
+        return;
       }
     }
 
@@ -494,7 +537,9 @@ export default function AppointmentForm({
           <button type="submit" className="btn btn-primary" disabled={showCreditWarning || isSubmitting}>
             {isSubmitting
               ? (isEditing ? 'Saving...' : 'Creating...')
-              : (isEditing ? 'Save Appointment' : 'Create Appointment')
+              : pendingConflicts
+                ? 'Book anyway'
+                : (isEditing ? 'Save Appointment' : 'Create Appointment')
             }
           </button>
         </div>
