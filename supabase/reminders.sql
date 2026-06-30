@@ -9,7 +9,8 @@
 create or replace function private.send_email_internal(
   p_to text,
   p_subject text,
-  p_html_body text
+  p_html_body text,
+  p_from text default 'Appointments <appointments@snabbb.com>'
 )
 returns jsonb
 language plpgsql
@@ -32,7 +33,9 @@ begin
       'Content-Type', 'application/json'
     ),
     body := jsonb_build_object(
-      'from', 'Appointments <appointments@snabbb.com>',
+      -- Sender display name is the clinic's own name (passed by callers);
+      -- address stays @snabbb.com (Resend-verified). Falls back if empty.
+      'from', coalesce(nullif(p_from, ''), 'Appointments <appointments@snabbb.com>'),
       'to', jsonb_build_array(p_to),
       'subject', p_subject,
       'html', p_html_body
@@ -76,7 +79,8 @@ begin
       format(
         '<p>Hello %s,</p><p>Your appointment at <b>%s</b> has been confirmed for <b>%s at %s</b>.</p><p>See you then!</p>',
         v_name, coalesce(v_clinic, 'the clinic'), v_date, v_time
-      )::text
+      )::text,
+      (coalesce(v_clinic, 'Appointments') || ' <appointments@snabbb.com>')::text
     );
   end if;
 end;

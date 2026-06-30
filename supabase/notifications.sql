@@ -28,7 +28,8 @@ begin
       format(
         '<p>Hello %s,</p><p>We have received your appointment request at <b>%s</b> for <b>%s at %s</b>.</p><p>Your request is pending review by the clinic. We will email you once it is confirmed.</p>',
         coalesce(new.patient_name, 'there'), coalesce(v_clinic, 'the clinic'), v_date, v_time
-      )::text
+      )::text,
+      (coalesce(v_clinic, 'Appointments') || ' <appointments@snabbb.com>')::text
     );
   end if;
   return new;
@@ -65,7 +66,8 @@ begin
       format(
         '<p>Hello %s,</p><p>Unfortunately <b>%s</b> was unable to accommodate your requested appointment for <b>%s at %s</b>.</p><p>Please contact the clinic to arrange an alternative time.</p>',
         coalesce(new.patient_name, 'there'), coalesce(v_clinic, 'the clinic'), v_date, v_time
-      )::text
+      )::text,
+      (coalesce(v_clinic, 'Appointments') || ' <appointments@snabbb.com>')::text
     );
   end if;
   return new;
