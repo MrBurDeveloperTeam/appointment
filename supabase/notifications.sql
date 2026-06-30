@@ -14,17 +14,20 @@ security definer
 set search_path = private, public, extensions
 as $$
 declare
-  v_email text := coalesce(new.email, new.lookup_email);
-  v_date  text := coalesce(new.appointment_date::text, (new.preferred_dates)[1]::text, '');
-  v_time  text := coalesce(new.appointment_start_time, (new.preferred_times)[1], '');
+  v_email  text := coalesce(new.email, new.lookup_email);
+  v_date   text := coalesce(new.appointment_date::text, (new.preferred_dates)[1]::text, '');
+  v_time   text := coalesce(new.appointment_start_time, (new.preferred_times)[1], '');
+  v_clinic text;
 begin
+  select c.name into v_clinic from public.apt_clinics c where c.id = new.clinic_id;
+
   if v_email is not null and v_email like '%@%' then
     perform private.send_email_internal(
       v_email::text,
-      'We received your booking request'::text,
+      ('We received your booking request' || coalesce(' - ' || v_clinic, ''))::text,
       format(
-        '<p>Hello %s,</p><p>We have received your appointment request for <b>%s at %s</b>.</p><p>Your request is pending review by the clinic. We will email you once it is confirmed.</p>',
-        coalesce(new.patient_name, 'there'), v_date, v_time
+        '<p>Hello %s,</p><p>We have received your appointment request at <b>%s</b> for <b>%s at %s</b>.</p><p>Your request is pending review by the clinic. We will email you once it is confirmed.</p>',
+        coalesce(new.patient_name, 'there'), coalesce(v_clinic, 'the clinic'), v_date, v_time
       )::text
     );
   end if;
@@ -46,20 +49,22 @@ security definer
 set search_path = private, public, extensions
 as $$
 declare
-  v_email text := coalesce(new.email, new.lookup_email);
-  v_date  text := coalesce(new.appointment_date::text, (new.preferred_dates)[1]::text, '');
-  v_time  text := coalesce(new.appointment_start_time, (new.preferred_times)[1], '');
+  v_email  text := coalesce(new.email, new.lookup_email);
+  v_date   text := coalesce(new.appointment_date::text, (new.preferred_dates)[1]::text, '');
+  v_time   text := coalesce(new.appointment_start_time, (new.preferred_times)[1], '');
+  v_clinic text;
 begin
   if new.status = 'declined'
      and old.status is distinct from 'declined'
      and v_email is not null
      and v_email like '%@%' then
+    select c.name into v_clinic from public.apt_clinics c where c.id = new.clinic_id;
     perform private.send_email_internal(
       v_email::text,
-      'Update on your booking request'::text,
+      ('Update on your booking request' || coalesce(' - ' || v_clinic, ''))::text,
       format(
-        '<p>Hello %s,</p><p>Unfortunately we were unable to accommodate your requested appointment for <b>%s at %s</b>.</p><p>Please contact the clinic to arrange an alternative time.</p>',
-        coalesce(new.patient_name, 'there'), v_date, v_time
+        '<p>Hello %s,</p><p>Unfortunately <b>%s</b> was unable to accommodate your requested appointment for <b>%s at %s</b>.</p><p>Please contact the clinic to arrange an alternative time.</p>',
+        coalesce(new.patient_name, 'there'), coalesce(v_clinic, 'the clinic'), v_date, v_time
       )::text
     );
   end if;

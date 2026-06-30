@@ -55,24 +55,27 @@ declare
   v_date  text;
   v_time  text;
   v_name  text;
+  v_clinic text;
 begin
   select
     p.email,
     a.date::text,
     a.start_time::text,
-    p.name
-  into v_email, v_date, v_time, v_name
+    p.name,
+    c.name
+  into v_email, v_date, v_time, v_name, v_clinic
   from public.appointments a
   join public.apt_patients p on a.patient_id = p.id
+  left join public.apt_clinics c on a.clinic_id = c.id
   where a.id = p_appointment_id;
 
   if v_email is not null and v_email like '%@%' then
     perform private.send_email_internal(
       v_email::text,
-      'Appointment Confirmed'::text,
+      ('Appointment Confirmed' || coalesce(' - ' || v_clinic, ''))::text,
       format(
-        '<p>Hello %s,</p><p>Your appointment has been confirmed for <b>%s at %s</b>.</p><p>See you then!</p>',
-        v_name, v_date, v_time
+        '<p>Hello %s,</p><p>Your appointment at <b>%s</b> has been confirmed for <b>%s at %s</b>.</p><p>See you then!</p>',
+        v_name, coalesce(v_clinic, 'the clinic'), v_date, v_time
       )::text
     );
   end if;
