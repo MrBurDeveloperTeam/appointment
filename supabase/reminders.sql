@@ -9,7 +9,8 @@
 create or replace function private.send_email_internal(
   p_to text,
   p_subject text,
-  p_html_body text
+  p_html_body text,
+  p_from text default 'Appointments <appointments@snabbb.com>'
 )
 returns jsonb
 language plpgsql
@@ -32,7 +33,9 @@ begin
       'Content-Type', 'application/json'
     ),
     body := jsonb_build_object(
-      'from', 'Appointments <appointments@snabbb.com>',
+      -- Sender display name is the clinic's own name (passed by callers);
+      -- address stays @snabbb.com (Resend-verified). Falls back if empty.
+      'from', coalesce(nullif(p_from, ''), 'Appointments <appointments@snabbb.com>'),
       'to', jsonb_build_array(p_to),
       'subject', p_subject,
       'html', p_html_body
@@ -55,25 +58,29 @@ declare
   v_date  text;
   v_time  text;
   v_name  text;
+  v_clinic text;
 begin
   select
     p.email,
     a.date::text,
     a.start_time::text,
-    p.name
-  into v_email, v_date, v_time, v_name
+    p.name,
+    c.name
+  into v_email, v_date, v_time, v_name, v_clinic
   from public.appointments a
   join public.apt_patients p on a.patient_id = p.id
+  left join public.apt_clinics c on a.clinic_id = c.id
   where a.id = p_appointment_id;
 
   if v_email is not null and v_email like '%@%' then
     perform private.send_email_internal(
       v_email::text,
-      'Appointment Confirmed'::text,
+      ('Appointment Confirmed' || coalesce(' - ' || v_clinic, ''))::text,
       format(
-        '<p>Hello %s,</p><p>Your appointment has been confirmed for <b>%s at %s</b>.</p><p>See you then!</p>',
-        v_name, v_date, v_time
-      )::text
+        '<p>Hello %s,</p><p>Your appointment at <b>%s</b> has been confirmed for <b>%s at %s</b>.</p><p>See you then!</p>',
+        v_name, coalesce(v_clinic, 'the clinic'), v_date, v_time
+      )::text,
+      (coalesce(v_clinic, 'Appointments') || ' <appointments@snabbb.com>')::text
     );
   end if;
 end;
