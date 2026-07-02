@@ -378,7 +378,14 @@ declare
   new_clinic_name text;
   new_clinic_id uuid;
 begin
-  user_name := coalesce(new.raw_user_meta_data->>'full_name', 'New User');
+  -- SSO worker stores the name under user_metadata.name; older signups use full_name.
+  -- Read both (plus an email-localpart fallback) before defaulting to 'New User'.
+  user_name := coalesce(
+    nullif(trim(new.raw_user_meta_data->>'full_name'), ''),
+    nullif(trim(new.raw_user_meta_data->>'name'), ''),
+    nullif(split_part(new.email, '@', 1), ''),
+    'New User'
+  );
   new_clinic_name := user_name || '''s Clinic';
   
   -- Create a new clinic for this user
