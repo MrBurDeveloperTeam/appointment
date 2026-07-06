@@ -12,7 +12,6 @@ interface DragLayerProps {
 
 const TOOL_ICONS: Record<ToolType, { src: string; alt: string }> = {
     soap: { src: '/images/soap.png', alt: 'Soap' },
-    soap2: { src: '/images/soap2.png', alt: 'Premium Soap' },
     shower: { src: '/images/shower.png', alt: 'Shower' },
 };
 

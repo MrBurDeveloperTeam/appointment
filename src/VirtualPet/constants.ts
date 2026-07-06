@@ -1,20 +1,24 @@
 
 import { PetStats, RoomType, FoodItem, ToyItem, BedItem } from './types';
 
+export const DEFAULT_CURRENCY_CODE = 'USD';
+
+export const normalizeCurrencyCode = (currency?: string | null) => {
+    const normalized = (currency || '').trim().toUpperCase();
+    return /^[A-Z]{3}$/.test(normalized) ? normalized : DEFAULT_CURRENCY_CODE;
+};
+
 export const INITIAL_STATS: PetStats = {
-  hunger: 80,
-  energy: 90,
-  happiness: 80,
-  hygiene: 50,
+  hunger: 100,
+  energy: 100,
+  happiness: 100,
+  hygiene: 100,
   level: 1,
   xp: 0,
   coins: 100
 };
 
-export const INITIAL_INVENTORY: Record<string, number> = {
-  apple: 5,
-  cookie: 3
-};
+export const INITIAL_INVENTORY: Record<string, number> = {};
 
 export const XP_TO_LEVEL_UP = 100;
 
