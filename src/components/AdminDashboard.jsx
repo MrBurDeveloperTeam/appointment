@@ -40,9 +40,10 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
   const [expandedAppointmentMonths, setExpandedAppointmentMonths] = useState({});
   const [appointmentFilter, setAppointmentFilter] = useState({ status: 'all', query: '' });
   const [modalState, setModalState] = useState({ type: null, mode: 'new' });
-  const [clinicForm, setClinicForm] = useState({ id: '', name: '', slug: '', city: '', plan: 'Starter', status: 'active' });
+  const [clinicForm, setClinicForm] = useState({ id: '', name: '', slug: '', city: '', plan: 'Starter', status: 'active', subscriptionType: 'monthly', subscriptionEnd: '' });
   const [userForm, setUserForm] = useState({ id: '', username: '', password: '', role: 'dentist', clinicId: '', name: '', status: 'active' });
   const [userFilter, setUserFilter] = useState({ query: '', sortBy: 'newest' });
+  const [userPage, setUserPage] = useState(1);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userLoading, setUserLoading] = useState(false);
   const [detailModal, setDetailModal] = useState({ open: false, clinicId: '', type: '' });
@@ -126,6 +127,20 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
     });
   }, [clinics, clinicDetails]);
 
+  // Map clinicId -> list of emails from profiles table (already loaded as `users`)
+  const clinicEmailsMap = useMemo(() => {
+    const map = {};
+    users.forEach((u) => {
+      if (u.clinicId && u.email) {
+        if (!map[u.clinicId]) map[u.clinicId] = [];
+        if (!map[u.clinicId].includes(u.email)) {
+          map[u.clinicId].push(u.email);
+        }
+      }
+    });
+    return map;
+  }, [users]);
+
   const totals = useMemo(() => {
     const base = { clinics: clinics.length, users: users.length, patients: 0, appointments: 0, staff: 0 };
     clinicSummaries.forEach((clinic) => {
@@ -169,12 +184,14 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
         slug: clinic.slug || '',
         city: clinic.city || '',
         plan: clinic.plan || 'Starter',
-        status: clinic.status || 'active'
+        status: clinic.status || 'active',
+        subscriptionType: clinic.subscriptionType || 'monthly',
+        subscriptionEnd: clinic.subscriptionEnd || ''
       });
       setModalState({ type: 'clinic', mode: 'edit' });
       return;
     }
-    setClinicForm({ id: '', name: '', slug: '', city: '', plan: 'Starter', status: 'active' });
+    setClinicForm({ id: '', name: '', slug: '', city: '', plan: 'Starter', status: 'active', subscriptionType: 'monthly', subscriptionEnd: '' });
     setModalState({ type: 'clinic', mode: 'new' });
   };
 
@@ -726,7 +743,16 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                     <div className="admin-list-top">
                       <div>
                         <div className="admin-row-title">{clinic.name}</div>
-                        <div className="admin-row-sub">{clinic.city} - {clinic.plan} - {clinic.status}</div>
+                        {(clinicEmailsMap[clinic.id] || []).map((email) => (
+                          <div key={email} className="admin-row-email" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>
+                            {email}
+                          </div>
+                        ))}
+                        <div className="admin-row-sub">
+                          {clinic.city} - {clinic.plan}
+                          {clinic.subscriptionType && clinic.subscriptionType !== 'free' && ` (${clinic.subscriptionType}${clinic.subscriptionEnd ? ` until ${clinic.subscriptionEnd}` : ''})`}
+                          {' '}- {clinic.status}
+                        </div>
                         <div className="admin-list-meta">
                           <span>{clinic.stats.patients} patients</span>
                           <span>{clinic.stats.appointments} appointments</span>
@@ -960,6 +986,13 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                                       <span className="setting-value">{clinicDetails[clinic.id]?.settings?.clinicName || 'Dental Clinic'}</span>
                                     </div>
                                     <div className="setting-item">
+                                      <span className="setting-label">Subscription</span>
+                                      <span className="setting-value" style={{ textTransform: 'capitalize' }}>
+                                        {clinic.subscriptionType || 'Monthly'}
+                                        {clinic.subscriptionEnd && ` (Ends: ${new Date(clinic.subscriptionEnd).toLocaleDateString()})`}
+                                      </span>
+                                    </div>
+                                    <div className="setting-item">
                                       <span className="setting-label">Working Hours</span>
                                       <span className="setting-value">
                                         {clinicDetails[clinic.id]?.settings?.workingHours?.start || '09:00'} - {clinicDetails[clinic.id]?.settings?.workingHours?.end || '18:00'}
@@ -1015,14 +1048,14 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                     className="admin-search-input"
                     style={{ paddingLeft: 36, width: '100%' }}
                     value={userFilter.query}
-                    onChange={(e) => setUserFilter(prev => ({ ...prev, query: e.target.value }))}
+                    onChange={(e) => { setUserFilter(prev => ({ ...prev, query: e.target.value })); setUserPage(1); }}
                   />
                 </div>
                 <select
                   className="admin-select"
                   style={{ width: 150 }}
                   value={userFilter.sortBy}
-                  onChange={(e) => setUserFilter(prev => ({ ...prev, sortBy: e.target.value }))}
+                  onChange={(e) => { setUserFilter(prev => ({ ...prev, sortBy: e.target.value })); setUserPage(1); }}
                 >
                   <option value="newest">Newest First</option>
                   <option value="oldest">Oldest First</option>
@@ -1049,94 +1082,114 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
               )}
               <div className="admin-table-container">
                 <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>Email</th>
-                      <th>Name</th>
-                      <th>Account Type</th>
-                      <th>Phone</th>
-                      <th>Position</th>
-                      <th>Created At</th>
-                      <th>Status</th>
-                      <th style={{ textAlign: 'right' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.filter(u => {
-
-
-                      // Hide admin accounts always
+                  {(() => {
+                    const processedUsers = users.filter(u => {
                       if (u.role === 'admin') return false;
-
-                      // Filter by search
                       const q = userFilter.query.toLowerCase();
-                      const matchQuery = (
+                      return (
                         (u.name || '').toLowerCase().includes(q) ||
                         (u.email || '').toLowerCase().includes(q) ||
                         (u.phone || '').toLowerCase().includes(q)
                       );
-
-                      return matchQuery;
                     }).sort((a, b) => {
-                      if (userFilter.sortBy === 'newest') {
-                        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-                      }
-                      if (userFilter.sortBy === 'oldest') {
-                        return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
-                      }
-                      if (userFilter.sortBy === 'alpha_asc') {
-                        return (a.name || a.email || '').localeCompare(b.name || b.email || '');
-                      }
-                      if (userFilter.sortBy === 'alpha_desc') {
-                        return (b.name || b.email || '').localeCompare(a.name || a.email || '');
-                      }
+                      if (userFilter.sortBy === 'newest') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+                      if (userFilter.sortBy === 'oldest') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+                      if (userFilter.sortBy === 'alpha_asc') return (a.name || a.email || '').localeCompare(b.name || b.email || '');
+                      if (userFilter.sortBy === 'alpha_desc') return (b.name || b.email || '').localeCompare(a.name || a.email || '');
                       return 0;
-                    }).map((user) => (
-                      <tr key={user.id}>
-                        <td className="font-medium">{user.email}</td>
-                        <td>{user.name || '-'}</td>
-                        <td>
-                          <div className="flex-col">
-                            <span className="text-capitalize">{user.role}</span>
-                            <span className="text-muted text-xs">
-                              {user.clinicId
-                                ? clinics.find(c => c.id === user.clinicId)?.name
-                                : 'Unassigned'}
-                            </span>
-                          </div>
-                        </td>
-                        <td>{user.phone || '-'}</td>
-                        <td>{user.role === 'dentist' ? 'Dentist' : 'Administrator'}</td>
-                        <td className="text-muted text-sm">
-                          {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
-                        </td>
-                        <td>
-                          <span className={`admin-tag ${user.status === 'active' ? 'success' : 'warning'}`}>
-                            {user.status}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <button
-                            className="btn btn-icon btn-ghost btn-sm"
-                            onClick={() => openUserModal(user)}
-                            title="Edit User"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {false && (
-                      <tr>
-                        <td colSpan="8" className="text-center py-4 text-muted">No visual users found (Admins hidden)</td>
-                      </tr>
-                    )}
-                    {users.length === 0 && (
-                      <tr>
-                        <td colSpan="8" className="text-center py-4 text-muted">No users found</td>
-                      </tr>
-                    )}
-                  </tbody>
+                    });
+
+                    const usersPerPage = 10;
+                    const totalUserPages = Math.max(1, Math.ceil(processedUsers.length / usersPerPage));
+                    const currentPage = Math.min(userPage, totalUserPages);
+                    const startIndex = (currentPage - 1) * usersPerPage;
+                    const paginatedUsers = processedUsers.slice(startIndex, startIndex + usersPerPage);
+
+                    return (
+                      <>
+                        <thead>
+                          <tr>
+                            <th>Email</th>
+                            <th>Name</th>
+                            <th>Account Type</th>
+                            <th>Created At</th>
+                            <th style={{ textAlign: 'right' }}>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedUsers.map((user) => (
+                            <tr key={user.id}>
+                              <td className="font-medium" title={user.email}>
+                                {user.email && user.email.length > 20 ? `${user.email.substring(0, 20)}...` : user.email}
+                              </td>
+                              <td title={user.name}>
+                                {user.name ? (user.name.length > 20 ? `${user.name.substring(0, 20)}...` : user.name) : '-'}
+                              </td>
+                              <td>
+                                <div className="flex-col">
+                                  <span className="text-capitalize">{user.role}</span>
+                                  <span className="text-muted text-xs">
+                                    {user.clinicId
+                                      ? clinics.find(c => c.id === user.clinicId)?.name
+                                      : 'Unassigned'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="text-muted text-sm">
+                                {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
+                              </td>
+                              <td style={{ textAlign: 'right' }}>
+                                <button
+                                  className="btn btn-icon btn-ghost btn-sm"
+                                  onClick={() => openUserModal(user)}
+                                  title="Edit User"
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                          {processedUsers.length === 0 && (
+                            <tr>
+                              <td colSpan="5" className="text-center py-4 text-muted">No users found</td>
+                            </tr>
+                          )}
+                        </tbody>
+                        {totalUserPages > 1 && (
+                          <tfoot style={{ background: 'transparent' }}>
+                            <tr>
+                              <td colSpan="5" style={{ padding: '16px 12px 8px', borderBottom: 'none' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div className="text-sm text-muted">
+                                    Showing {startIndex + 1} to {Math.min(startIndex + usersPerPage, processedUsers.length)} of {processedUsers.length} entries
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <button
+                                      className="btn btn-secondary btn-sm"
+                                      disabled={currentPage === 1}
+                                      onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                                    >
+                                      Previous
+                                    </button>
+                                    <div style={{ fontSize: '13px', margin: '0 8px' }}>
+                                      Page {currentPage} of {totalUserPages}
+                                    </div>
+                                    <button
+                                      className="btn btn-secondary btn-sm"
+                                      disabled={currentPage === totalUserPages}
+                                      onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))}
+                                    >
+                                      Next
+                                    </button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </>
+                    );
+                  })()}
                 </table>
               </div>
             </section>
@@ -1212,12 +1265,32 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Subscription Plan</label>
+                <label className="form-label">System Plan</label>
                 <select className="form-select" value={clinicForm.plan} onChange={(e) => setClinicForm({ ...clinicForm, plan: e.target.value })}>
                   {planOptions.map((option) => (
                     <option key={option} value={option}>{option}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Billing Cycle</label>
+                <select className="form-select" value={clinicForm.subscriptionType} onChange={(e) => setClinicForm({ ...clinicForm, subscriptionType: e.target.value })}>
+                  <option value="monthly">Monthly</option>
+                  <option value="annually">Annually</option>
+                  <option value="free">Free / Unmanaged</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Subscription End Date</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={clinicForm.subscriptionEnd}
+                  onChange={(e) => setClinicForm({ ...clinicForm, subscriptionEnd: e.target.value })}
+                />
               </div>
             </div>
 
@@ -1251,7 +1324,13 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Email</label>
-                <input className="form-input" value={userForm.username} onChange={(e) => setUserForm({ ...userForm, username: e.target.value })} />
+                <input
+                  className="form-input"
+                  value={userForm.username}
+                  onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                  readOnly={modalState.mode === 'edit'}
+                  style={modalState.mode === 'edit' ? { opacity: 0.6, cursor: 'not-allowed', background: 'var(--bg-hover)' } : {}}
+                />
               </div>
               {DataStore.canCreateUsers && modalState.mode === 'new' && (
                 <div className="form-group">

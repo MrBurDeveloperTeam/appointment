@@ -1,4 +1,4 @@
-﻿
+
 import { Fragment, useMemo, useState } from 'react';
 import { getColorBg } from '../utils/colors';
 import { getInitials } from '../utils/people';
@@ -308,6 +308,8 @@ export default function SettingsView({
     saveHolidays(merged);
   };
 
+  const isUnconfigured = !form.workingHoursStart || dentists.length === 0 || rooms.length === 0 || treatments.length === 0;
+
   return (
     <div className="settings-layout">
       <aside className="settings-nav" role="tablist" aria-label="Settings sections">
@@ -331,6 +333,33 @@ export default function SettingsView({
       </aside>
 
       <div className="settings-content">
+        {isUnconfigured && (
+          <div style={{
+            background: "rgba(239, 68, 68, 0.1)",
+            border: "1px solid rgba(239, 68, 68, 0.2)",
+            color: "var(--danger)",
+            padding: "16px 20px",
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            gap: "14px",
+            height: "fit-content",
+            alignSelf: "start"
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", fontWeight: 600, lineHeight: 1 }}>Setup Required</h4>
+              <div style={{ fontSize: "0.9rem", opacity: 0.9, lineHeight: 1.4 }}>
+                You need to add at least <strong>1 dentist</strong>, <strong>1 room</strong>, and <strong>1 treatment</strong>, and configure your <strong>working hours</strong> to unlock the app.
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeSection === 'staff' && (
           <Fragment>
             <div className="settings-card">

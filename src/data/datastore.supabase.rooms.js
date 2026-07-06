@@ -6,28 +6,13 @@ const mapRoom = (row) => ({
   color: row.color || "",
 });
 
-// Assuming your Worker is deployed at this URL
-const API_URL = "https://sso.mrburstudio.com/api";
-
-// Helper to get headers
-async function getHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) throw new Error("No active session");
-  return {
-    "Authorization": `Bearer ${token}`,
-    "Content-Type": "application/json"
-  };
-}
-
 export async function getRooms(clinicId) {
-  const headers = await getHeaders();
-  const params = new URLSearchParams({ clinicId });
-
-  const response = await fetch(`${API_URL}/rooms?${params.toString()}`, { headers });
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_rooms")
+    .select("*")
+    .eq("clinic_id", clinicId)
+    .order("name", { ascending: true });
+  if (error) throw error;
   return (data || []).map(mapRoom);
 }
 
@@ -37,17 +22,12 @@ export async function addRoom(clinicId, room) {
     name: room.name,
     color: room.color || null,
   };
-
-  const headers = await getHeaders();
-  const response = await fetch(`${API_URL}/rooms`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_rooms")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error) throw error;
   return mapRoom(data);
 }
 
@@ -56,27 +36,18 @@ export async function updateRoom(id, updates) {
     ...(updates.name !== undefined ? { name: updates.name } : {}),
     ...(updates.color !== undefined ? { color: updates.color } : {}),
   };
-
-  const headers = await getHeaders();
-  const response = await fetch(`${API_URL}/rooms?id=${id}`, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) throw new Error(await response.text());
-
-  const data = await response.json();
+  const { data, error } = await supabase
+    .from("apt_rooms")
+    .update(payload)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
   return mapRoom(data);
 }
 
 export async function deleteRoom(id) {
-  const headers = await getHeaders();
-  const response = await fetch(`${API_URL}/rooms?id=${id}`, {
-    method: "DELETE",
-    headers
-  });
-
-  if (!response.ok) throw new Error(await response.text());
+  const { error } = await supabase.from("apt_rooms").delete().eq("id", id);
+  if (error) throw error;
   return true;
 }
