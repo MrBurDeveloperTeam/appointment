@@ -39,6 +39,7 @@ import {
   pushThemeToOdoo,
   THEME_SYNC,
 } from './utils/themeSync';
+import { useGetUserId } from './mutation/useGetUserId';
 
 const getBookingSlugFromPath = () => {
   const parts = window.location.pathname.split('/').filter(Boolean);
@@ -56,7 +57,7 @@ export default function App() {
 }
 
 function AppContent() {
-
+  const { mutateAsync: createAppLink, isPending } = useGetUserId();
   const { addToast } = useToast();
 
   const [exchangeDone, setExchangeDone] = useState(false);
