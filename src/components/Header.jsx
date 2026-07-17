@@ -125,12 +125,12 @@ export default function Header({ title, onNewAppointment, onToggleSidebar, credi
                       <div className="flex flex-col gap-3">
                         <div>
                           <p className="text-base font-bold text-slate-900 truncate leading-tight">
-                            {authFormData?.fullName}
+                            {user?.fullName}
                           </p>
                 
-                          {authFormData?.jobPosition && (
+                          {user?.jobPosition && (
                             <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[9px] font-black uppercase tracking-wider border border-blue-100/50">
-                              {authFormData.jobPosition}
+                              {user.jobPosition}
                             </div>
                           )}
                         </div>
@@ -138,13 +138,13 @@ export default function Header({ title, onNewAppointment, onToggleSidebar, credi
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-2 text-slate-500">
                             <i className="fa-regular fa-envelope text-[10px] w-3 text-center"></i>
-                            <p className="text-xs font-semibold truncate">{authFormData?.email}</p>
+                            <p className="text-xs font-semibold truncate">{user?.email}</p>
                           </div>
                         
-                          {authFormData?.phone && (
+                          {user?.phone && (
                             <div className="flex items-center gap-2 text-slate-500">
                               <i className="fa-solid fa-phone text-[10px] w-3 text-center"></i>
-                              <p className="text-xs font-semibold truncate">{authFormData?.phone}</p>
+                              <p className="text-xs font-semibold truncate">{user.phone}</p>
                             </div>
                           )}
                         </div>
