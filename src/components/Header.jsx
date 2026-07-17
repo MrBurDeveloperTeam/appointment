@@ -5,7 +5,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function Header({ title, onNewAppointment, onToggleSidebar, credits, onOpenCredits, isSidebarOpen, isUnconfigured }) {
     const { user, signOut } = useAuth();
     const [showAccountMenu, setShowAccountMenu] = useState(false);
+    const [creditBalance, setCreditBalance] = useState<number | null>(null)
     const menuRef = useRef(null);
+
+    useEffect(() => {
+      const partnerId = user?.partner_id // or however you store partner_id after login
+      if (!partnerId) return
+
+      fetch(`https://app.snabbb.com/api/wallet?partner_id=${partnerId}`, {
+        credentials: 'include',
+      })
+        .then(r => r.json())
+        .then(data => setCreditBalance(data?.data?.balance ?? null))
+        .catch(() => setCreditBalance(null))
+    }, [user?.partner_id])
 
     // Close dropdown when clicking outside
     useEffect(() => {
