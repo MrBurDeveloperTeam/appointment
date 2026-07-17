@@ -172,8 +172,8 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                             console.log('user: ',user)
                           const res = await createAppLink({
                             app: 'reward',
-                            email: user?.username,
-                            name: user?.fullName,
+                            email: user?.email,
+                            name: user?.user_metadata?.name,
                           });
                           
                           const supabaseUserId = res.result?.supabase_user_id;
@@ -201,8 +201,8 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                         onClick={async () => {
                           const res = await createAppLink({
                             app: 'e-learning',
-                            email: user?.username,
-                            name: user?.fullName,
+                            email: user?.email,
+                            name: user?.user_metadata?.name,
                           });
                           
                           const supabaseUserId = res.result?.supabase_user_id;
@@ -229,7 +229,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                           const res = await createAppLink({
                             app: 'snabbb',
                             email: user?.email,
-                            name: user?.name,
+                            name: user?.user_metadata?.name,
                           });
                           
                           const supabaseUserId = res.result?.supabase_user_id;
