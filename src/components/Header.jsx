@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function Header({ title, onNewAppointment, onToggleSidebar, credits, onOpenCredits, isSidebarOpen, isUnconfigured }) {
     const { user, signOut } = useAuth();
     const [showAccountMenu, setShowAccountMenu] = useState(false);
-    const [creditBalance, setCreditBalance] = useState<number | null>(null)
+    const [creditBalance, setCreditBalance] = useState(null)
     const menuRef = useRef(null);
 
     useEffect(() => {
