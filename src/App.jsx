@@ -40,6 +40,7 @@ import {
   THEME_SYNC,
 } from './utils/themeSync';
 import { useGetUserId } from './mutation/useGetUserId';
+import useGetSessionInfo from './hooks/useGetSessionInfo';
 
 const getBookingSlugFromPath = () => {
   const parts = window.location.pathname.split('/').filter(Boolean);
@@ -59,6 +60,7 @@ export default function App() {
 function AppContent() {
   const { mutateAsync: createAppLink, isPending } = useGetUserId();
   const { addToast } = useToast();
+  const { mutateAsync: getSessionInfo } = useGetSessionInfo();
 
   const [exchangeDone, setExchangeDone] = useState(false);
 
