@@ -241,7 +241,10 @@ export default function Header({ title, onNewAppointment, onToggleSidebar, credi
                     {/* Log Out */}
                     <div className="p-2">
                       <button
-                        onClick={logout}
+                        onClick={() => {
+                          signOut();
+                          setShowAccountMenu(false);
+                        }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold text-rose-500 hover:bg-rose-50 rounded-2xl transition-all group text-left"
                       >
                         <i className="fa-solid fa-arrow-right-from-bracket w-5"></i>
