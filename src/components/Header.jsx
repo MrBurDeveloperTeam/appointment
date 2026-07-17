@@ -53,62 +53,190 @@ export default function Header({ title, onNewAppointment, onToggleSidebar, credi
                         </svg>
                     </button>
 
+                    <AnimatePresence>
                     {showAccountMenu && (
-                        <div className="account-dropdown-menu" style={{
-                            position: 'absolute',
-                            top: '100%',
-                            right: 0,
-                            marginTop: '8px',
-                            background: 'var(--surface)',
-                            border: '1px solid var(--border)',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                            width: '248px',
-                            zIndex: 100,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            overflow: 'hidden'
-                        }}>
-                            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', color: 'var(--text-light)', background: 'var(--bg)' }}>
-                                {user?.email || 'Account Login'}
+                        // <div className="account-dropdown-menu" style={{
+                        //     position: 'absolute',
+                        //     top: '100%',
+                        //     right: 0,
+                        //     marginTop: '8px',
+                        //     background: 'var(--surface)',
+                        //     border: '1px solid var(--border)',
+                        //     borderRadius: '8px',
+                        //     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        //     width: '248px',
+                        //     zIndex: 100,
+                        //     display: 'flex',
+                        //     flexDirection: 'column',
+                        //     overflow: 'hidden'
+                        // }}>
+                        //     <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', color: 'var(--text-light)', background: 'var(--bg)' }}>
+                        //         {user?.email || 'Account Login'}
+                        //     </div>
+
+                        //     {credits !== undefined && (
+                        //         <button
+                        //             onClick={() => {
+                        //                 onOpenCredits();
+                        //                 setShowAccountMenu(false);
+                        //             }}
+                        //             style={{ padding: '12px 16px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: 'var(--text)' }}
+                        //             onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg)'}
+                        //             onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                        //         >
+                        //             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        //                 <rect x="2" y="5" width="20" height="14" rx="2" />
+                        //                 <line x1="2" y1="10" x2="22" y2="10" />
+                        //             </svg>
+                        //             Subscription Plan
+                        //         </button>
+                        //     )}
+
+                        //     <button
+                        //         onClick={() => {
+                        //             signOut();
+                        //             setShowAccountMenu(false);
+                        //         }}
+                        //         style={{ padding: '12px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: 'var(--danger)' }}
+                        //         onMouseOver={(e) => e.currentTarget.style.background = 'var(--danger-light)'}
+                        //         onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                        //     >
+                        //         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        //             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        //             <polyline points="16 17 21 12 16 7"></polyline>
+                        //             <line x1="21" y1="12" x2="9" y2="12"></line>
+                        //         </svg>
+                        //         Logout
+                        //     </button>
+                        // </div>
+                         <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.12)] overflow-hidden"
+                  >
+                    {/* Profile Info */}
+                    <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
+                        Profile Info
+                      </p>
+                
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <p className="text-base font-bold text-slate-900 truncate leading-tight">
+                            {authFormData?.fullName}
+                          </p>
+                
+                          {authFormData?.jobPosition && (
+                            <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[9px] font-black uppercase tracking-wider border border-blue-100/50">
+                              {authFormData.jobPosition}
                             </div>
-
-                            {credits !== undefined && (
-                                <button
-                                    onClick={() => {
-                                        onOpenCredits();
-                                        setShowAccountMenu(false);
-                                    }}
-                                    style={{ padding: '12px 16px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: 'var(--text)' }}
-                                    onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg)'}
-                                    onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                                >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <rect x="2" y="5" width="20" height="14" rx="2" />
-                                        <line x1="2" y1="10" x2="22" y2="10" />
-                                    </svg>
-                                    Subscription Plan
-                                </button>
-                            )}
-
-                            <button
-                                onClick={() => {
-                                    signOut();
-                                    setShowAccountMenu(false);
-                                }}
-                                style={{ padding: '12px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: 'var(--danger)' }}
-                                onMouseOver={(e) => e.currentTarget.style.background = 'var(--danger-light)'}
-                                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                            >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                    <polyline points="16 17 21 12 16 7"></polyline>
-                                    <line x1="21" y1="12" x2="9" y2="12"></line>
-                                </svg>
-                                Logout
-                            </button>
+                          )}
                         </div>
+                        
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2 text-slate-500">
+                            <i className="fa-regular fa-envelope text-[10px] w-3 text-center"></i>
+                            <p className="text-xs font-semibold truncate">{authFormData?.email}</p>
+                          </div>
+                        
+                          {authFormData?.phone && (
+                            <div className="flex items-center gap-2 text-slate-500">
+                              <i className="fa-solid fa-phone text-[10px] w-3 text-center"></i>
+                              <p className="text-xs font-semibold truncate">{authFormData?.phone}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                        
+                    {/* Nav Items */}
+                    <div className="p-2 border-b border-slate-100">
+                      {/* Snabbb Credit */}
+                      <button
+                        onClick={async () => {
+                          const res = await createAppLink({
+                            app: 'reward',
+                            email: authUser?.username,
+                            name: authUser?.name,
+                          });
+                          
+                          const supabaseUserId = res.result?.supabase_user_id;
+                          const w = window.open('', '_blank');
+                          if (supabaseUserId && w) {
+                            w.location.href = `https://reward.snabbb.com`;
+                          }
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                      >
+                        <div className="w-7 h-7 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+                          <i className="fa-solid fa-wallet text-[11px] text-violet-500"></i>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-800 leading-tight">Snabbb Credit</p>
+                          <p className="text-[11px] font-semibold text-slate-400 truncate">
+                            {creditBalance !== null ? `${creditBalance} credits` : 'Loading...'}
+                          </p>
+                        </div>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                      </button>
+                        
+                      {/* My Channel */}
+                      <button
+                        onClick={async () => {
+                          const res = await createAppLink({
+                            app: 'e-learning',
+                            email: authUser?.username,
+                            name: authUser?.name,
+                          });
+                          
+                          const supabaseUserId = res.result?.supabase_user_id;
+                          const w = window.open('', '_blank');
+                          if (supabaseUserId && w) {
+                            w.location.href = `https://e-learning.snabbb.com/channel/${supabaseUserId}`;
+                          }
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                      >
+                        <div className="w-7 h-7 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
+                          <i className="fa-solid fa-tv text-[11px] text-sky-500"></i>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-800 leading-tight">My Channel</p>
+                          <p className="text-[11px] font-semibold text-slate-400 truncate">Manage your channel</p>
+                        </div>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                      </button>
+                        
+                      {/* Settings */}
+                      <button
+                        onClick={() => navigate('/profile-settings')}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                      >
+                        <div className="w-7 h-7 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                          <i className="fa-solid fa-gear text-[11px] text-slate-500"></i>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-800 leading-tight">Settings</p>
+                          <p className="text-[11px] font-semibold text-slate-400 truncate">Account & preferences</p>
+                        </div>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                      </button>
+                    </div>
+                        
+                    {/* Log Out */}
+                    <div className="p-2">
+                      <button
+                        onClick={logout}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold text-rose-500 hover:bg-rose-50 rounded-2xl transition-all group text-left"
+                      >
+                        <i className="fa-solid fa-arrow-right-from-bracket w-5"></i>
+                        Log Out
+                      </button>
+                    </div>
+                  </motion.div>
                     )}
+                    </AnimatePresence>
                 </div>
 
                 {/* New Appointment Action */}
