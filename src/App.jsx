@@ -733,6 +733,7 @@ function AppContent() {
       )}
       <main className="main-content">
         <Header
+          createAppLink={createAppLink}
           title={viewTitle}
           onNewAppointment={() => { setAppointmentDefaults(null); setShowAppointmentModal(true); }}
           onToggleSidebar={toggleSidebar}
