@@ -18,7 +18,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
         .then(r => r.json())
         .then(data => setCreditBalance(data?.data?.balance ?? null))
         .catch(() => setCreditBalance(null))
-    }, [user?.partner_id])
+    }, [user?.partner_id]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -169,6 +169,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                       {/* Snabbb Credit */}
                       <button
                         onClick={async () => {
+                            console.log('user: ',user)
                           const res = await createAppLink({
                             app: 'reward',
                             email: user?.username,
