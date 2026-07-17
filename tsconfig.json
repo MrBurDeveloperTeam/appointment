@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode (Vite) */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* allowJs lets .ts/.tsx files import .js/.jsx neighbors and gives you
+       working IntelliSense/go-to-definition across the whole src tree.
+       checkJs is intentionally OFF: this codebase's React context values
+       (AuthProvider, etc.) aren't typed, so full type-checking floods
+       every consumer with "property does not exist on type '{}'" noise
+       that would bury real bugs. ESLint's no-undef (see eslint.config.js)
+       covers the specific failure mode that matters most for plain JS —
+       referencing a variable that was never imported/declared — without
+       that noise. Revisit checkJs once AuthProvider/context values have
+       real types. */
+    "allowJs": true,
+    "checkJs": false,
+
+    /* Kept loose on purpose: this codebase was never type-checked before,
+       so full "strict" would surface hundreds of pre-existing warnings at
+       once. This still catches hard errors (undefined names, wrong number
+       of args, bad property access) without requiring every file to be
+       fully typed first. Tighten incrementally later if desired. */
+    "strict": false,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src", "vite.config.js", "vite-env.d.ts"],
+  "exclude": ["node_modules", "public", "src/cloudflare_ref.js"]
+}

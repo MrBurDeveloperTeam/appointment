@@ -336,9 +336,6 @@ export default function useDataStore(activeClinicId, enabled = true) {
     // Mock Credits
     credits,
     creditHistory,
-    // Mock Credits
-    credits,
-    creditHistory,
     addCredits: handleAddCredits,
     updateAppointmentRequest: (id, updates) =>
       handleAsync(DataStore.updateAppointmentRequest(id, updates), () => {
