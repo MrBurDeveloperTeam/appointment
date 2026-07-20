@@ -9,6 +9,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
     const menuRef = useRef(null);
 
     useEffect(() => {
+        console.log('user changed in Header.jsx:', user);
       const partnerId = user?.partner_id // or however you store partner_id after login
       if (!partnerId) return
 
@@ -18,7 +19,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
         .then(r => r.json())
         .then(data => setCreditBalance(data?.data?.balance ?? null))
         .catch(() => setCreditBalance(null))
-    }, [user?.partner_id]);
+    }, [user]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
