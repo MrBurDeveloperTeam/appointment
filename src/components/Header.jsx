@@ -38,7 +38,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
             const { data: sessionData } = info || {};
             const { data } = await creditApi.get(`/api/wallet?partner_id=${sessionData.result.partner_id}`);
             console.log("data from wallet API:", data.data);
-            setBalance(data.data.snabbb_balance);
+            setCreditBalance(data.data.snabbb_balance);
           } catch (err) {
             console.error(err);
           }
