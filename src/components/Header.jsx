@@ -149,7 +149,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                     className="absolute right-0 mt-3 w-80 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] overflow-hidden"
                   >
                     {/* Profile Info */}
-                    <div className="p-6 border-b border-[var(--border-light)] bg-[var(--surface-2)]">
+                    <div className="p-6 border-b border-[var(--border-light)]]">
                       <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-4">
                         Profile Info
                       </p>
