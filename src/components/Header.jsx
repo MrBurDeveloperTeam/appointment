@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthProvider';
 import { motion, AnimatePresence } from 'framer-motion';
+import api from "./odooApi";
 
 export default function Header({ createAppLink, title, onNewAppointment, onToggleSidebar, credits, onOpenCredits, isSidebarOpen, isUnconfigured }) {
     const { user, signOut } = useAuth();
@@ -42,7 +43,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
             console.error(err);
           }
         }
-    
+
         loadWallet();
 
         document.addEventListener('mousedown', handleClickOutside);
