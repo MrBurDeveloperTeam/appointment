@@ -157,7 +157,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                       <div className="flex flex-col gap-3">
                         <div>
                           <p className="text-base font-bold text-slate-900 truncate leading-tight">
-                            {user?.fullName}
+                            {user?.name}
                           </p>
                 
                           {user?.jobPosition && (
