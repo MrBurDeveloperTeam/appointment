@@ -28,6 +28,23 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                 setShowAccountMenu(false);
             }
         }
+
+        async function loadWallet() {
+          try {
+            const info  = await odooApi.post('/web/session/get_session_info', {}).catch(err => {
+              console.error('Session info error:', err);
+            });
+            const { data: sessionData } = info || {};
+            const { data } = await creditApi.get(`/api/wallet?partner_id=${sessionData.result.partner_id}`);
+            console.log("data from wallet API:", data.data);
+            setBalance(data.data.snabbb_balance);
+          } catch (err) {
+            console.error(err);
+          }
+        }
+    
+        loadWallet();
+
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
