@@ -146,35 +146,35 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.12)] overflow-hidden"
+                    className="absolute right-0 mt-3 w-80 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] overflow-hidden"
                   >
                     {/* Profile Info */}
-                    <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
+                    <div className="p-6 border-b border-[var(--border-light)] bg-[var(--surface-2)]">
+                      <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-4">
                         Profile Info
                       </p>
-                
+
                       <div className="flex flex-col gap-3">
                         <div>
-                          <p className="text-base font-bold text-slate-900 truncate leading-tight">
+                          <p className="text-base font-bold text-[var(--text-primary)] truncate leading-tight">
                             {user?.name}
                           </p>
-                
+
                           {user?.jobPosition && (
-                            <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[9px] font-black uppercase tracking-wider border border-blue-100/50">
+                            <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-md bg-[var(--primary-bg)] text-[var(--primary-dark)] text-[9px] font-black uppercase tracking-wider border border-[var(--primary-light)]">
                               {user.jobPosition}
                             </div>
                           )}
                         </div>
-                        
+
                         <div className="space-y-1.5">
-                          <div className="flex items-center gap-2 text-slate-500">
+                          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
                             <i className="fa-regular fa-envelope text-[10px] w-3 text-center"></i>
                             <p className="text-xs font-semibold truncate">{user?.email}</p>
                           </div>
-                        
+
                           {user?.phone && (
-                            <div className="flex items-center gap-2 text-slate-500">
+                            <div className="flex items-center gap-2 text-[var(--text-secondary)]">
                               <i className="fa-solid fa-phone text-[10px] w-3 text-center"></i>
                               <p className="text-xs font-semibold truncate">{user.phone}</p>
                             </div>
@@ -182,9 +182,9 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                         </div>
                       </div>
                     </div>
-                        
+
                     {/* Nav Items */}
-                    <div className="p-2 border-b border-slate-100">
+                    <div className="p-2 border-b border-[var(--border-light)]">
                       {/* Snabbb Credit */}
                       <button
                         onClick={async () => {
@@ -201,18 +201,18 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                             w.location.href = `https://reward.snabbb.com`;
                           }
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left"
                       >
-                        <div className="w-7 h-7 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
-                          <i className="fa-solid fa-wallet text-[11px] text-violet-500"></i>
+                        <div className="w-7 h-7 rounded-xl bg-[var(--purple-bg)] flex items-center justify-center shrink-0">
+                          <i className="fa-solid fa-wallet text-[11px] text-[var(--purple)]"></i>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-800 leading-tight">Snabbb Credit</p>
-                          <p className="text-[11px] font-semibold text-slate-400 truncate">
+                          <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">Snabbb Credit</p>
+                          <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">
                             {creditBalance !== null ? `${creditBalance} credits` : 'Loading...'}
                           </p>
                         </div>
-                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors"></i>
                       </button>
                         
                       {/* My Channel */}
@@ -230,16 +230,16 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                             w.location.href = `https://e-learning.snabbb.com/channel/${supabaseUserId}`;
                           }
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left"
                       >
-                        <div className="w-7 h-7 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
-                          <i className="fa-solid fa-tv text-[11px] text-sky-500"></i>
+                        <div className="w-7 h-7 rounded-xl bg-[var(--info-bg-subtle)] flex items-center justify-center shrink-0">
+                          <i className="fa-solid fa-tv text-[11px] text-[var(--primary)]"></i>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-800 leading-tight">My Channel</p>
-                          <p className="text-[11px] font-semibold text-slate-400 truncate">Manage your channel</p>
+                          <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">My Channel</p>
+                          <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">Manage your channel</p>
                         </div>
-                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors"></i>
                       </button>
                         
                       {/* Settings */}
@@ -257,16 +257,16 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                             w.location.href = `https://app.snabbb.com/profile-settings`;
                           }
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 rounded-2xl transition-all group text-left"
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left"
                       >
-                        <div className="w-7 h-7 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                          <i className="fa-solid fa-gear text-[11px] text-slate-500"></i>
+                        <div className="w-7 h-7 rounded-xl bg-[var(--surface-2)] flex items-center justify-center shrink-0">
+                          <i className="fa-solid fa-gear text-[11px] text-[var(--text-secondary)]"></i>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-800 leading-tight">Settings</p>
-                          <p className="text-[11px] font-semibold text-slate-400 truncate">Account & preferences</p>
+                          <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">Settings</p>
+                          <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">Account & preferences</p>
                         </div>
-                        <i className="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors"></i>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors"></i>
                       </button>
                     </div>
                         
@@ -277,7 +277,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                           signOut();
                           setShowAccountMenu(false);
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold text-rose-500 hover:bg-rose-50 rounded-2xl transition-all group text-left"
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold text-[var(--danger)] hover:bg-[var(--danger-bg)] rounded-2xl transition-all group text-left"
                       >
                         <i className="fa-solid fa-arrow-right-from-bracket w-5"></i>
                         Log Out
