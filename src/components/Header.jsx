@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthProvider';
 import { motion, AnimatePresence } from 'framer-motion';
-import api from "./odooApi";
+import api from "../services/odooApi";
 
 export default function Header({ createAppLink, title, onNewAppointment, onToggleSidebar, credits, onOpenCredits, isSidebarOpen, isUnconfigured }) {
     const { user, signOut } = useAuth();
