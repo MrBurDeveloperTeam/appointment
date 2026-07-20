@@ -32,7 +32,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
 
         async function loadWallet() {
           try {
-            const info  = await odooApi.post('/web/session/get_session_info', {}).catch(err => {
+            const info  = await api.post('/web/session/get_session_info', {}).catch(err => {
               console.error('Session info error:', err);
             });
             const { data: sessionData } = info || {};
