@@ -448,14 +448,6 @@ export default function LoginView() {
                 </button>
               </form>
 
-              {authMode === 'login' && (
-                <div className="landing-sample-accounts" style={{ marginTop: '1.5rem' }}>
-                  <strong>Demo Access:</strong>
-                  <div>Dentist: mrbur123@gmail.com / mrbur@123</div>
-                  <div>Admin: adminbur@gmail.com / bur@123</div>
-                </div>
-              )}
-
               <div className="landing-switch-mode" style={{ marginTop: '2rem' }}>
                 {authMode === 'login' ? (
                   <>Don't have an account? <button type="button" onClick={openSignup}>Sign up</button></>
