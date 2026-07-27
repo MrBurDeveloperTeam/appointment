@@ -369,6 +369,52 @@ as $$
   select clinic_id from public.profiles where user_id = auth.uid();
 $$;
 
+-- slugify(): turn arbitrary text into a URL-safe slug.
+-- lowercase -> non-alphanumerics to '-' -> collapse/trim dashes -> fallback 'clinic'.
+create or replace function public.slugify(input text)
+returns text
+language sql
+immutable
+as $$
+  select coalesce(
+    nullif(
+      trim(both '-' from
+        regexp_replace(
+          regexp_replace(lower(coalesce(input, '')), '[^a-z0-9]+', '-', 'g'),
+          '-{2,}', '-', 'g'
+        )
+      ),
+      ''
+    ),
+    'clinic'
+  );
+$$;
+
+-- unique_clinic_slug(): a slug unique within apt_clinics, appending -2, -3, ... on
+-- collision. p_exclude_id lets an UPDATE keep its own row from counting as a collision.
+create or replace function public.unique_clinic_slug(p_base text, p_exclude_id uuid default null)
+returns text
+language plpgsql
+as $$
+declare
+  base text := public.slugify(p_base);
+  candidate text := base;
+  n int := 1;
+begin
+  loop
+    if not exists (
+      select 1 from public.apt_clinics
+      where slug = candidate
+        and (p_exclude_id is null or id <> p_exclude_id)
+    ) then
+      return candidate;
+    end if;
+    n := n + 1;
+    candidate := base || '-' || n;
+  end loop;
+end;
+$$;
+
 -- handle_new_user() refs profiles
 create or replace function public.handle_new_user()
 returns trigger
@@ -378,6 +424,7 @@ as $$
 declare
   user_name text;
   new_clinic_name text;
+  new_clinic_slug text;
   new_clinic_id uuid;
 begin
   -- SSO worker stores the name under user_metadata.name; older signups use full_name.
@@ -389,11 +436,19 @@ begin
     'New User'
   );
   new_clinic_name := user_name || '''s Clinic';
-  
-  -- Create a new clinic for this user
-  insert into public.apt_clinics (name)
-  values (new_clinic_name)
-  returning id into new_clinic_id;
+  new_clinic_slug := public.unique_clinic_slug(new_clinic_name);
+
+  -- Create a new clinic for this user (retry once if a concurrent signup took the slug)
+  begin
+    insert into public.apt_clinics (name, slug)
+    values (new_clinic_name, new_clinic_slug)
+    returning id into new_clinic_id;
+  exception when unique_violation then
+    new_clinic_slug := public.unique_clinic_slug(new_clinic_name);
+    insert into public.apt_clinics (name, slug)
+    values (new_clinic_name, new_clinic_slug)
+    returning id into new_clinic_id;
+  end;
 
   -- Insert basic clinic settings
   insert into public.apt_settings (clinic_id, clinic_name)
