@@ -105,6 +105,32 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
     }
   };
 
+  const ensureClinicDetails = async (clinicId) => {
+    if (!clinicId) return;
+    // Already cached — skip refetch.
+    if (clinicDetails[clinicId]) return;
+    try {
+      const [patients, appointments, staff, rooms, treatments, settings, holidays, activity] =
+        await Promise.all([
+          DataStore.getPatients(clinicId),
+          DataStore.getAppointments(clinicId),
+          DataStore.getStaff(clinicId),
+          DataStore.getRooms(clinicId),
+          DataStore.getTreatments(clinicId),
+          DataStore.getSettings(clinicId),
+          DataStore.getHolidays(clinicId),
+          DataStore.getActivityLog(clinicId),
+        ]);
+      setClinicDetails((prev) => ({
+        ...prev,
+        [clinicId]: { patients, appointments, staff, rooms, treatments, settings, holidays, activity },
+      }));
+    } catch (err) {
+      console.error("Failed to load clinic details:", err);
+      setDetailError("Failed to load clinic details.");
+    }
+  };
+
   useEffect(() => {
     refresh();
   }, []);
@@ -177,6 +203,7 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
 
 
   const openClinicModal = (clinic) => {
+    if (clinic?.id) ensureClinicDetails(clinic.id);
     if (clinic) {
       setClinicForm({
         id: clinic.id,
@@ -217,6 +244,7 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
   const closeModal = () => setModalState({ type: null, mode: 'new' });
 
   const openDetailModal = (clinicId, type) => {
+    ensureClinicDetails(clinicId);
     setDetailModal({ open: true, clinicId, type });
     setDetailForm({});
     setDetailError('');
@@ -766,7 +794,11 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                         </button>
                         <button
                           className="btn btn-ghost btn-sm"
-                          onClick={() => setExpandedClinicId(expandedClinicId === clinic.id ? '' : clinic.id)}
+                          onClick={() => {
+                            const next = expandedClinicId === clinic.id ? '' : clinic.id;
+                            setExpandedClinicId(next);
+                            if (next) ensureClinicDetails(next);
+                          }}
                         >
                           {expandedClinicId === clinic.id ? 'Hide Details' : 'View Details'}
                         </button>
