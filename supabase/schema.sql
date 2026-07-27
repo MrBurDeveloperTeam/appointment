@@ -67,6 +67,8 @@ CREATE TABLE public.apt_clinics (
   status text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   slug text UNIQUE,
+  subscription_type text,
+  subscription_end date,
   CONSTRAINT clinics_pkey PRIMARY KEY (id)
 );
 
