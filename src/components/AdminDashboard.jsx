@@ -36,6 +36,7 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
   const [clinicDetails, setClinicDetails] = useState({});
   const [summaryByClinicId, setSummaryByClinicId] = useState({});
   const [monthlyTrend, setMonthlyTrend] = useState([]);
+  const [statusBreakdown, setStatusBreakdown] = useState({ confirmed: 0, completed: 0, cancelled: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedClinicId, setExpandedClinicId] = useState('');
@@ -70,6 +71,7 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
       setAdminActivity(adminActivityData || []);
       setSummaryByClinicId(summary?.summaryByClinicId || {});
       setMonthlyTrend(summary?.monthlyTrend || []);
+      setStatusBreakdown(summary?.statusBreakdown || { confirmed: 0, completed: 0, cancelled: 0 });
     } catch (err) {
       console.error(err);
       setError('Failed to load admin data.');
@@ -633,16 +635,9 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                 <div className="admin-panel-subtitle">Global Breakdown</div>
                 <div style={{ width: '100%', height: 300, marginTop: 16 }}>
                   {(() => {
-                    let confirmed = 0;
-                    let completed = 0;
-                    let cancelled = 0;
-                    Object.values(clinicDetails).forEach(d => {
-                      (d.appointments || []).forEach(a => {
-                        if (a.status === 'confirmed') confirmed++;
-                        if (a.status === 'completed') completed++;
-                        if (a.status === 'cancelled') cancelled++;
-                      });
-                    });
+                    const confirmed = statusBreakdown.confirmed || 0;
+                    const completed = statusBreakdown.completed || 0;
+                    const cancelled = statusBreakdown.cancelled || 0;
                     const data = [
                       { name: 'Confirmed', value: confirmed, color: 'var(--primary)' },
                       { name: 'Completed', value: completed, color: 'var(--success)' },

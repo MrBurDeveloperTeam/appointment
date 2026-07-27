@@ -472,7 +472,13 @@ begin
         where a.date >= (date_trunc('month', current_date) - interval '5 months')
         group by 1
       ) m
-    ), '[]'::jsonb)
+    ), '[]'::jsonb),
+    -- Global appointment status breakdown across ALL clinics, all time.
+    'status_breakdown', jsonb_build_object(
+      'confirmed', (select count(*) from public.appointments where status = 'confirmed'),
+      'completed', (select count(*) from public.appointments where status = 'completed'),
+      'cancelled', (select count(*) from public.appointments where status = 'cancelled')
+    )
   ) into result;
 
   return result;

@@ -212,7 +212,13 @@ const DataStore = {
       month: m.month,
       count: m.count,
     }));
-    return { summaryByClinicId, monthlyTrend };
+    const sb = payload.status_breakdown || {};
+    const statusBreakdown = {
+      confirmed: sb.confirmed ?? 0,
+      completed: sb.completed ?? 0,
+      cancelled: sb.cancelled ?? 0,
+    };
+    return { summaryByClinicId, monthlyTrend, statusBreakdown };
   },
 
   async logAdminActivity(type, description) {

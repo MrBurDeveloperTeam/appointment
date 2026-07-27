@@ -124,7 +124,7 @@ where (c->>'clinic_id')::uuid = '377fdd9a-6bbe-4f5a-9702-946d5198db00';
 
 Expected: `rpc_patients = real_patients` and `rpc_appts = real_appts`.
 
-NOTE: this runs as the MCP service role, which passes the admin gate. The non-admin rejection is covered by code review of the `if not exists (... account_type='admin')` guard (cannot easily impersonate a non-admin JWT from MCP). Confirm the guard is present in the applied function via:
+NOTE: calling the RPC directly over MCP is REJECTED by the admin gate (auth.uid() is null → error 42501: not authorized), which itself proves the gate works. To verify counts, run the RPC's inner aggregation query inline (without the gate) and compare to direct COUNT(*), as shown above. Confirm the guard is present via the pg_get_functiondef check below.
 ```sql
 select pg_get_functiondef('public.admin_dashboard_summary()'::regprocedure) like '%account_type = ''admin''%' as has_admin_gate;
 ```
