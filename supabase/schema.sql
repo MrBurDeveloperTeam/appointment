@@ -481,6 +481,68 @@ begin
 end;
 $$;
 
+-- admin_dashboard_summary(): aggregated admin dashboard data (counts + settings + 6-month trend), admin-gated.
+create or replace function public.admin_dashboard_summary()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  result jsonb;
+begin
+  -- Gate: bypasses RLS, so only admins may call it.
+  if not exists (
+    select 1 from public.profiles
+    where user_id = auth.uid() and account_type = 'admin'
+  ) then
+    raise exception 'not authorized' using errcode = '42501';
+  end if;
+
+  select jsonb_build_object(
+    'clinics', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'clinic_id', c.id,
+        'counts', jsonb_build_object(
+          'patients',    (select count(*) from public.apt_patients   p where p.clinic_id = c.id),
+          'appointments',(select count(*) from public.appointments   a where a.clinic_id = c.id),
+          'staff',       (select count(*) from public.apt_staff      s where s.clinic_id = c.id),
+          'rooms',       (select count(*) from public.apt_rooms      r where r.clinic_id = c.id),
+          'treatments',  (select count(*) from public.apt_treatments t where t.clinic_id = c.id)
+        ),
+        'settings', jsonb_build_object(
+          'clinic_name',         st.clinic_name,
+          'working_hours_start', st.working_hours_start,
+          'working_hours_end',   st.working_hours_end,
+          'slot_duration',       st.slot_duration,
+          'phone',               null
+        )
+      ) order by c.created_at)
+      from public.apt_clinics c
+      left join public.apt_settings st on st.clinic_id = c.id
+    ), '[]'::jsonb),
+    'monthly_trend', coalesce((
+      select jsonb_agg(jsonb_build_object('month', m.month, 'count', m.cnt) order by m.month)
+      from (
+        select to_char(a.date, 'YYYY-MM') as month, count(*) as cnt
+        from public.appointments a
+        where a.date >= (date_trunc('month', current_date) - interval '5 months')
+        group by 1
+      ) m
+    ), '[]'::jsonb),
+    -- Global appointment status breakdown across ALL clinics, all time.
+    'status_breakdown', jsonb_build_object(
+      'confirmed', (select count(*) from public.appointments where status = 'confirmed'),
+      'completed', (select count(*) from public.appointments where status = 'completed'),
+      'cancelled', (select count(*) from public.appointments where status = 'cancelled')
+    )
+  ) into result;
+
+  return result;
+end;
+$$;
+
+grant execute on function public.admin_dashboard_summary() to authenticated;
 
 -- 5. OTP FUNCTIONS
 

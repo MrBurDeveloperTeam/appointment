@@ -187,6 +187,40 @@ const DataStore = {
     return Activity.getAdminActivity();
   },
 
+  async getAdminDashboardSummary() {
+    const { data, error } = await supabase.rpc("admin_dashboard_summary");
+    if (error) throw error;
+    const payload = data || {};
+    const summaryByClinicId = {};
+    (payload.clinics || []).forEach((c) => {
+      const s = c.settings || {};
+      summaryByClinicId[c.clinic_id] = {
+        patients: c.counts?.patients ?? 0,
+        appointments: c.counts?.appointments ?? 0,
+        staff: c.counts?.staff ?? 0,
+        rooms: c.counts?.rooms ?? 0,
+        treatments: c.counts?.treatments ?? 0,
+        settings: {
+          clinicName: s.clinic_name || "Dental Clinic",
+          workingHours: { start: s.working_hours_start || "09:00", end: s.working_hours_end || "18:00" },
+          slotDuration: s.slot_duration || 30,
+          phone: s.phone || "-",
+        },
+      };
+    });
+    const monthlyTrend = (payload.monthly_trend || []).map((m) => ({
+      month: m.month,
+      count: m.count,
+    }));
+    const sb = payload.status_breakdown || {};
+    const statusBreakdown = {
+      confirmed: sb.confirmed ?? 0,
+      completed: sb.completed ?? 0,
+      cancelled: sb.cancelled ?? 0,
+    };
+    return { summaryByClinicId, monthlyTrend, statusBreakdown };
+  },
+
   async logAdminActivity(type, description) {
     return Activity.addAdminActivity({ type, description });
   },
