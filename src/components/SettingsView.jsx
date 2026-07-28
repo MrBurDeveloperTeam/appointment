@@ -76,6 +76,12 @@ export default function SettingsView({
   };
 
   const handleSaveSettings = () => {
+    // A clinic that marks every weekday as a rest day has no bookable days,
+    // which silently breaks the public booking page. Block that here.
+    if (form.restDays.length >= 7) {
+      addToast('You must keep at least one working day (not all 7 can be rest days).', 'error');
+      return;
+    }
     saveSettings({
       clinicName: form.clinicName,
       workingHours: { start: form.workingHoursStart, end: form.workingHoursEnd },
