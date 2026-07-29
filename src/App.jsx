@@ -15,6 +15,8 @@ import RequestsView from './components/RequestsView';
 import AppointmentForm from './components/AppointmentForm';
 import PatientModal from './components/PatientModal';
 import LoginView from './components/LoginView';
+import LoginPage from './components/auth/LoginPage';
+import RegisterPage from './components/auth/RegisterPage';
 import AdminDashboard from './components/AdminDashboard';
 import PublicBookingView from './components/PublicBookingView';
 import ConfirmDialog from './components/ConfirmDialog';
@@ -595,6 +597,8 @@ function AppContent() {
   }
 
   if (!user) {
+    if (window.location.pathname === '/login') return <LoginPage />;
+    if (window.location.pathname === '/register') return <RegisterPage />;
     return <LoginView />;
   }
 

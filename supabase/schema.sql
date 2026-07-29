@@ -378,7 +378,12 @@ declare
   new_clinic_name text;
   new_clinic_id uuid;
 begin
-  user_name := coalesce(new.raw_user_meta_data->>'full_name', 'New User');
+  user_name := coalesce(
+    nullif(trim(new.raw_user_meta_data->>'name'), ''),
+    nullif(trim(new.raw_user_meta_data->>'full_name'), ''),
+    split_part(new.email, '@', 1),
+    'New User'
+  );
   new_clinic_name := user_name || '''s Clinic';
   
   -- Create a new clinic for this user
@@ -400,6 +405,9 @@ begin
     email,
     name,
     account_type,
+    phone,
+    position,
+    company_name,
     clinic_id,
     status
   )
@@ -407,11 +415,25 @@ begin
     new.id,
     new.email,
     user_name,
-    'individual',
+    coalesce(nullif(new.raw_user_meta_data->>'account_type', ''), 'individual'),
+    nullif(trim(new.raw_user_meta_data->>'phone'), ''),
+    nullif(trim(new.raw_user_meta_data->>'position'), ''),
+    case
+      when coalesce(new.raw_user_meta_data->>'account_type', 'individual') = 'company'
+        then nullif(trim(new.raw_user_meta_data->>'company_name'), '')
+      else null
+    end,
     new_clinic_id,
     'active'
   )
-  on conflict (user_id) do nothing;
+  on conflict (user_id) do update set
+    email = excluded.email,
+    name = excluded.name,
+    account_type = excluded.account_type,
+    phone = excluded.phone,
+    position = excluded.position,
+    company_name = excluded.company_name,
+    updated_at = now();
   
   return new;
 end;

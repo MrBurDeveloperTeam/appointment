@@ -1,18 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { signIn, signUp } from '../auth/authApi';
-import { useToast } from '../context/ToastProvider';
+import React, { useState } from "react";
 import CatMascot from "./CatMascot";
 import MolarAIFloat from "./MolarAIFloat";
 
 export default function LoginView() {
-  const { addToast } = useToast();
-  const [showForm, setShowForm] = useState(false);
-  const [authMode, setAuthMode] = useState('login');
-  const [authFullName, setAuthFullName] = useState('');
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
-  const [authError, setAuthError] = useState(null);
-
   // 3D Carousel State
   const [activeFeature, setActiveFeature] = useState(0);
 
@@ -25,16 +15,6 @@ export default function LoginView() {
 
   const handleNextFeature = () => setActiveFeature((prev) => (prev + 1) % 3);
   const handlePrevFeature = () => setActiveFeature((prev) => (prev - 1 + 3) % 3);
-
-  const [rememberMe, setRememberMe] = useState(false);
-
-  useEffect(() => {
-    const savedEmail = localStorage.getItem("remember_email");
-    if (savedEmail) {
-      setAuthEmail(savedEmail);
-      setRememberMe(true);
-    }
-  }, []);
 
   // Toggle FAQ accordion
   const [activeFaq, setActiveFaq] = useState(null);
@@ -51,51 +31,7 @@ export default function LoginView() {
     { q: "What payment methods do you accept?", a: "We accept all major credit cards including Visa, Mastercard, and American Express." }
   ];
 
-  const handleSupabaseSubmit = async (event) => {
-    event.preventDefault();
-    setAuthError(null);
-    try {
-      if (authMode === 'signup') {
-        await signUp({ email: authEmail, password: authPassword, fullName: authFullName });
-        addToast('Registration successful! Please verify your email to login.', 'success');
-        setAuthMode('login');
-        setAuthPassword('');  // Clear password for security
-      } else {
-        if (rememberMe) {
-          localStorage.setItem("remember_email", authEmail);
-        } else {
-          localStorage.removeItem("remember_email");
-        }
-        await signIn({ email: authEmail, password: authPassword });
-      }
-    } catch (err) {
-      setAuthError(err.message);
-      addToast(err.message, 'error');
-    }
-  };
-
-  const openLogin = () => {
-    setAuthMode('login');
-    const savedEmail = localStorage.getItem("remember_email");
-    if (savedEmail) {
-      setAuthEmail(savedEmail);
-      setRememberMe(true);
-    } else {
-      setAuthEmail('');
-      setRememberMe(false);
-    }
-    setAuthPassword('');
-    setShowForm(true);
-  };
-
-  const openSignup = () => {
-    setAuthMode('signup');
-    setAuthEmail('');
-    setAuthPassword('');
-    setAuthFullName('');
-    setRememberMe(false);
-    setShowForm(true);
-  };
+  const goToAuth = (path) => window.location.assign(path);
 
   return (
     <div className="landing-fullscreen-container">
@@ -115,8 +51,8 @@ export default function LoginView() {
           <a href="#faq">FAQ</a>
         </div>
         <div className="landing-nav-actions">
-          <button className="landing-btn-outline" onClick={openLogin}>Log In</button>
-          <button className="landing-btn-primary" onClick={openSignup}>Get Started</button>
+          <button className="landing-btn-outline" onClick={() => goToAuth('/login')}>Log In</button>
+          <button className="landing-btn-primary" onClick={() => goToAuth('/register')}>Get Started</button>
         </div>
       </nav>
 
@@ -132,7 +68,7 @@ export default function LoginView() {
             With our simple online booking system, scheduling dental appointments has never been easier. Focus on your patients, we handle the workflow.
           </p>
           <div className="landing-hero-actions">
-            <button className="landing-btn-primary" onClick={openSignup}>Get Started</button>
+            <button className="landing-btn-primary" onClick={() => goToAuth('/register')}>Get Started</button>
             <button className="landing-btn-secondary" onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}>
               Learn More →
             </button>
@@ -259,7 +195,7 @@ export default function LoginView() {
             <h3>Monthly</h3>
             <p className="price-desc">Pay as you go, cancel anytime.</p>
             <div className="landing-price-amount">$39<span>/ mo</span></div>
-            <button className="landing-price-btn" onClick={openSignup}>Get Started</button>
+            <button className="landing-price-btn" onClick={() => goToAuth('/register')}>Get Started</button>
             <ul className="landing-price-features">
               <li><span className="landing-check-icon">✓</span> Uncapped appointments</li>
               <li><span className="landing-check-icon">✓</span> Custom domain integration</li>
@@ -274,7 +210,7 @@ export default function LoginView() {
             <h3>Annually</h3>
             <p className="price-desc">Commit for a year and save big on your clinic.</p>
             <div className="landing-price-amount">$234<span>/ yr</span></div>
-            <button className="landing-price-btn" onClick={openSignup}>Get Started</button>
+            <button className="landing-price-btn" onClick={() => goToAuth('/register')}>Get Started</button>
             <ul className="landing-price-features">
               <li><span className="landing-check-icon">✓</span> Everything in Monthly</li>
               <li><span className="landing-check-icon">✓</span> Priority 24/7 support</li>
@@ -310,7 +246,7 @@ export default function LoginView() {
         <div className="landing-cta-box">
           <h2>Easy Access for Easy Bookings.</h2>
           <p>Deliver the best booking experience today and take your clinic's workflow to the next level.</p>
-          <button className="landing-btn-white" onClick={openSignup}>Get Started Now</button>
+          <button className="landing-btn-white" onClick={() => goToAuth('/register')}>Get Started Now</button>
         </div>
       </section>
 
@@ -359,114 +295,6 @@ export default function LoginView() {
         </div>
       </footer>
 
-      {/* MODAL OVERLAY (LOGIN / SIGNUP) */}
-      {showForm && (
-        <div className="landing-modal-overlay">
-          <div className="landing-login-card" onClick={(e) => e.stopPropagation()}>
-            <button className="landing-modal-close" onClick={() => setShowForm(false)}>×</button>
-            <div className="landing-login-content">
-              <div className="landing-login-header">
-                <img src="/assets/Snabbb (Teal).png" alt="Snabbb Logo" className="landing-login-logo" />
-                <h2>{authMode === 'login' ? 'Welcome back' : 'Create Account'}</h2>
-                <p>
-                  {authMode === 'login' ? 'Sign in to access your dashboard' : 'Sign up to get started today'}
-                </p>
-              </div>
-
-              <form onSubmit={handleSupabaseSubmit}>
-                {authMode === 'signup' && (
-                  <div className="landing-form-group">
-                    <label>Full Name</label>
-                    <input
-                      className="landing-form-input"
-                      id="fullName"
-                      name="fullName"
-                      autoComplete="name"
-                      value={authFullName}
-                      onChange={(e) => setAuthFullName(e.target.value)}
-                      placeholder="John Doe"
-                      required
-                    />
-                  </div>
-                )}
-                <div className="landing-form-group">
-                  <label>Email</label>
-                  <input
-                    className="landing-form-input"
-                    id="email"
-                    name="email"
-                    autoComplete="email"
-                    type="email"
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    placeholder="name@clinic.com"
-                    required
-                  />
-                </div>
-
-                <div className="landing-form-group">
-                  <div className="landing-form-options">
-                    <label style={{ margin: 0 }}>Password</label>
-                    {authMode === 'login' && (
-                      <a href="#" className="landing-forgot-link" onClick={(e) => e.preventDefault()}>
-                        Forgot password?
-                      </a>
-                    )}
-                  </div>
-                  <input
-                    className="landing-form-input"
-                    id="password"
-                    name="password"
-                    autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
-                    type="password"
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                  />
-                </div>
-
-                {authMode === 'login' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                    <input
-                      type="checkbox"
-                      id="rememberMe"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      style={{ margin: 0, cursor: 'pointer', width: 'auto', height: 'auto' }}
-                    />
-                    <label htmlFor="rememberMe" style={{ margin: 0, fontWeight: 'normal', fontSize: '0.9rem', cursor: 'pointer', color: '#475569' }}>
-                      Remember me
-                    </label>
-                  </div>
-                )}
-
-                {authError && <div className="landing-form-error">{authError}</div>}
-
-                <button className="landing-submit-btn" type="submit">
-                  {authMode === 'signup' ? 'Create Account' : 'Sign In'}
-                </button>
-              </form>
-
-              {authMode === 'login' && (
-                <div className="landing-sample-accounts" style={{ marginTop: '1.5rem' }}>
-                  <strong>Demo Access:</strong>
-                  <div>Dentist: mrbur123@gmail.com / mrbur@123</div>
-                  <div>Admin: adminbur@gmail.com / bur@123</div>
-                </div>
-              )}
-
-              <div className="landing-switch-mode" style={{ marginTop: '2rem' }}>
-                {authMode === 'login' ? (
-                  <>Don't have an account? <button type="button" onClick={openSignup}>Sign up</button></>
-                ) : (
-                  <>Already have an account? <button type="button" onClick={openLogin}>Log in</button></>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 🐱 Restricted Mascot & AI for Login View */}
       <CatMascot disabled={true} />
