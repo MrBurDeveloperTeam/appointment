@@ -1,73 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Appointment - Dental Booking &amp; Scheduling</title>
-  <link rel="icon" type="image/png" href="/assets/appointment.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-</head>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
 
-      function readCookie(name) {
-        var parts = document.cookie ? document.cookie.split(';') : [];
-        for (var i = 0; i < parts.length; i++) {
-          var part = parts[i].trim();
-          if (part.indexOf(name + '=') === 0) {
-            return decodeURIComponent(part.slice(name.length + 1));
+    <script>
+      (function () {
+        var ALLOWED = {
+          light: true,
+          dark: true,
+          system: true
+        };
+
+        function readCookie(name) {
+          var parts = document.cookie
+            ? document.cookie.split(';')
+            : [];
+
+          for (var i = 0; i < parts.length; i++) {
+            var part = parts[i].trim();
+
+            if (part.indexOf(name + '=') === 0) {
+              return decodeURIComponent(
+                part.slice(name.length + 1)
+              );
+            }
+          }
+
+          return null;
+        }
+
+        function safeGet(key) {
+          try {
+            return window.localStorage.getItem(key);
+          } catch (error) {
+            return null;
           }
         }
-        return null;
-      }
 
-      function safeGet(key) {
-        try { return window.localStorage.getItem(key); } catch (e) { return null; }
-      }
+        function parseTheme(raw) {
+          if (!raw) return null;
 
-      function parseTheme(raw) {
-        if (!raw) return null;
-        var str = String(raw).trim().toLowerCase();
-        return ALLOWED[str] ? str : null;
-      }
+          var value = String(raw).trim().toLowerCase();
 
-      function resolveTheme(theme) {
-        if (theme === 'system') {
-          return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-            ? 'dark' : 'light';
+          return ALLOWED[value] ? value : null;
         }
-        return theme === 'dark' ? 'dark' : 'light';
-      }
 
-      // Priority:
-      // 1. window.__SNABBB_THEME__ — injected by the Cloudflare Pages Worker
-      //    server-side before this script runs. Most authoritative: it came
-      //    directly from Odoo using the user's session cookie.
-      // 2. snabbb-theme cookie — written by gallery on theme change,
-      //    readable cross-subdomain via Domain=.snabbb.com.
-      //    Also refreshed by the Worker on every HTML response.
-      // 3. localStorage['theme'] — appointment's own last-used value.
-      // 4. 'light' fallback — only if nothing else is available
-      //    (e.g. brand new user who has never set a theme).
-      var theme = parseTheme(window.__SNABBB_THEME__)
-               || parseTheme(readCookie('snabbb-theme'))
-               || parseTheme(safeGet('theme'))
-               || 'light';
+        function resolveTheme(theme) {
+          if (theme === 'system') {
+            return window.matchMedia &&
+              window.matchMedia(
+                '(prefers-color-scheme: dark)'
+              ).matches
+              ? 'dark'
+              : 'light';
+          }
 
-      var resolved = resolveTheme(theme);
+          return theme === 'dark' ? 'dark' : 'light';
+        }
 
-      document.documentElement.setAttribute('data-theme', resolved);
-      document.documentElement.dataset.themePreference = theme;
-      document.documentElement.classList.toggle('dark', resolved === 'dark');
-      document.documentElement.style.colorScheme = resolved;
-    })();
-  </script>
+        var theme =
+          parseTheme(window.__SNABBB_THEME__) ||
+          parseTheme(readCookie('snabbb-theme')) ||
+          parseTheme(safeGet('theme')) ||
+          'light';
 
-  <title>Appointment BY MR BUR</title>
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
-</body>
+        var resolved = resolveTheme(theme);
 
+        document.documentElement.setAttribute(
+          'data-theme',
+          resolved
+        );
+
+        document.documentElement.dataset.themePreference =
+          theme;
+
+        document.documentElement.classList.toggle(
+          'dark',
+          resolved === 'dark'
+        );
+
+        document.documentElement.style.colorScheme =
+          resolved;
+      })();
+    </script>
+
+    <title>
+      Appointment - Dental Booking &amp; Scheduling
+    </title>
+
+    <link
+      rel="icon"
+      type="image/png"
+      href="/assets/appointment.png"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <div id="root"></div>
+
+    <script
+      type="module"
+      src="/src/main.jsx"
+    ></script>
+  </body>
 </html>
