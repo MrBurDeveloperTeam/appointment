@@ -8621,3 +8621,31 @@ tbody tr:hover {
     white-space: nowrap;
   }
 }
+
+/* Keep mobile account dropdown inside the screen */
+@media (max-width: 768px) {
+  .header {
+    overflow: visible !important;
+  }
+
+  .account-dropdown-container {
+    position: static !important;
+  }
+
+  .account-dropdown-menu {
+    position: absolute !important;
+    top: 100% !important;
+    right: var(--space-md) !important;
+    left: auto !important;
+
+    width: min(248px, calc(100vw - 32px)) !important;
+    max-width: calc(100vw - 32px);
+
+    max-height: calc(100dvh - 80px);
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+
+    box-sizing: border-box;
+    z-index: 2100 !important;
+  }
+}
