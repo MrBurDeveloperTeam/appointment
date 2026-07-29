@@ -8,7 +8,6 @@ export const DENTAL_POSITIONS = [
   'Periodontist',
   'Oral Surgeon',
 ];
-
 // Odoo res.country IDs.
 export const COUNTRIES = [
   ['3','Afghanistan'],['6','Albania'],['62','Algeria'],['11','American Samoa'],['1','Andorra'],['8','Angola'],['5','Anguilla'],['9','Antarctica'],['4','Antigua and Barbuda'],['10','Argentina'],['7','Armenia'],['14','Aruba'],['13','Australia'],['12','Austria'],['16','Azerbaijan'],['32','Bahamas'],['23','Bahrain'],['19','Bangladesh'],['18','Barbados'],['36','Belarus'],['20','Belgium'],['37','Belize'],['25','Benin'],['27','Bermuda'],['33','Bhutan'],['29','Bolivia'],['30','Bonaire, Sint Eustatius and Saba'],['17','Bosnia and Herzegovina'],['35','Botswana'],['34','Bouvet Island'],['31','Brazil'],['105','British Indian Ocean Territory'],['28','Brunei Darussalam'],['22','Bulgaria'],['21','Burkina Faso'],['24','Burundi'],
@@ -19,4 +18,3 @@ export const COUNTRIES = [
   ['244','Samoa'],['203','San Marino'],['192','Saudi Arabia'],['204','Senegal'],['189','Serbia'],['194','Seychelles'],['202','Sierra Leone'],['197','Singapore'],['210','Sint Maarten (Dutch part)'],['201','Slovakia'],['199','Slovenia'],['193','Solomon Islands'],['205','Somalia'],['247','South Africa'],['89','South Georgia and the South Sandwich Islands'],['121','South Korea'],['207','South Sudan'],['68','Spain'],['129','Sri Lanka'],['182','State of Palestine'],['195','Sudan'],['206','Suriname'],['200','Svalbard and Jan Mayen'],['196','Sweden'],['43','Switzerland'],['211','Syria'],['208','São Tomé and Príncipe'],['227','Taiwan'],['218','Tajikistan'],['228','Tanzania'],['217','Thailand'],['223','Timor-Leste'],['216','Togo'],['219','Tokelau'],['222','Tonga'],['225','Trinidad and Tobago'],['221','Tunisia'],['220','Turkmenistan'],['213','Turks and Caicos Islands'],['226','Tuvalu'],['224','Türkiye'],
   ['232','USA Minor Outlying Islands'],['230','Uganda'],['229','Ukraine'],['2','United Arab Emirates'],['231','United Kingdom'],['233','United States'],['234','Uruguay'],['235','Uzbekistan'],['242','Vanuatu'],['238','Venezuela'],['241','Vietnam'],['239','Virgin Islands (British)'],['240','Virgin Islands (USA)'],['243','Wallis and Futuna'],['66','Western Sahara'],['245','Yemen'],['248','Zambia'],['249','Zimbabwe'],['15','Åland Islands'],
 ];
-
