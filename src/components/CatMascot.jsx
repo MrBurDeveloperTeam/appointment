@@ -633,6 +633,35 @@ export default function CatMascot({ onCatClick, disabled = false }) {
         .cat-mascot-wrapper:hover .cat-tooltip {
           opacity: 1;
         }
+        .cat-popup-clamp {
+          --cat-popup-shift: 0px;
+          width: max-content;
+          max-width: calc(100vw - 24px);
+          transform: translateX(var(--cat-popup-shift));
+        }
+
+        .cat-popup-arrow {
+          left: 50%;
+        }
+
+        @media (max-width: 639px) {
+          .cat-popup-clamp {
+            --cat-popup-shift: clamp(
+              calc(12px - var(--cat-x) + 50%),
+              0px,
+              calc(100vw - 12px - var(--cat-x) - 50%)
+            );
+          }
+
+          .cat-popup-arrow {
+            left: clamp(
+              18px,
+              calc(50% - var(--cat-popup-shift)),
+              calc(100% - 18px)
+            );
+          }
+        }
+
         .mallow-mascot {
           position: relative;
           width: ${MALLOW_FRAME_WIDTH * MALLOW_SCALE}px;
@@ -690,7 +719,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
           top: `${catPos.y}%`,
           transform: `translate(-50%, -100%)`,
           transition: `left ${walkDuration}s linear, top ${walkDuration}s linear`,
-          zIndex: 9990,
+          zIndex: 10000,
           userSelect: 'none',
           display: 'flex',
           flexDirection: 'column',
@@ -700,9 +729,13 @@ export default function CatMascot({ onCatClick, disabled = false }) {
       >
         <AnimatePresence mode="wait">
           {isDialogActive && (
-            <motion.div
-              data-cat="true"
-              key={`dialog-bubble-${dialogStep}`}
+            <div
+              className="cat-popup-clamp"
+              style={{ '--cat-x': `${catPos.x}vw` }}
+            >
+              <motion.div
+                data-cat="true"
+                key={`dialog-bubble-${dialogStep}`}
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -743,25 +776,31 @@ export default function CatMascot({ onCatClick, disabled = false }) {
                   )}
                 </div>
               </div>
-              <div className="absolute -bottom-2 left-1/2 w-4 h-4 bg-white transform rotate-45 -translate-x-1/2 shadow-md border-r border-b border-slate-100 z-0"></div>
+              <div className="cat-popup-arrow absolute -bottom-2 w-4 h-4 bg-white transform rotate-45 -translate-x-1/2 shadow-md border-r border-b border-slate-100 z-0"></div>
             </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
+        )}
+      </AnimatePresence>
 
         <AnimatePresence mode="wait">
           {!disabled && !isDialogActive && meowMsg && (
-            <motion.div
-              initial={{ opacity: 0, y: 5, scale: 0.95 }}
+            <div
+              className="cat-popup-clamp"
+              style={{ '--cat-x': `${catPos.x}vw` }}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 5, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -5, scale: 0.95 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
               className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg shadow-sm relative pointer-events-auto mb-4 mr-1 cursor-default"
             >
               <span className="text-sm font-semibold text-slate-700 whitespace-nowrap">{meowMsg}</span>
-              <div className="absolute -bottom-2 left-1/2 w-4 h-4 bg-white transform rotate-45 -translate-x-1/2 shadow-md border-r border-b border-slate-100 z-0"></div>
+              <div className="cat-popup-arrow absolute -bottom-2 w-4 h-4 bg-white transform rotate-45 -translate-x-1/2 shadow-md border-r border-b border-slate-100 z-0"></div>
             </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
+        )}
+      </AnimatePresence>
 
         {/* Mallow pet mascot */}
         <div
