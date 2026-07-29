@@ -1220,6 +1220,9 @@ function copyResponseHeadersWithoutSetCookie(upstreamRes) {
             const name = payload?.name ?? body?.name; // keep fallback if you sometimes send body.name
             const password = payload?.password ?? body?.password;
             const phone = payload?.phone ?? body?.phone;
+            const accountType = payload?.account_type ?? payload?.accountType ?? body?.account_type;
+            const companyName = payload?.company_name ?? payload?.companyName ?? body?.company_name;
+            const jobPosition = payload?.position ?? payload?.jobPosition ?? payload?.job_position ?? body?.position;
 
             if (!email || !name) {
                 return new Response(JSON.stringify({ ok: false, error: "email and name are required" }), {
@@ -1238,6 +1241,9 @@ function copyResponseHeadersWithoutSetCookie(upstreamRes) {
                     ...(password ? { password } : {}),
                     company_id: 2, // Make sure this is correct for appointments
                     ...(phone ? { phone } : {}),
+                    ...(jobPosition ? { job_position: jobPosition } : {}),
+                    ...(accountType ? { account_type: accountType } : {}),
+                    ...(companyName ? { company_name: companyName } : {}),
                 },
                 id: 1,
             };
