@@ -8584,3 +8584,40 @@ tbody tr:hover {
   animation: tail-sway 3s infinite ease-in-out;
   transform-origin: 150px 150px;
 }
+
+/* Keep mobile header content on one row */
+@media (max-width: 768px) {
+  .header {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: var(--space-sm);
+    width: 100%;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    gap: var(--space-sm);
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: auto !important;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .header-title {
+    min-width: 0;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
