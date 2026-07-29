@@ -33,11 +33,14 @@ const VirtualPetContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             {/* Close Overlay Button (Global) */}
             <button
                 onClick={onClose}
-                className="absolute left-6 top-6 z-50 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/60 bg-white/75 text-slate-700 shadow-xl shadow-slate-900/10 backdrop-blur-md transition-all hover:-translate-x-0.5 hover:scale-105 hover:bg-white active:scale-95"
+                className="absolute left-3 top-3 z-[70] flex h-11 w-11 items-center justify-center rounded-xl border border-white/60 bg-white/75 text-slate-700 shadow-xl shadow-slate-900/10 backdrop-blur-md transition-all hover:-translate-x-0.5 hover:scale-105 hover:bg-white active:scale-95 sm:left-6 sm:top-6 sm:h-16 sm:w-16 sm:rounded-2xl"
                 title="Back"
                 aria-label="Back"
             >
-                <TiArrowBack className="h-12 w-12" strokeWidth={0} />
+                <TiArrowBack
+                    className="h-8 w-8 sm:h-12 sm:w-12"
+                    strokeWidth={0}
+                />
             </button>
 
             {view === 'ROOM' ? (
