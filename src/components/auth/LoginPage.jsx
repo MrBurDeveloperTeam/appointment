@@ -29,7 +29,7 @@ export default function LoginPage() {
     }
   }
 
-  return <AuthShell>
+  return <AuthShell centered>
     <header className="auth-header"><AuthLogo /><h1>Welcome Back</h1></header>
     <form onSubmit={handleSubmit} className="auth-form">
       <div className="auth-field"><label htmlFor="login-email" className="auth-label">Email</label><input id="login-email" className="auth-input auth-input-plain" type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" /></div>

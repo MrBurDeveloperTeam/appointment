@@ -54,6 +54,7 @@
 
 @media (min-width: 640px) {
   .auth-page { display: flex; align-items: flex-start; justify-content: center; padding: 2.5rem 1.5rem; }
+  .auth-page-centered { align-items: center; }
   .auth-card { padding: 2rem; }
 }
 
