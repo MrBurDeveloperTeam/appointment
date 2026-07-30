@@ -27,8 +27,23 @@
 	<meta name="keywords"
 		content="pacman, pac-man, pac-man online, pacman online, online, online games, games, free, puzzle, lucio panepinto, lucio, panepinto, html, html5, css, css3, javascript, jquery, rwd, responsive, responsive web design, responsive web, web design, canvas, draw" />
 
-	<link rel="stylesheet" type="text/css" href="css/pacman.css" />
-	<link rel="stylesheet" type="text/css" href="css/pacman-home.css" />
+	<link
+		rel="stylesheet"
+		type="text/css"
+		href="css/pacman.css"
+	/>
+
+	<link
+		rel="stylesheet"
+		type="text/css"
+		href="css/pacman-home.css"
+	/>
+
+	<link
+    rel="stylesheet"
+    type="text/css"
+    href="css/mobile-controls-v2.css"
+	/>
 
 	<script type="text/javascript" src="js/jquery.js"></script>
 	<!--<script type="text/javascript" src="js/jquery-mobile.js"></script>-->
@@ -128,6 +143,15 @@
 		}
 
 		$(document).ready(function () {
+
+			/*
+			* Always begin on the presentation screen without
+			* gameplay direction controls.
+			*/
+			document.body.classList.remove(
+				"game-active"
+			);
+
 			//$.mobile.loading().hide();
 			loadAllSound();
 

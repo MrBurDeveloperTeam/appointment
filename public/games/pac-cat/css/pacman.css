@@ -198,44 +198,28 @@ span.combo, span.fruits {
 	background-image: url('../img/move-right.png');
 }
 
-#control-up-big, #control-down-big, #control-left-big, #control-right-big { 
-	position: absolute;
-	opacity: 0.2;
-	margin: auto;
-	padding: 0px;
-	display: none;
-	background-size: 98px;
-	z-index: 999999;
+/*
+ * Direction button images.
+ * Size and position are controlled by mobile-controls-v2.css.
+ */
+#control-up-big {
+    background-image:
+        url('../img/move-up-big.png');
 }
-#control-up-big { 
-	bottom: 10px;
-	left: 0px;
-	right: 0px;
-	width: 125px;
-	height: 125px;
-	background-image: url('../img/move-up-big.png');
+
+#control-down-big {
+    background-image:
+        url('../img/move-down-big.png');
 }
-#control-down-big { 
-	bottom: -120px;
-	left: 0px;
-	right: 0px;
-	width: 125px;
-	height: 125px;
-	background-image: url('../img/move-down-big.png');
+
+#control-left-big {
+    background-image:
+        url('../img/move-left-big.png');
 }
-#control-left-big { 
-	left: 80px;
-	bottom: -90px;
-	width: 125px;
-	height: 175px;
-	background-image: url('../img/move-left-big.png');
-}
-#control-right-big { 
-	right: 80px;
-	bottom: -90px;
-	width: 125px;
-	height: 175px;
-	background-image: url('../img/move-right-big.png');
+
+#control-right-big {
+    background-image:
+        url('../img/move-right-big.png');
 }
 
 
@@ -385,18 +369,13 @@ h3 {
 	#panel, #home { 
 		zoom: 105%;
 	}
-	#control-up-big, #control-down-big, #control-left-big, #control-right-big { 
-		display: inline; 
-	} 
+
 
 }
 @media screen and (max-height:640px), screen and (min-device-height : 480px) and (max-device-height : 640px) and (-webkit-device-pixel-ratio: 3) { 
 	#panel, #home { 
 		zoom: 60%;
 	}
-	#control-up-big, #control-down-big, #control-left-big, #control-right-big { 
-		display: inline; 
-	} 
 	#home .help-button, #panel .help-button, #home .github, #sound, .sound { 
 		display: none;
 	}
@@ -408,9 +387,6 @@ h3 {
 	#panel, #home { 
 		zoom: 55%;
 	}
-	#control-up-big, #control-down-big, #control-left-big, #control-right-big { 
-		display: inline; 
-	} 
 	h1, #canvas-panel-title-pacman, #control-up-second, #control-down-second, #home .help-button, #panel .help-button, #home .github, #sound, .sound { 
 		display: none;
 	}
@@ -514,121 +490,4 @@ h3 {
  */
 #control {
     display: none !important;
-}
-
-/*
- * Mobile direction pad.
- * Preserve the original arrow appearance and move the
- * complete control group to the lower-right corner.
- */
-#mobile-controls {
-    --pac-cat-control-size:
-        clamp(42px, 11vmin, 58px);
-
-    position: fixed;
-
-    right:
-        calc(
-            14px +
-            env(safe-area-inset-right, 0px)
-        );
-
-    bottom:
-        calc(
-            14px +
-            env(safe-area-inset-bottom, 0px)
-        );
-
-    z-index: 1000000;
-    display: none;
-
-    grid-template-columns:
-        repeat(3, var(--pac-cat-control-size));
-
-    grid-template-rows:
-        repeat(3, var(--pac-cat-control-size));
-
-    gap: 2px;
-
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-/*
- * Never show gameplay controls on the presentation screen.
- */
-body:not(.game-active) #mobile-controls {
-    display: none !important;
-}
-
-/*
- * Show the direction pad only after gameplay begins.
- */
-@media screen and (max-width: 1024px),
-       (pointer: coarse) {
-    body.game-active #mobile-controls {
-        display: grid !important;
-    }
-}
-
-/*
- * Preserve the original arrow-image appearance.
- */
-#mobile-controls > div {
-    position: relative !important;
-    inset: auto !important;
-
-    width:
-        var(--pac-cat-control-size) !important;
-
-    height:
-        var(--pac-cat-control-size) !important;
-
-    margin: 0 !important;
-    padding: 0 !important;
-
-    display: block !important;
-
-    box-sizing: border-box;
-
-    background-color: transparent !important;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 82% !important;
-
-    border: 0 !important;
-    border-radius: 0 !important;
-
-    opacity: 0.45 !important;
-
-    cursor: pointer;
-    touch-action: none;
-
-    -webkit-tap-highlight-color: transparent;
-}
-
-#mobile-controls > div:active {
-    opacity: 0.8 !important;
-    transform: scale(0.92);
-}
-
-#control-up-big {
-    grid-column: 2;
-    grid-row: 1;
-}
-
-#control-left-big {
-    grid-column: 1;
-    grid-row: 2;
-}
-
-#control-right-big {
-    grid-column: 3;
-    grid-row: 2;
-}
-
-#control-down-big {
-    grid-column: 2;
-    grid-row: 3;
 }
