@@ -119,10 +119,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
     }
   };
 
-  const [dialogSteps, setDialogSteps] = useState([
-    "👋 Hi there! I'm your AI assistant for Snabbb.io.\nI'm here to help you explore and understand all the features available.",
-    "Click on me to open the Virtual Pet ecosystem, or ask me any questions about the app!"
-  ]);
+  const [dialogSteps, setDialogSteps] = useState([]);
 
   const [meowMsg, setMeowMsg] = useState(null);
   const [petStates, setPetStates] = useState(['Normal']);
@@ -290,17 +287,6 @@ export default function CatMascot({ onCatClick, disabled = false }) {
         return;
       }
 
-      // Default fallback dialogs
-      const fallbackPreLogin = [
-        "👋 Welcome to Snabbb Appointment!",
-        "Please sign in to manage your appointments and clinic."
-      ];
-
-      const fallbackPostLogin = [
-        "👋 Welcome back! I'm your Appointment Assistant.",
-        "Click on me to open the Virtual Pet ecosystem, or ask me for help!"
-      ];
-
       try {
         const { data: configs } = await supabase
           .from('aiboard_simulator_configs')
@@ -324,25 +310,10 @@ export default function CatMascot({ onCatClick, disabled = false }) {
             if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
               setIsDialogActive(true);
             }
-            return;
           }
         }
-
-        // If no config found or no steps returned, use fallback based on login state
-        setDialogSteps(disabled ? fallbackPreLogin : fallbackPostLogin);
-        setDialogStep(0);
-        if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
-          setIsDialogActive(true);
-        }
-
       } catch (err) {
         console.error("Error fetching dialog steps:", err);
-        // Fallback on error
-        setDialogSteps(disabled ? fallbackPreLogin : fallbackPostLogin);
-        setDialogStep(0);
-        if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
-          setIsDialogActive(true);
-        }
       }
     };
 
@@ -728,7 +699,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
         }}
       >
         <AnimatePresence mode="wait">
-          {isDialogActive && (
+          {isDialogActive && dialogSteps.length > 0 && (
             <div
               className="cat-popup-clamp"
               style={{ '--cat-x': `${catPos.x}vw` }}
