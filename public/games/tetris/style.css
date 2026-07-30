@@ -721,3 +721,159 @@ footer {
         max-width: 400px
     }
 }
+
+/*
+ * Tetris responsive landscape viewport.
+ * The complete three-column board is scaled as one unit.
+ */
+:root {
+  --tetris-scale: 1;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+
+  margin: 0;
+  padding: 0;
+
+  overflow: hidden !important;
+  overscroll-behavior: none;
+
+  background: #071225;
+}
+
+html {
+  position: fixed;
+  inset: 0;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+
+  touch-action: none;
+
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/*
+ * Use the complete visible iframe area.
+ *
+ * The larger top padding protects Tetris from the global:
+ * - Back button
+ * - Coin indicator
+ * - Close button
+ */
+#tetris-viewport {
+  position: fixed !important;
+  inset: 0 !important;
+
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+
+  margin: 0 !important;
+
+  /*
+    * GamePage.tsx already reserves space for the global
+    * Back, Coin and Close controls. Only keep a small
+    * internal margin and device safe-area clearance here.
+    */
+    padding-top:
+    max(
+        8px,
+        env(safe-area-inset-top, 0px)
+    ) !important;
+
+    padding-right:
+    max(
+        12px,
+        env(safe-area-inset-right, 0px)
+    ) !important;
+
+    padding-bottom:
+    max(
+        8px,
+        env(safe-area-inset-bottom, 0px)
+    ) !important;
+
+    padding-left:
+    max(
+        12px,
+        env(safe-area-inset-left, 0px)
+    ) !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  box-sizing: border-box;
+
+  overflow: hidden !important;
+}
+
+/*
+ * Preserve the original desktop three-column layout.
+ * Do not allow the board to wrap or become a single column.
+ */
+#tetris-stage {
+  flex: none !important;
+
+  width: max-content !important;
+  height: max-content !important;
+
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+
+  margin: 0 !important;
+
+  transform:
+    scale(
+      var(--tetris-scale)
+    ) !important;
+
+  transform-origin:
+    center center !important;
+
+  will-change: transform;
+}
+
+/*
+ * Force the original three-column desktop structure.
+ * This overrides the old max-width: 900px single-column rules.
+ */
+#tetris-stage.board {
+  display: grid !important;
+
+  grid-template-columns:
+    260px
+    max-content
+    260px !important;
+
+  gap: 20px !important;
+
+  align-items: center !important;
+  justify-items: stretch !important;
+}
+
+/*
+ * Restore the original fixed side-panel dimensions.
+ */
+#tetris-stage > .side {
+  width: 260px !important;
+  max-width: none !important;
+}
+
+/*
+ * Keep the main Tetris panel at its natural width.
+ */
+#tetris-stage > .game {
+  width: max-content !important;
+  max-width: none !important;
+}

@@ -146,6 +146,7 @@ export const GamePage: React.FC<GamePageProps> = ({ gameId, onClose }) => {
     }
 
     const config = GAME_CONFIG[gameId];
+    const isTetris = gameId === 'tetris';
 
     return (
         <div className="fixed inset-0 z-50 h-[100dvh] w-[100dvw] overflow-hidden bg-black" style={{ fontFamily: "'Fredoka', sans-serif" }}>
@@ -191,7 +192,34 @@ export const GamePage: React.FC<GamePageProps> = ({ gameId, onClose }) => {
                 </div>
 
                 {/* Game Iframe Wrapper */}
-                <div className="absolute inset-0 overflow-hidden bg-black">
+                <div
+                    className={
+                        isTetris
+                            ? 'absolute overflow-hidden bg-black'
+                            : 'absolute inset-0 overflow-hidden bg-black'
+                    }
+                    style={
+                        isTetris
+                            ? {
+                                /*
+                                * Reserve the top area for the global Back,
+                                * Coin and Close controls.
+                                */
+                                top:
+                                    'max(clamp(4.5rem, 12dvh, 6rem), calc(env(safe-area-inset-top, 0px) + 0.75rem))',
+
+                                right:
+                                    'max(0.75rem, env(safe-area-inset-right, 0px))',
+
+                                bottom:
+                                    'max(0.75rem, env(safe-area-inset-bottom, 0px))',
+
+                                left:
+                                    'max(0.75rem, env(safe-area-inset-left, 0px))',
+                            }
+                            : undefined
+                    }
+                >
                     {isLoading && (
                         <div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-10">
                             <div className="flex flex-col items-center gap-4">

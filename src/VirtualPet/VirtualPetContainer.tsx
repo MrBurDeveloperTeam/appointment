@@ -11,8 +11,22 @@ import { TiArrowBackOutline } from "react-icons/ti";
 import { TiArrowBack } from "react-icons/ti";
 import { DEFAULT_CURRENCY_CODE, normalizeCurrencyCode } from './constants';
 
-// PAC-CAT uses the "paccat" ID in GamesMenu and GamePage
-const PAC_CAT_GAME_ID = 'paccat';
+/*
+ * Games designed for landscape orientation.
+ */
+const LANDSCAPE_GAME_IDS = new Set<string>([
+    'paccat',
+    'tetris',
+]);
+
+const requiresLandscapeMode = (
+    gameId: string | null
+) => {
+    return (
+        gameId !== null &&
+        LANDSCAPE_GAME_IDS.has(gameId)
+    );
+};
 
 type LockableScreenOrientation = ScreenOrientation & {
   lock?: (orientation: 'landscape') => Promise<void>;
@@ -39,10 +53,10 @@ const VirtualPetContent: React.FC<{
     const [showRotateNotice, setShowRotateNotice] = useState(false);
 
     /*
-     * Track whether PAC-CAT entered fullscreen mode.
-     * This prevents the app from exiting a fullscreen session
-     * that was already active before the game opened.
-     */
+    * Track whether a landscape game entered fullscreen mode.
+    * This prevents the app from closing a fullscreen session
+    * that was already active before the game opened.
+    */
     const enteredFullscreenRef = useRef(false);
 
     const { setCurrentRoom } = useGameState();
@@ -84,7 +98,7 @@ const VirtualPetContent: React.FC<{
             }
         } catch (error) {
             console.warn(
-                '[PAC-CAT] Fullscreen mode is unavailable:',
+                '[Landscape Game] Fullscreen mode is unavailable:',
                 error
             );
         }
@@ -99,7 +113,7 @@ const VirtualPetContent: React.FC<{
             }
         } catch (error) {
             console.warn(
-                '[PAC-CAT] Landscape orientation lock is unavailable:',
+                '[Landscape Game] Orientation lock is unavailable:',
                 error
             );
         }
@@ -119,7 +133,7 @@ const VirtualPetContent: React.FC<{
             orientation?.unlock?.();
         } catch (error) {
             console.warn(
-                '[PAC-CAT] Could not unlock screen orientation:',
+                '[Landscape Game] Could not unlock screen orientation:',
                 error
             );
         }
@@ -145,7 +159,7 @@ const VirtualPetContent: React.FC<{
             }
         } catch (error) {
             console.warn(
-                '[PAC-CAT] Could not exit fullscreen mode:',
+                '[Landscape Game] Could not exit fullscreen mode:',
                 error
             );
         }
@@ -153,12 +167,14 @@ const VirtualPetContent: React.FC<{
         enteredFullscreenRef.current = false;
     };
 
-    const handleNavigateToGame = async (gameId: string) => {
+    const handleNavigateToGame = async (
+        gameId: string
+    ) => {
         /*
-         * PAC-CAT requires landscape mode.
-         * Other games keep their existing orientation behavior.
-         */
-        if (gameId === PAC_CAT_GAME_ID) {
+        * Enter fullscreen and request landscape orientation
+        * for games designed for a horizontal layout.
+        */
+        if (requiresLandscapeMode(gameId)) {
             await enterLandscapeMode();
         }
 
@@ -167,7 +183,7 @@ const VirtualPetContent: React.FC<{
     };
 
     const handleCloseGame = async () => {
-        if (activeGameId === PAC_CAT_GAME_ID) {
+        if (requiresLandscapeMode(activeGameId)) {
             await releaseLandscapeMode();
         }
 
@@ -182,7 +198,7 @@ const VirtualPetContent: React.FC<{
          * Also release landscape mode when the user closes
          * the entire virtual pet page while PAC-CAT is active.
          */
-        if (activeGameId === PAC_CAT_GAME_ID) {
+        if (requiresLandscapeMode(activeGameId)) {
             await releaseLandscapeMode();
         }
 
@@ -193,7 +209,7 @@ const VirtualPetContent: React.FC<{
     useEffect(() => {
         if (
             view !== 'GAME' ||
-            activeGameId !== PAC_CAT_GAME_ID
+            !requiresLandscapeMode(activeGameId)
         ) {
             setShowRotateNotice(false);
             return;
@@ -238,6 +254,7 @@ const VirtualPetContent: React.FC<{
         <div className="relative h-full w-full overflow-hidden pet-interface">
             {/* Close the virtual pet overlay */}
             <button
+                type="button"
                 onClick={handleCloseVirtualPet}
                 className="absolute left-3 top-3 z-[70] flex h-11 w-11 items-center justify-center rounded-xl border border-white/60 bg-white/75 text-slate-700 shadow-xl shadow-slate-900/10 backdrop-blur-md transition-all hover:-translate-x-0.5 hover:scale-105 hover:bg-white active:scale-95 sm:left-6 sm:top-6 sm:h-16 sm:w-16 sm:rounded-2xl"
                 title="Back"
@@ -260,7 +277,7 @@ const VirtualPetContent: React.FC<{
                         onClose={handleCloseGame}
                     />
 
-                    {activeGameId === PAC_CAT_GAME_ID &&
+                    {requiresLandscapeMode(activeGameId) &&
                         showRotateNotice && (
                             <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 px-6 text-white">
                                 <div className="max-w-sm text-center">
@@ -273,9 +290,11 @@ const VirtualPetContent: React.FC<{
                                     </h2>
 
                                     <p className="mt-2 text-sm text-white/75">
-                                        PAC-CAT is designed for
-                                        landscape mode. Please rotate
-                                        your phone to continue.
+                                        {activeGameId === 'tetris'
+                                            ? 'Tetris'
+                                            : 'PAC-CAT'}{' '}
+                                        is designed for landscape mode.
+                                        Please rotate your phone to continue.
                                     </p>
 
                                     {/* Allow the user to leave when rotation is unavailable */}

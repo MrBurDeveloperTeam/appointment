@@ -3,15 +3,25 @@
 
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
 
 <body tabindex="0">
-  <div class="wrap">
-    <div class="board">
+  <!--
+    The viewport represents the currently visible iframe area.
+    The complete three-column board is scaled as one unit.
+  -->
+  <div
+    id="tetris-viewport"
+    class="wrap"
+  >
+    <div
+      id="tetris-stage"
+      class="board"
+    >
       <!-- Left Side Panel -->
       <div class="side">
         <div class="preview-box" style="margin-bottom: 24px;">
@@ -193,8 +203,180 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <script src="game.js"></script>
+  <script src="game.js"></script>
+
+  <script>
+    /*
+     * Scale the complete Tetris layout so all three columns
+     * fit inside the currently visible landscape viewport.
+     */
+    (function () {
+      var viewport =
+        document.getElementById(
+          'tetris-viewport'
+        );
+
+      var stage =
+        document.getElementById(
+          'tetris-stage'
+        );
+
+      if (!viewport || !stage) {
+        return;
+      }
+
+      var fitFrame = 0;
+
+      function getPixelValue(value) {
+        var parsed = parseFloat(value);
+
+        return Number.isFinite(parsed)
+          ? parsed
+          : 0;
+      }
+
+      function fitTetrisToViewport() {
+        cancelAnimationFrame(fitFrame);
+
+        fitFrame = requestAnimationFrame(
+          function () {
+            var viewportStyle =
+              window.getComputedStyle(
+                viewport
+              );
+
+            /*
+             * Remove viewport padding from the dimensions
+             * available to the Tetris stage.
+             */
+            var availableWidth = Math.max(
+              viewport.clientWidth -
+                getPixelValue(
+                  viewportStyle.paddingLeft
+                ) -
+                getPixelValue(
+                  viewportStyle.paddingRight
+                ),
+              1
+            );
+
+            var availableHeight = Math.max(
+              viewport.clientHeight -
+                getPixelValue(
+                  viewportStyle.paddingTop
+                ) -
+                getPixelValue(
+                  viewportStyle.paddingBottom
+                ),
+              1
+            );
+
+            /*
+             * CSS transforms do not change offsetWidth or
+             * scrollWidth, so these remain the natural
+             * unscaled dimensions of the complete board.
+             */
+            var stageWidth = Math.max(
+              stage.scrollWidth,
+              stage.offsetWidth,
+              1
+            );
+
+            var stageHeight = Math.max(
+              stage.scrollHeight,
+              stage.offsetHeight,
+              1
+            );
+
+            var scale = Math.min(
+              availableWidth / stageWidth,
+              availableHeight / stageHeight,
+              1
+            );
+
+            document.documentElement
+              .style
+              .setProperty(
+                '--tetris-scale',
+                String(scale)
+              );
+          }
+        );
+      }
+
+      window.addEventListener(
+        'load',
+        function () {
+          /*
+           * Wait for the initial CSS, canvas and fonts
+           * to complete their first layout.
+           */
+          requestAnimationFrame(
+            function () {
+              requestAnimationFrame(
+                fitTetrisToViewport
+              );
+            }
+          );
+        }
+      );
+
+      window.addEventListener(
+        'resize',
+        fitTetrisToViewport
+      );
+
+      window.addEventListener(
+        'orientationchange',
+        function () {
+          /*
+           * Mobile browsers update their visual viewport
+           * slightly after the orientation event.
+           */
+          setTimeout(
+            fitTetrisToViewport,
+            180
+          );
+        }
+      );
+
+      if (window.visualViewport) {
+        window.visualViewport
+          .addEventListener(
+            'resize',
+            fitTetrisToViewport
+          );
+      }
+
+      if (
+        document.fonts &&
+        document.fonts.ready
+      ) {
+        document.fonts.ready.then(
+          fitTetrisToViewport
+        );
+      }
+
+      if (
+        'ResizeObserver' in window
+      ) {
+        var resizeObserver =
+          new ResizeObserver(
+            fitTetrisToViewport
+          );
+
+        resizeObserver.observe(
+          viewport
+        );
+
+        resizeObserver.observe(
+          stage
+        );
+      }
+    })();
+  </script>
 </body>
 
 </html>
