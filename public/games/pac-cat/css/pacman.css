@@ -518,56 +518,63 @@ h3 {
 
 /*
  * Mobile direction pad.
- * Keep it independent from the scaled game panel.
+ * Preserve the original arrow appearance and move the
+ * complete control group to the lower-right corner.
  */
 #mobile-controls {
     --pac-cat-control-size:
-        clamp(44px, 11vmin, 58px);
+        clamp(42px, 11vmin, 58px);
 
     position: fixed;
 
     right:
         calc(
-            12px +
+            14px +
             env(safe-area-inset-right, 0px)
         );
 
     bottom:
         calc(
-            12px +
+            14px +
             env(safe-area-inset-bottom, 0px)
         );
 
     z-index: 1000000;
-
     display: none;
 
     grid-template-columns:
-        repeat(
-            3,
-            var(--pac-cat-control-size)
-        );
+        repeat(3, var(--pac-cat-control-size));
 
     grid-template-rows:
-        repeat(
-            3,
-            var(--pac-cat-control-size)
-        );
+        repeat(3, var(--pac-cat-control-size));
 
-    gap: 4px;
+    gap: 2px;
 
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
 }
 
+/*
+ * Never show gameplay controls on the presentation screen.
+ */
+body:not(.game-active) #mobile-controls {
+    display: none !important;
+}
+
+/*
+ * Show the direction pad only after gameplay begins.
+ */
 @media screen and (max-width: 1024px),
        (pointer: coarse) {
     body.game-active #mobile-controls {
-        display: grid;
+        display: grid !important;
     }
 }
 
+/*
+ * Preserve the original arrow-image appearance.
+ */
 #mobile-controls > div {
     position: relative !important;
     inset: auto !important;
@@ -585,15 +592,15 @@ h3 {
 
     box-sizing: border-box;
 
+    background-color: transparent !important;
     background-repeat: no-repeat;
     background-position: center;
-    background-size: 72% !important;
-    background-color: rgba(0, 0, 0, 0.52);
+    background-size: 82% !important;
 
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
+    border: 0 !important;
+    border-radius: 0 !important;
 
-    opacity: 0.72 !important;
+    opacity: 0.45 !important;
 
     cursor: pointer;
     touch-action: none;
@@ -602,8 +609,8 @@ h3 {
 }
 
 #mobile-controls > div:active {
-    opacity: 1 !important;
-    transform: scale(0.9);
+    opacity: 0.8 !important;
+    transform: scale(0.92);
 }
 
 #control-up-big {
