@@ -535,19 +535,49 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
 
       {/* Bedroom Lamp Switch */}
       {currentRoom === RoomType.BEDROOM && (
-        <div className="absolute top-0 left-1/3 z-10 flex flex-col items-center">
-          {/* Lamp Cord - Changed h-32 to h-48 */}
-          <div className="w-1 h-48 bg-slate-800/80" />
-          {/* Lamp Bulb */}
+        <div className="pointer-events-none absolute left-[72%] top-0 z-20 flex -translate-x-1/2 flex-col items-center md:left-1/3">
+          {/*
+          * Use a shorter cord on mobile so the bulb stays away
+          * from the cat. Restore the original length on larger screens.
+          */}
+          <div className="h-32 w-1 bg-slate-800/80 md:h-48" />
+
+          {/*
+          * Only the bulb receives pointer events.
+          * The cord does not block clicks on the cat.
+          */}
           <button
-            onClick={() => setIsSleeping(!isSleeping)}
-            // Added 'rotate-180' to flip the emoji upside down
-            className="text-6xl -mt-2 transition-all duration-300 hover:scale-110 active:scale-95 outline-none rotate-180"
+            type="button"
+            onPointerDown={(event) => {
+              event.stopPropagation();
+            }}
+            onPointerUp={(event) => {
+              event.stopPropagation();
+            }}
+            onClick={(event) => {
+              event.stopPropagation();
+
+              // Toggle the bedroom light without triggering the room pointer handler
+              setIsSleeping(!isSleeping);
+            }}
+            className="pointer-events-auto -mt-1 flex h-11 w-11 touch-manipulation items-center justify-center text-4xl outline-none transition-transform duration-300 hover:scale-110 active:scale-95 md:-mt-2 md:h-14 md:w-14 md:text-6xl"
             title={isSleeping ? "Turn On" : "Turn Off"}
+            aria-label={
+              isSleeping
+                ? "Turn on bedroom light"
+                : "Turn off bedroom light"
+            }
           >
-            <div className={`transition-all duration-500 ${isSleeping ? 'grayscale opacity-50 blur-[1px]' : 'filter drop-shadow-[0_0_25px_rgba(255,235,59,0.8)]'}`}>
+            {/* Flip the bulb so it appears to hang from the cord */}
+            <span
+              className={`rotate-180 transition-all duration-500 ${
+                isSleeping
+                  ? "grayscale opacity-50"
+                  : "drop-shadow-[0_0_20px_rgba(255,235,59,0.8)]"
+              }`}
+            >
               💡
-            </div>
+            </span>
           </button>
         </div>
       )}
@@ -630,10 +660,10 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
                 src={activeBed.src}
                 alt=""
                 draggable={false}
-                className="pointer-events-none absolute -bottom-32 left-1/2 z-0 w-[min(85vw,550px)] -translate-x-1/2 select-none drop-shadow-2xl"
+                className="pointer-events-none absolute -bottom-24 left-1/2 z-0 w-[min(85vw,550px)] -translate-x-1/2 select-none drop-shadow-2xl sm:-bottom-28 lg:-bottom-32"
               />
             )}
-            <div className="relative z-10">
+            <div className="relative z-10 translate-y-2 sm:translate-y-0">
               <Pet
                 ref={petRef}
                 stats={stats}

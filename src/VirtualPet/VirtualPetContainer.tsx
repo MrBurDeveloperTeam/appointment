@@ -11,28 +11,192 @@ import { TiArrowBackOutline } from "react-icons/ti";
 import { TiArrowBack } from "react-icons/ti";
 import { DEFAULT_CURRENCY_CODE, normalizeCurrencyCode } from './constants';
 
-// Inner component to access context
-const VirtualPetContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+// PAC-CAT uses the "paccat" ID in GamesMenu and GamePage
+const PAC_CAT_GAME_ID = 'paccat';
+
+type LockableScreenOrientation = ScreenOrientation & {
+  lock?: (orientation: 'landscape') => Promise<void>;
+  unlock?: () => void;
+};
+
+// Inner component to access the virtual pet game context
+const VirtualPetContent: React.FC<{
+    onClose: () => void;
+}> = ({ onClose }) => {
     const [view, setView] = useState<'ROOM' | 'GAME'>('ROOM');
     const [activeGameId, setActiveGameId] = useState<string | null>(null);
+    const [showRotateNotice, setShowRotateNotice] = useState(false);
+
+    /*
+     * Track whether PAC-CAT entered fullscreen mode.
+     * This prevents the app from exiting a fullscreen session
+     * that was already active before the game opened.
+     */
+    const enteredFullscreenRef = useRef(false);
+
     const { setCurrentRoom } = useGameState();
 
-    const handleNavigateToGame = (gameId: string) => {
+    const enterLandscapeMode = async () => {
+        const orientation = window.screen
+            .orientation as LockableScreenOrientation | undefined;
+
+        try {
+            /*
+             * Screen orientation locking normally requires fullscreen.
+             * This runs directly from the PAC-CAT selection click.
+             */
+            if (
+                !document.fullscreenElement &&
+                document.documentElement.requestFullscreen
+            ) {
+                await document.documentElement.requestFullscreen();
+                enteredFullscreenRef.current = true;
+            }
+        } catch (error) {
+            console.warn(
+                '[PAC-CAT] Fullscreen mode is unavailable:',
+                error
+            );
+        }
+
+        try {
+            /*
+             * Attempt to lock the device in landscape orientation.
+             * Unsupported browsers will use the rotate-device fallback.
+             */
+            if (orientation?.lock) {
+                await orientation.lock('landscape');
+            }
+        } catch (error) {
+            console.warn(
+                '[PAC-CAT] Landscape orientation lock is unavailable:',
+                error
+            );
+        }
+    };
+
+    const releaseLandscapeMode = async () => {
+        const orientation = window.screen
+            .orientation as LockableScreenOrientation | undefined;
+
+        /*
+         * Release the landscape lock when leaving PAC-CAT.
+         */
+        try {
+            orientation?.unlock?.();
+        } catch (error) {
+            console.warn(
+                '[PAC-CAT] Could not unlock screen orientation:',
+                error
+            );
+        }
+
+        /*
+         * Exit fullscreen only when PAC-CAT entered it.
+         */
+        try {
+            if (
+                enteredFullscreenRef.current &&
+                document.fullscreenElement
+            ) {
+                await document.exitFullscreen();
+            }
+        } catch (error) {
+            console.warn(
+                '[PAC-CAT] Could not exit fullscreen mode:',
+                error
+            );
+        }
+
+        enteredFullscreenRef.current = false;
+    };
+
+    const handleNavigateToGame = async (gameId: string) => {
+        /*
+         * PAC-CAT requires landscape mode.
+         * Other games keep their existing orientation behavior.
+         */
+        if (gameId === PAC_CAT_GAME_ID) {
+            await enterLandscapeMode();
+        }
+
         setActiveGameId(gameId);
         setView('GAME');
     };
 
-    const handleCloseGame = () => {
+    const handleCloseGame = async () => {
+        if (activeGameId === PAC_CAT_GAME_ID) {
+            await releaseLandscapeMode();
+        }
+
+        setShowRotateNotice(false);
         setActiveGameId(null);
         setView('ROOM');
         setCurrentRoom(RoomType.GAMES);
     };
 
+    const handleCloseVirtualPet = async () => {
+        /*
+         * Also release landscape mode when the user closes
+         * the entire virtual pet page while PAC-CAT is active.
+         */
+        if (activeGameId === PAC_CAT_GAME_ID) {
+            await releaseLandscapeMode();
+        }
+
+        setShowRotateNotice(false);
+        onClose();
+    };
+
+    useEffect(() => {
+        if (
+            view !== 'GAME' ||
+            activeGameId !== PAC_CAT_GAME_ID
+        ) {
+            setShowRotateNotice(false);
+            return;
+        }
+
+        const updateOrientationNotice = () => {
+            /*
+             * Show the fallback notice only when PAC-CAT
+             * remains in portrait orientation.
+             */
+            setShowRotateNotice(
+                window.innerHeight > window.innerWidth
+            );
+        };
+
+        updateOrientationNotice();
+
+        window.addEventListener(
+            'resize',
+            updateOrientationNotice
+        );
+
+        window.screen.orientation?.addEventListener(
+            'change',
+            updateOrientationNotice
+        );
+
+        return () => {
+            window.removeEventListener(
+                'resize',
+                updateOrientationNotice
+            );
+
+            window.screen.orientation?.removeEventListener(
+                'change',
+                updateOrientationNotice
+            );
+        };
+    }, [view, activeGameId]);
+
     return (
-        <div className="relative w-full h-full overflow-hidden pet-interface">
-            {/* Close Overlay Button (Global) */}
+        <div className="relative h-full w-full overflow-hidden pet-interface">
+            {/* Close the virtual pet overlay */}
             <button
-                onClick={onClose}
+                onClick={handleCloseVirtualPet}
                 className="absolute left-3 top-3 z-[70] flex h-11 w-11 items-center justify-center rounded-xl border border-white/60 bg-white/75 text-slate-700 shadow-xl shadow-slate-900/10 backdrop-blur-md transition-all hover:-translate-x-0.5 hover:scale-105 hover:bg-white active:scale-95 sm:left-6 sm:top-6 sm:h-16 sm:w-16 sm:rounded-2xl"
                 title="Back"
                 aria-label="Back"
@@ -44,13 +208,48 @@ const VirtualPetContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             </button>
 
             {view === 'ROOM' ? (
-                <PetRoom onNavigateToGame={handleNavigateToGame} />
-            ) : (
-                <GamePage
-                    gameId={activeGameId || ''}
-                    onClose={handleCloseGame}
+                <PetRoom
+                    onNavigateToGame={handleNavigateToGame}
                 />
+            ) : (
+                <>
+                    <GamePage
+                        gameId={activeGameId || ''}
+                        onClose={handleCloseGame}
+                    />
+
+                    {activeGameId === PAC_CAT_GAME_ID &&
+                        showRotateNotice && (
+                            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 px-6 text-white">
+                                <div className="max-w-sm text-center">
+                                    <div className="mb-4 text-6xl">
+                                        📱↻
+                                    </div>
+
+                                    <h2 className="text-xl font-bold">
+                                        Rotate your device
+                                    </h2>
+
+                                    <p className="mt-2 text-sm text-white/75">
+                                        PAC-CAT is designed for
+                                        landscape mode. Please rotate
+                                        your phone to continue.
+                                    </p>
+
+                                    {/* Allow the user to leave when rotation is unavailable */}
+                                    <button
+                                        type="button"
+                                        onClick={handleCloseGame}
+                                        className="mt-6 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/20"
+                                    >
+                                        Back to games
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                </>
             )}
+
             <PetAdoptionModal />
         </div>
     );
