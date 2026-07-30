@@ -102,11 +102,41 @@ export const GamePage: React.FC<GamePageProps> = ({ gameId, onClose }) => {
         return () => window.removeEventListener('message', handleMessage);
     }, [setStats]);
 
-    // Prevent scroll when game is open
+    // Prevent the parent document from scrolling while a game is open
     useEffect(() => {
-        document.body.style.overflow = 'hidden';
+        const html = document.documentElement;
+        const body = document.body;
+
+        const previousHtmlOverflow =
+            html.style.overflow;
+
+        const previousHtmlOverscroll =
+            html.style.overscrollBehavior;
+
+        const previousBodyOverflow =
+            body.style.overflow;
+
+        const previousBodyOverscroll =
+            body.style.overscrollBehavior;
+
+        html.style.overflow = 'hidden';
+        html.style.overscrollBehavior = 'none';
+
+        body.style.overflow = 'hidden';
+        body.style.overscrollBehavior = 'none';
+
         return () => {
-            document.body.style.overflow = '';
+            html.style.overflow =
+                previousHtmlOverflow;
+
+            html.style.overscrollBehavior =
+                previousHtmlOverscroll;
+
+            body.style.overflow =
+                previousBodyOverflow;
+
+            body.style.overscrollBehavior =
+                previousBodyOverscroll;
         };
     }, []);
 
@@ -118,12 +148,18 @@ export const GamePage: React.FC<GamePageProps> = ({ gameId, onClose }) => {
     const config = GAME_CONFIG[gameId];
 
     return (
-        <div className="fixed inset-0 z-50 bg-black" style={{ fontFamily: "'Fredoka', sans-serif" }}>
+        <div className="fixed inset-0 z-50 h-[100dvh] w-[100dvw] overflow-hidden bg-black" style={{ fontFamily: "'Fredoka', sans-serif" }}>
             {/* Container - Full Screen */}
-            <div className="relative w-full h-full animate-in zoom-in-95 fade-in duration-300">
+            <div className="relative h-full w-full overflow-hidden animate-in zoom-in-95 fade-in duration-300">
 
                 {/* Top UI Area */}
-                <div className="absolute top-6 right-6 z-50 flex flex-col items-end gap-2">
+                <div
+                    className="absolute z-50 flex flex-col items-end gap-2"
+                    style={{
+                        top: 'max(1.5rem, env(safe-area-inset-top))',
+                        right: 'max(1.5rem, env(safe-area-inset-right))',
+                    }}
+                >
                     <div className="flex items-center gap-3">
                         {/* Session Progress (Pending Coins) */}
                         {sessionCoins > 0 && (
@@ -143,9 +179,11 @@ export const GamePage: React.FC<GamePageProps> = ({ gameId, onClose }) => {
 
                         {/* Floating Close Button */}
                         <button
+                            type="button"
                             onClick={onClose}
                             className="w-12 h-12 flex items-center justify-center rounded-full bg-black/40 hover:bg-black/80 text-white/70 hover:text-white border-2 border-white/10 backdrop-blur-sm transition-all hover:scale-110 active:scale-95 shadow-lg"
                             title="Exit Game"
+                            aria-label="Exit game"
                         >
                             <span className="text-2xl font-bold leading-none mb-1">×</span>
                         </button>
@@ -153,7 +191,7 @@ export const GamePage: React.FC<GamePageProps> = ({ gameId, onClose }) => {
                 </div>
 
                 {/* Game Iframe Wrapper */}
-                <div className="absolute inset-0 bg-slate-900">
+                <div className="absolute inset-0 overflow-hidden bg-black">
                     {isLoading && (
                         <div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-10">
                             <div className="flex flex-col items-center gap-4">
@@ -165,10 +203,12 @@ export const GamePage: React.FC<GamePageProps> = ({ gameId, onClose }) => {
 
                     <iframe
                         src={config.url}
-                        className="w-full h-full border-0 block"
+                        className="block h-full w-full overflow-hidden border-0"
                         title={config.title}
                         onLoad={() => setIsLoading(false)}
-                        allow="autoplay; fullscreen"
+                        allow="autoplay; fullscreen; screen-wake-lock"
+                        allowFullScreen
+                        scrolling="no"
                     />
                 </div>
             </div>
