@@ -19,6 +19,17 @@ type LockableScreenOrientation = ScreenOrientation & {
   unlock?: () => void;
 };
 
+type FullscreenHTMLElement = HTMLElement & {
+    webkitRequestFullscreen?: (
+    ) => Promise<void> | void;
+};
+
+type WebkitFullscreenDocument = Document & {
+    webkitFullscreenElement?: Element | null;
+    webkitExitFullscreen?: (
+    ) => Promise<void> | void;
+};
+
 // Inner component to access the virtual pet game context
 const VirtualPetContent: React.FC<{
     onClose: () => void;
@@ -40,17 +51,36 @@ const VirtualPetContent: React.FC<{
         const orientation = window.screen
             .orientation as LockableScreenOrientation | undefined;
 
+        const fullscreenTarget =
+            document.documentElement as FullscreenHTMLElement;
+
+        const fullscreenDocument =
+            document as WebkitFullscreenDocument;
+
         try {
             /*
-             * Screen orientation locking normally requires fullscreen.
-             * This runs directly from the PAC-CAT selection click.
-             */
+            * Request fullscreen directly from the PAC-CAT selection click.
+            * Ask supported browsers to hide their navigation interface.
+            */
             if (
                 !document.fullscreenElement &&
-                document.documentElement.requestFullscreen
+                !fullscreenDocument.webkitFullscreenElement
             ) {
-                await document.documentElement.requestFullscreen();
-                enteredFullscreenRef.current = true;
+                if (fullscreenTarget.requestFullscreen) {
+                    await fullscreenTarget.requestFullscreen({
+                        navigationUI: 'hide',
+                    });
+
+                    enteredFullscreenRef.current = true;
+                } else if (
+                    fullscreenTarget.webkitRequestFullscreen
+                ) {
+                    await Promise.resolve(
+                        fullscreenTarget.webkitRequestFullscreen()
+                    );
+
+                    enteredFullscreenRef.current = true;
+                }
             }
         } catch (error) {
             console.warn(
@@ -61,9 +91,9 @@ const VirtualPetContent: React.FC<{
 
         try {
             /*
-             * Attempt to lock the device in landscape orientation.
-             * Unsupported browsers will use the rotate-device fallback.
-             */
+            * Attempt to lock the device in landscape orientation.
+            * Unsupported browsers use the rotate-device fallback.
+            */
             if (orientation?.lock) {
                 await orientation.lock('landscape');
             }
@@ -79,9 +109,12 @@ const VirtualPetContent: React.FC<{
         const orientation = window.screen
             .orientation as LockableScreenOrientation | undefined;
 
+        const fullscreenDocument =
+            document as WebkitFullscreenDocument;
+
         /*
-         * Release the landscape lock when leaving PAC-CAT.
-         */
+        * Release the landscape orientation lock.
+        */
         try {
             orientation?.unlock?.();
         } catch (error) {
@@ -92,14 +125,23 @@ const VirtualPetContent: React.FC<{
         }
 
         /*
-         * Exit fullscreen only when PAC-CAT entered it.
-         */
+        * Exit only the fullscreen session started by PAC-CAT.
+        */
         try {
-            if (
-                enteredFullscreenRef.current &&
-                document.fullscreenElement
-            ) {
-                await document.exitFullscreen();
+            if (enteredFullscreenRef.current) {
+                if (
+                    document.fullscreenElement &&
+                    document.exitFullscreen
+                ) {
+                    await document.exitFullscreen();
+                } else if (
+                    fullscreenDocument.webkitFullscreenElement &&
+                    fullscreenDocument.webkitExitFullscreen
+                ) {
+                    await Promise.resolve(
+                        fullscreenDocument.webkitExitFullscreen()
+                    );
+                }
             }
         } catch (error) {
             console.warn(
