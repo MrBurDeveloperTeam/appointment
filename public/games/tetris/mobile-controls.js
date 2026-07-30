@@ -81,9 +81,9 @@
     };
 
     /*
-     * Gesture settings.
-     */
-    var SWIPE_STEP_PX = 34;
+    * Approximately one horizontal gesture step per Tetris cell.
+    */
+    var SWIPE_STEP_PX = 28;
     var TAP_MOVE_LIMIT_PX = 14;
     var DOUBLE_TAP_DISTANCE_PX = 48;
     var DOUBLE_TAP_DELAY_MS = 240;
@@ -187,6 +187,35 @@
             keyName,
             false
         );
+    }
+
+    /*
+    * Move horizontally through the explicit mobile API.
+    * ArrowLeft and ArrowRight cannot use pressKey() because
+    * the Tetris keyboard system expects the key state to remain
+    * active until a later animation frame.
+    */
+    function moveHorizontal(direction) {
+        var api =
+            window.tetrisMobileApi;
+
+        if (!api) {
+            return;
+        }
+
+        if (
+            direction < 0 &&
+            typeof api.moveLeft ===
+                'function'
+        ) {
+            api.moveLeft();
+        } else if (
+            direction > 0 &&
+            typeof api.moveRight ===
+                'function'
+        ) {
+            api.moveRight();
+        }
     }
 
     /*
@@ -513,14 +542,13 @@
                     );
 
                 /*
-                 * Each additional swipe step moves the piece
-                 * by another column.
-                 */
+                * Move once for every additional horizontal swipe step.
+                */
                 while (
                     lastHorizontalStep <
                     targetStep
                 ) {
-                    pressKey('ArrowRight');
+                    moveHorizontal(1);
                     lastHorizontalStep++;
                 }
 
@@ -528,7 +556,7 @@
                     lastHorizontalStep >
                     targetStep
                 ) {
-                    pressKey('ArrowLeft');
+                    moveHorizontal(-1);
                     lastHorizontalStep--;
                 }
             }
