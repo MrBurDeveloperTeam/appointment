@@ -714,7 +714,6 @@ footer {
 :root {
     --tetris-scale: 1;
     --tetris-stage-width: 870px;
-    --tetris-stage-height: 590px;
 }
 
 html,
@@ -807,14 +806,17 @@ body {
     width:
         var(--tetris-stage-width) !important;
 
-    height:
-        var(--tetris-stage-height) !important;
+    /*
+    * Allow the stage height to follow the tallest column.
+    * The main game canvas still guarantees a minimum height
+    * of 590px.
+    */
+    height: auto !important;
 
     min-width:
         var(--tetris-stage-width) !important;
 
-    min-height:
-        var(--tetris-stage-height) !important;
+    min-height: 590px !important;
 
     max-width: none !important;
     max-height: none !important;
@@ -828,10 +830,16 @@ body {
         310px
         260px !important;
 
+    /*
+    * Let the grid row grow when either side panel is taller
+    * than the main game canvas.
+    */
     grid-template-rows:
-        590px !important;
+        max-content !important;
 
     gap: 20px !important;
+
+    overflow: visible !important;
 
     align-items: center !important;
     justify-items: stretch !important;
@@ -993,11 +1001,10 @@ body {
 }
 
 /*
- * Show the button only on touch-oriented mobile layouts
- * and only while gameplay is active.
+ * Show the HOLD button only on devices whose primary
+ * input is touch-oriented.
  */
-@media (max-width: 1024px),
-       (hover: none) and (pointer: coarse) {
+@media (hover: none) and (pointer: coarse) {
     #mobile-hold-button.is-gameplay-visible {
         display: flex;
     }

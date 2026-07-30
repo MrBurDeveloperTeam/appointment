@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <link
       rel="stylesheet"
-      href="style.css?v=20260730-5"
+      href="style.css?v=20260730-7"
   />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -172,19 +172,125 @@
 
       </div>
 
-      <div class="side">
-        <div class="preview-box" style="margin-top: 28px; margin-bottom: 24px;">
-          <div class="preview-inner">
-            <div class="preview-glare"></div>
-            <div class="preview-label">Next</div>
-            <canvas id="next" class="next-canvas" width="168" height="112" data-testid="next-canvas"></canvas>
-          </div>
-        </div>
+            <!-- Right Side Panel -->
+            <div class="side">
+              <div
+                class="preview-box"
+                style="
+                  margin-top: 28px;
+                  margin-bottom: 24px;
+                "
+              >
+                <div class="preview-inner">
+                  <div class="preview-glare"></div>
 
-        <!--
+                  <div class="preview-label">
+                    Next
+                  </div>
+
+                  <canvas
+                    id="next"
+                    class="next-canvas"
+                    width="168"
+                    height="112"
+                    data-testid="next-canvas"
+                  ></canvas>
+                </div>
+              </div>
+
+              <div
+                class="panel"
+                style="
+                  display: flex;
+                  flex-direction: column;
+                  gap: 8px;
+                "
+              >
+                <div
+                  class="stat-card"
+                  style="margin-bottom: 0;"
+                >
+                  <div class="stat-label">
+                    <i
+                      class="fas fa-trophy"
+                      style="
+                        color: #fcd34d;
+                        margin-right: 5px;
+                      "
+                    ></i>
+                    Your High Score
+                  </div>
+
+                  <div
+                    id="highscore"
+                    class="stat-value highscore-value"
+                    style="font-size: 28px;"
+                    data-testid="highscore"
+                  >
+                    0
+                  </div>
+                </div>
+
+                <div
+                  class="stat-card"
+                  style="margin-bottom: 0;"
+                >
+                  <div class="stat-label">
+                    Current Score
+                  </div>
+
+                  <div
+                    id="score"
+                    class="stat-value"
+                    data-testid="score"
+                  >
+                    0
+                  </div>
+                </div>
+
+                <div
+                  class="stat-card"
+                  style="margin-bottom: 0;"
+                >
+                  <div class="stat-label">
+                    Level
+                  </div>
+
+                  <div
+                    id="level"
+                    class="stat-value"
+                    data-testid="level"
+                  >
+                    1
+                  </div>
+                </div>
+
+                <div
+                  class="stat-card"
+                  style="margin-bottom: 0;"
+                >
+                  <div class="stat-label">
+                    Lines Cleared
+                  </div>
+
+                  <div
+                    id="lines"
+                    class="stat-value"
+                    data-testid="lines"
+                  >
+                    0
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Close #tetris-stage -->
+          </div>
+
+          <!--
             Mobile replacement for the keyboard C key.
-            It stays outside the scaled Tetris stage so it remains
-            large enough to press on every phone.
+            Keep it outside #tetris-stage so it remains
+            independent from the scaled desktop layout.
           -->
           <button
             id="mobile-hold-button"
@@ -195,38 +301,13 @@
             <span>HOLD</span>
             <small>C</small>
           </button>
+
+          <!-- Close #tetris-viewport -->
         </div>
 
-        <div class="panel" style="display: flex; flex-direction: column; gap: 8px;">
-          <div class="stat-card" style="margin-bottom: 0;">
-            <div class="stat-label"><i class="fas fa-trophy" style="color: #fcd34d; margin-right: 5px;"></i> Your High Score
-            </div>
-            <div id="highscore" class="stat-value highscore-value" style="font-size: 28px;" data-testid="highscore">0
-            </div>
-          </div>
+  <script src="game.js?v=20260730-7"></script>
 
-          <div class="stat-card" style="margin-bottom: 0;">
-            <div class="stat-label">Current Score</div>
-            <div id="score" class="stat-value" data-testid="score">0</div>
-          </div>
-
-          <div class="stat-card" style="margin-bottom: 0;">
-            <div class="stat-label">Level</div>
-            <div id="level" class="stat-value" data-testid="level">1</div>
-          </div>
-
-          <div class="stat-card" style="margin-bottom: 0;">
-            <div class="stat-label">Lines Cleared</div>
-            <div id="lines" class="stat-value" data-testid="lines">0</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="game.js?v=20260730-5"></script>
-
-  <script src="mobile-controls.js?v=20260730-5"></script>
+  <script src="mobile-controls.js?v=20260730-7"></script>
 
   <script>
       /*
@@ -235,14 +316,19 @@
       */
       (function () {
           var DESIGN_WIDTH = 870;
-          var DESIGN_HEIGHT = 590;
+          var DESIGN_MIN_HEIGHT = 590;
 
           var viewport =
               document.getElementById(
                   'tetris-viewport'
               );
 
-          if (!viewport) {
+          var stage =
+            document.getElementById(
+                'tetris-stage'
+            );
+
+          if (!viewport || !stage) {
               return;
           }
 
@@ -301,17 +387,37 @@
                               );
 
                           /*
-                          * Always preserve the same three-column
-                          * composition. Smaller screens receive a
-                          * smaller uniform scale.
+                          * Measure the actual unscaled stage dimensions.
+                          * offsetWidth, offsetHeight and scrollHeight are not
+                          * changed by CSS transform scaling.
+                          */
+                          var stageWidth =
+                              Math.max(
+                                  DESIGN_WIDTH,
+                                  stage.offsetWidth,
+                                  stage.scrollWidth,
+                                  1
+                              );
+
+                          var stageHeight =
+                              Math.max(
+                                  DESIGN_MIN_HEIGHT,
+                                  stage.offsetHeight,
+                                  stage.scrollHeight,
+                                  1
+                              );
+
+                          /*
+                          * Scale according to the complete tallest column,
+                          * rather than assuming every layout is exactly 590px tall.
                           */
                           var nextScale =
                               Math.min(
                                   availableWidth /
-                                      DESIGN_WIDTH,
+                                      stageWidth,
 
                                   availableHeight /
-                                      DESIGN_HEIGHT,
+                                      stageHeight,
 
                                   1
                               );
@@ -397,6 +503,10 @@
               */
               resizeObserver.observe(
                   viewport
+              );
+
+              resizeObserver.observe(
+                  stage
               );
           }
       })();
