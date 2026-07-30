@@ -1,6 +1,6 @@
 
 import { Fragment, useMemo, useState } from 'react';
-import { getColorBg } from '../utils/colors';
+import { getColorBg, getContrastText } from '../utils/colors';
 import { getInitials } from '../utils/people';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
@@ -473,7 +473,7 @@ export default function SettingsView({
                     <div>
                       <div className="settings-list-title">{r.name}</div>
                       <div className="settings-list-meta">
-                        <span style={{ background: getColorBg(r.color), color: r.color, padding: '2px 6px', borderRadius: 6 }}>{r.color}</span>
+                        <span style={{ background: r.color, color: getContrastText(r.color), padding: '2px 6px', borderRadius: 6 }}>{r.color}</span>
                       </div>
                     </div>
                     <span className="settings-cta">View</span>
@@ -509,7 +509,7 @@ export default function SettingsView({
                       <div className="settings-list-title">{t.name}</div>
                       <div className="settings-list-meta">
                         {t.duration} mins{' '}
-                        <span style={{ background: getColorBg(t.color), color: t.color, padding: '2px 6px', borderRadius: 6 }}>{t.color}</span>
+                        <span style={{ background: t.color, color: getContrastText(t.color), padding: '2px 6px', borderRadius: 6 }}>{t.color}</span>
                       </div>
                     </div>
                     <span className="settings-cta">View</span>
