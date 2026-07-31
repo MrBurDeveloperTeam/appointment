@@ -145,8 +145,11 @@ window.onload = function () {
 
     requestAnimationFrame(update);
     document.addEventListener("keydown", moveBird);
-    // Allow mouse/touch clicks anywhere on the page to flap (mobile-friendly)
-    document.addEventListener(
+    /*
+    * Only the game Canvas should trigger flap input.
+    * Menu buttons retain their normal click behavior.
+    */
+    board.addEventListener(
         "pointerdown",
         handlePointerFlap,
         {
@@ -316,42 +319,69 @@ function placePipes() {
 }
 
 function moveBird(e) {
-    if (e.code == "Space" || e.code == "ArrowUp" || e.code == "KeyX") {
+    if (
+        e.code === "Space" ||
+        e.code === "ArrowUp" ||
+        e.code === "KeyX"
+    ) {
+        e.preventDefault();
         flap();
     }
 }
 
 function detectCollision(a, b) {
-    return a.x < b.x + b.width &&   //a's top left corner doesn't reach b's top right corner
-        a.x + a.width > b.x &&   //a's top right corner passes b's top left corner
-        a.y < b.y + b.height &&  //a's top left corner doesn't reach b's bottom left corner
-        a.y + a.height > b.y;    //a's bottom left corner passes b's top left corner
+    return (
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+    );
 }
 
-function handlePointerFlap() {
+function handlePointerFlap(event) {
+    if (!event.isPrimary) {
+        return;
+    }
 
+    if (
+        event.pointerType === "mouse" &&
+        event.button !== 0
+    ) {
+        return;
+    }
+
+    event.preventDefault();
+
+    if (
+        gameOver &&
+        gameOverModal &&
+        !gameOverModal.classList.contains(
+            "hidden"
+        )
+    ) {
+        return;
+    }
+
+    flap();
+}
 
 function flap() {
-    // Do not process flap input after the game has ended
     if (gameOver) {
         return;
     }
 
-    // Start the game before applying the first jump
     if (!started) {
         startGame();
     }
 
-    // Apply the jump immediately so input feels responsive
+    /*
+     * Apply the jump immediately.
+     */
     velocityY = jumpStrength;
 
     /*
-    * Repeated HTMLAudioElement playback can stall an input frame
-    * on iPhone. Keep wing audio on other platforms while removing
-    * that per-tap cost from Apple mobile gameplay.
-    *
-    * Point, hit and death sounds remain enabled.
-    */
+     * Avoid repeated HTML audio playback on Apple devices.
+     */
     if (!IS_APPLE_DEVICE) {
         playSfx(sfxWing);
     }
