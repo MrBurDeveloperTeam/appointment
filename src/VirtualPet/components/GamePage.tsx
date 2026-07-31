@@ -18,7 +18,7 @@ const GAME_CONFIG: Record<string, { title: string; url: string; icon: string; gr
     tetris: {
         title: 'Tetris',
         url:
-            '/games/tetris/index.html?v=20260730-9',
+            '/games/tetris/index.html?v=20260730-10',
         icon: '🧱',
         gradient:
             'from-red-400 to-pink-600'
