@@ -19,6 +19,21 @@
             'mobile-hold-button'
         );
 
+    var guideButton =
+        document.getElementById(
+            'mobile-guide-button'
+        );
+
+    var guideModal =
+        document.getElementById(
+            'mobile-guide-modal'
+        );
+
+    var guideCloseButtons =
+        document.querySelectorAll(
+            '[data-mobile-guide-close]'
+        );
+
     if (!viewport) {
         return;
     }
@@ -286,7 +301,18 @@
      * menu, pause screen, settings or leaderboard overlay
      * is currently visible.
      */
+    function isGuideOpen() {
+        return Boolean(
+            guideModal &&
+            !guideModal.hidden
+        );
+    }
+
     function isOverlayVisible() {
+        if (isGuideOpen()) {
+            return true;
+        }
+
         if (!overlay) {
             return false;
         }
@@ -655,9 +681,98 @@
         }
     );
 
+    function openMobileGuide() {
+        if (!guideModal || !guideButton) {
+            return;
+        }
+
+        resetPointerState();
+        guideModal.hidden = false;
+        guideButton.setAttribute(
+            'aria-expanded',
+            'true'
+        );
+
+        syncHoldButtonVisibility();
+
+        var closeButton =
+            document.getElementById(
+                'mobile-guide-close'
+            );
+
+        if (closeButton) {
+            closeButton.focus();
+        }
+    }
+
+    function closeMobileGuide() {
+        if (!guideModal || !guideButton) {
+            return;
+        }
+
+        guideModal.hidden = true;
+        guideButton.setAttribute(
+            'aria-expanded',
+            'false'
+        );
+
+        syncHoldButtonVisibility();
+        guideButton.focus();
+    }
+
+    if (guideButton && guideModal) {
+        guideButton.addEventListener(
+            'pointerdown',
+            function (event) {
+                event.stopPropagation();
+            }
+        );
+
+        guideButton.addEventListener(
+            'click',
+            function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                openMobileGuide();
+            }
+        );
+
+        guideCloseButtons.forEach(
+            function (button) {
+                button.addEventListener(
+                    'pointerdown',
+                    function (event) {
+                        event.stopPropagation();
+                    }
+                );
+
+                button.addEventListener(
+                    'click',
+                    function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        closeMobileGuide();
+                    }
+                );
+            }
+        );
+
+        document.addEventListener(
+            'keydown',
+            function (event) {
+                if (
+                    event.key === 'Escape' &&
+                    isGuideOpen()
+                ) {
+                    closeMobileGuide();
+                }
+            }
+        );
+    }
+
     /*
-     * Mobile HOLD button: keyboard C.
-     */
+    * Mobile HOLD button: keyboard C.
+    */
     if (holdButton) {
         holdButton.addEventListener(
             'pointerdown',
