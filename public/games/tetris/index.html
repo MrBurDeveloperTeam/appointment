@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <link
       rel="stylesheet"
-      href="style.css?v=20260730-7"
+      href="style.css?v=20260731-1"
   />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -302,12 +302,124 @@
             <small>C</small>
           </button>
 
+          <!-- Mobile-only Tetris guide button -->
+          <button
+            id="mobile-guide-button"
+            type="button"
+            aria-label="Open mobile Tetris instructions"
+            aria-controls="mobile-guide-modal"
+            aria-expanded="false"
+          >
+            <i class="fas fa-book-open" aria-hidden="true"></i>
+            <span>GUIDE</span>
+          </button>
+
+          <!-- Mobile Tetris guide popup -->
+          <div
+            id="mobile-guide-modal"
+            class="mobile-guide-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-guide-title"
+            hidden
+          >
+            <button
+              class="mobile-guide-backdrop"
+              type="button"
+              aria-label="Close mobile instructions"
+              data-mobile-guide-close
+            ></button>
+
+            <section class="mobile-guide-card">
+              <div class="mobile-guide-header">
+                <div>
+                  <div class="mobile-guide-kicker">TOUCH CONTROLS</div>
+                  <h2 id="mobile-guide-title">How to Play</h2>
+                </div>
+
+                <button
+                  id="mobile-guide-close"
+                  class="mobile-guide-close"
+                  type="button"
+                  aria-label="Close mobile instructions"
+                  data-mobile-guide-close
+                >
+                  <i class="fas fa-xmark" aria-hidden="true"></i>
+                </button>
+              </div>
+
+              <p class="mobile-guide-intro">
+                Use these gestures directly on the game area.
+              </p>
+
+              <div class="mobile-guide-list">
+                <div class="mobile-guide-row">
+                  <span class="mobile-guide-icon">
+                    <i class="fas fa-arrows-left-right"></i>
+                  </span>
+                  <div>
+                    <strong>Swipe left or right</strong>
+                    <small>Move the piece</small>
+                  </div>
+                </div>
+
+                <div class="mobile-guide-row">
+                  <span class="mobile-guide-icon">
+                    <i class="fas fa-hand-pointer"></i>
+                  </span>
+                  <div>
+                    <strong>Single tap</strong>
+                    <small>Hard drop</small>
+                  </div>
+                </div>
+
+                <div class="mobile-guide-row">
+                  <span class="mobile-guide-icon">
+                    <i class="fas fa-rotate"></i>
+                  </span>
+                  <div>
+                    <strong>Double tap</strong>
+                    <small>Rotate the piece</small>
+                  </div>
+                </div>
+
+                <div class="mobile-guide-row">
+                  <span class="mobile-guide-icon">
+                    <i class="fas fa-hand"></i>
+                  </span>
+                  <div>
+                    <strong>Press and hold</strong>
+                    <small>Soft drop while held</small>
+                  </div>
+                </div>
+
+                <div class="mobile-guide-row">
+                  <span class="mobile-guide-icon">
+                    <i class="fas fa-box-archive"></i>
+                  </span>
+                  <div>
+                    <strong>Tap the HOLD button</strong>
+                    <small>Store or swap the piece</small>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                class="mobile-guide-done"
+                type="button"
+                data-mobile-guide-close
+              >
+                Got it
+              </button>
+            </section>
+          </div>
+
           <!-- Close #tetris-viewport -->
         </div>
 
-  <script src="game.js?v=20260730-7"></script>
+  <script src="game.js?v=20260731-1"></script>
 
-  <script src="mobile-controls.js?v=20260730-7"></script>
+  <script src="mobile-controls.js?v=20260731-1"></script>
 
   <script>
       /*
