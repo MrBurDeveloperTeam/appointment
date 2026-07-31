@@ -35,6 +35,169 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 const VALID_THEMES = new Set(['light', 'dark', 'system']);
 const DEFAULT_THEME = 'light';
 
+const WALLET_UPSTREAM_URL =
+    'https://app.snabbb.com/api/wallet';
+
+/**
+ * Proxy the Wallet request through the Appointment
+ * domain to avoid cross-origin browser restrictions.
+ */
+async function proxyWalletRequest(
+    request
+) {
+    if (request.method !== 'GET') {
+        return new Response(
+            JSON.stringify({
+                ok: false,
+                error:
+                    'Method not allowed',
+            }),
+            {
+                status: 405,
+                headers: {
+                    'Content-Type':
+                        'application/json',
+
+                    'Cache-Control':
+                        'no-store',
+
+                    Allow:
+                        'GET',
+                },
+            }
+        );
+    }
+
+    const incomingUrl =
+        new URL(request.url);
+
+    const email =
+        incomingUrl.searchParams
+            .get('email')
+            ?.trim();
+
+    if (!email) {
+        return new Response(
+            JSON.stringify({
+                ok: false,
+                error:
+                    'Email is required',
+            }),
+            {
+                status: 400,
+                headers: {
+                    'Content-Type':
+                        'application/json',
+
+                    'Cache-Control':
+                        'no-store',
+                },
+            }
+        );
+    }
+
+    const upstreamUrl =
+        new URL(
+            WALLET_UPSTREAM_URL
+        );
+
+    upstreamUrl.searchParams.set(
+        'email',
+        email
+    );
+
+    const upstreamHeaders =
+        new Headers({
+            Accept:
+                'application/json',
+        });
+
+    /*
+     * Forward the shared Snabbb login cookie.
+     */
+    const cookie =
+        request.headers.get(
+            'Cookie'
+        );
+
+    if (cookie) {
+        upstreamHeaders.set(
+            'Cookie',
+            cookie
+        );
+    }
+
+    try {
+        const upstreamResponse =
+            await fetch(
+                upstreamUrl.toString(),
+                {
+                    method: 'GET',
+                    headers:
+                        upstreamHeaders,
+
+                    redirect:
+                        'manual',
+                }
+            );
+
+        const responseHeaders =
+            new Headers(
+                upstreamResponse.headers
+            );
+
+        responseHeaders.set(
+            'Cache-Control',
+            'no-store'
+        );
+
+        if (
+            !responseHeaders.get(
+                'Content-Type'
+            )
+        ) {
+            responseHeaders.set(
+                'Content-Type',
+                'application/json'
+            );
+        }
+
+        return new Response(
+            upstreamResponse.body,
+            {
+                status:
+                    upstreamResponse.status,
+
+                headers:
+                    responseHeaders,
+            }
+        );
+    } catch (error) {
+        console.error(
+            'Wallet proxy failed:',
+            error
+        );
+
+        return new Response(
+            JSON.stringify({
+                ok: false,
+                error:
+                    'Unable to load balance',
+            }),
+            {
+                status: 502,
+                headers: {
+                    'Content-Type':
+                        'application/json',
+
+                    'Cache-Control':
+                        'no-store',
+                },
+            }
+        );
+    }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function parseTheme(value) {
@@ -136,6 +299,22 @@ class ThemeInjector {
 
 export default {
   async fetch(request, env, ctx) {
+    const url =
+        new URL(request.url);
+
+    /*
+     * Handle Wallet before the generic static
+     * asset forwarding logic.
+     */
+    if (
+        url.pathname ===
+        '/api/wallet'
+    ) {
+        return proxyWalletRequest(
+            request
+        );
+    }
+
     // Non-HTML requests pass straight through to Pages static assets
     if (!isHtmlRequest(request)) {
       return env.ASSETS.fetch(request);
