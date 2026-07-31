@@ -1,3 +1,14 @@
+/*
+ * Deployment marker used to confirm that the current
+ * Flappy Cat JavaScript has executed.
+ */
+window.FLAPPY_BUILD =
+    "20260731-10";
+
+console.log(
+    "[Flappy Cat] JavaScript loaded:",
+    window.FLAPPY_BUILD
+);
 
 //board
 let board;
