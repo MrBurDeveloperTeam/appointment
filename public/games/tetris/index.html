@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <link
       rel="stylesheet"
-      href="style.css?v=20260731-1"
+      href="style.css?v=20260731-3"
   />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -71,9 +71,6 @@
               style="color: #f0f000">i</span><span style="color: #00f0f0">s</span>
           </div>
         </div>
-        <!-- Floating Pause Button -->
-        <button id="btn-pause" data-testid="btn-pause" class="floating-pause-btn" style="display:none"><i
-            class="fas fa-pause"></i></button>
 
         <canvas id="tetris" width="280" height="560" data-testid="game-canvas"></canvas>
 
@@ -286,6 +283,25 @@
 
             <!-- Close #tetris-stage -->
           </div>
+
+          <!--
+            Keep pause outside the scaled Tetris stage so it
+            remains fully visible on desktop and mobile.
+          -->
+          <button
+            id="btn-pause"
+            data-testid="btn-pause"
+            class="floating-pause-btn"
+            type="button"
+            aria-label="Pause Tetris"
+            title="Pause"
+            style="display:none"
+          >
+            <i
+              class="fas fa-pause"
+              aria-hidden="true"
+            ></i>
+          </button>
 
           <!--
             Mobile replacement for the keyboard C key.
