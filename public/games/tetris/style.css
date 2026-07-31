@@ -1320,45 +1320,39 @@ body {
 }
 
 /*
- * On touch devices, place pause below the
- * back arrow instead of covering it.
+ * Keep pause at the top center on touch
+ * devices so it stays independent from the
+ * back, wallet and close controls.
  */
 @media (hover: none) and (pointer: coarse) {
     #btn-pause {
         top:
             max(
-                58px,
-                calc(
-                    env(
-                        safe-area-inset-top,
-                        0px
-                    ) + 54px
-                )
-            );
-
-        left:
-            max(
-                10px,
+                8px,
                 env(
-                    safe-area-inset-left,
+                    safe-area-inset-top,
                     0px
                 )
             );
 
+        left: 50%;
         right: auto;
 
-        width: 38px;
-        height: 38px;
+        width: 36px;
+        height: 36px;
 
-        transform: none;
+        transform:
+            translateX(-50%);
     }
 
     #btn-pause:hover {
-        transform: none;
+        transform:
+            translateX(-50%);
     }
 
     #btn-pause:active {
         transform:
+            translateX(-50%)
             translateY(1px)
             scale(0.96);
     }
