@@ -3,7 +3,7 @@
  * Flappy Cat JavaScript has executed.
  */
 window.FLAPPY_BUILD =
-    "20260731-10";
+    "20260731-11";
 
 console.log(
     "[Flappy Cat] JavaScript loaded:",
@@ -69,7 +69,18 @@ const IS_APPLE_DEVICE =
  * This keeps movement consistent across 60 Hz and 120 Hz screens.
  */
 const TARGET_FRAME_TIME = 1000 / 60;
-const MAX_FRAME_DELTA = 2;
+
+/*
+ * Allow only a small amount of timing compensation.
+ * A large delta can make the cat suddenly jump downward.
+ */
+const MAX_FRAME_DELTA = 1.25;
+
+/*
+ * Limit the maximum downward speed so long falls remain
+ * controllable and predictable.
+ */
+const MAX_FALL_SPEED = 7;
 
 let lastFrameTime = 0;
 let resizeTimer = null;
@@ -194,36 +205,19 @@ function update(timestamp) {
     requestAnimationFrame(update);
 
     /*
-     * Calculate elapsed time since the previous rendered frame.
+     * Calculate movement according to the actual time between
+     * frames. Do not manually skip frames because small timing
+     * variations can otherwise produce a double-size physics step.
      */
     const elapsed = lastFrameTime
         ? timestamp - lastFrameTime
         : TARGET_FRAME_TIME;
 
-    /*
-     * ProMotion devices may call requestAnimationFrame at 120Hz.
-     * Skip callbacks that arrive before the next 60 FPS frame.
-     */
-    if (
-        lastFrameTime &&
-        elapsed <
-            TARGET_FRAME_TIME - 1
-    ) {
-        return;
-    }
+    lastFrameTime = timestamp;
 
     /*
-     * Preserve the small timing remainder to reduce drift.
-     */
-    lastFrameTime =
-        timestamp -
-        (
-            elapsed %
-            TARGET_FRAME_TIME
-        );
-
-    /*
-     * Keep physics stable when a frame is delayed.
+     * Limit unusually delayed frames so the cat does not
+     * suddenly move a large distance in one rendered frame.
      */
     const delta = Math.min(
         elapsed /
@@ -248,9 +242,18 @@ function update(timestamp) {
         return;
     }
 
-    //bird
-    // Apply frame-rate-independent gravity and movement
-    velocityY += gravity * delta;
+    /*
+    * Apply gravity while limiting the maximum downward speed.
+    * The limit scales together with the game dimensions.
+    */
+    const maxFallSpeed =
+        MAX_FALL_SPEED * scale;
+
+    velocityY = Math.min(
+        velocityY + gravity * delta,
+        maxFallSpeed
+    );
+
     bird.y = Math.max(
         bird.y + velocityY * delta,
         0
