@@ -6,6 +6,28 @@ import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import { useToast } from '../context/ToastProvider';
 
+const TREATMENT_DURATION_OPTIONS = [
+  10,
+  15,
+  20,
+  25,
+  30,
+  35,
+  40,
+  45,
+  50,
+  55,
+  60,
+  65,
+  70,
+  75,
+  80,
+  85,
+  90,
+  95,
+  100,
+];
+
 export default function SettingsView({
   settings,
   rooms,
@@ -44,6 +66,10 @@ export default function SettingsView({
   }));
   const [roomForm, setRoomForm] = useState({ id: '', name: '', color: '#4A90A4' });
   const [treatmentForm, setTreatmentForm] = useState({ id: '', name: '', duration: 30, color: '#7CB798', suppliesNeeded: '' });
+  const [
+    treatmentDurationOption,
+    setTreatmentDurationOption
+  ] = useState('30');
   const [staffForm, setStaffForm] = useState({
     id: '',
     role: 'dentist',
@@ -103,18 +129,54 @@ export default function SettingsView({
 
   const openTreatmentModal = (treatment) => {
     if (treatment) {
+      const duration =
+        Number(treatment.duration) || 30;
+
       setTreatmentForm({
         id: treatment.id,
         name: treatment.name,
-        duration: treatment.duration,
+        duration,
         color: treatment.color,
-        suppliesNeeded: treatment.suppliesNeeded ? treatment.suppliesNeeded.join(', ') : '',
+        suppliesNeeded:
+          treatment.suppliesNeeded
+            ? treatment.suppliesNeeded.join(', ')
+            : '',
       });
-      setModalState({ type: 'treatment', mode: 'edit' });
+
+      /*
+      * Existing durations that are not part of the standard
+      * options are displayed as a custom duration.
+      */
+      setTreatmentDurationOption(
+        TREATMENT_DURATION_OPTIONS.includes(
+          duration
+        )
+          ? String(duration)
+          : 'other'
+      );
+
+      setModalState({
+        type: 'treatment',
+        mode: 'edit'
+      });
+
       return;
     }
-    setTreatmentForm({ id: '', name: '', duration: 30, color: '#7CB798', suppliesNeeded: '' });
-    setModalState({ type: 'treatment', mode: 'new' });
+
+    setTreatmentForm({
+      id: '',
+      name: '',
+      duration: 30,
+      color: '#7CB798',
+      suppliesNeeded: ''
+    });
+
+    setTreatmentDurationOption('30');
+
+    setModalState({
+      type: 'treatment',
+      mode: 'new'
+    });
   };
 
   const openStaffModal = (role, staffMember) => {
@@ -183,22 +245,59 @@ export default function SettingsView({
 
   const handleTreatmentSubmit = () => {
     if (!treatmentForm.name.trim()) {
-      addToast('Enter treatment name', 'error');
+      addToast(
+        'Enter treatment name',
+        'error'
+      );
+
       return;
     }
+
+    const duration =
+      Number(treatmentForm.duration);
+
+    /*
+    * A custom duration must be a positive whole number.
+    */
+    if (
+      !Number.isInteger(duration) ||
+      duration <= 0
+    ) {
+      addToast(
+        'Enter a valid treatment duration',
+        'error'
+      );
+
+      return;
+    }
+
     const payload = {
-      name: treatmentForm.name,
-      duration: Number(treatmentForm.duration) || 30,
-      color: treatmentForm.color,
-      suppliesNeeded: treatmentForm.suppliesNeeded
-        ? treatmentForm.suppliesNeeded.split(',').map((s) => s.trim()).filter(Boolean)
-        : [],
+      name:
+        treatmentForm.name.trim(),
+
+      duration,
+
+      color:
+        treatmentForm.color,
+
+      suppliesNeeded:
+        treatmentForm.suppliesNeeded
+          ? treatmentForm.suppliesNeeded
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
     };
+
     if (treatmentForm.id) {
-      updateTreatment(treatmentForm.id, payload);
+      updateTreatment(
+        treatmentForm.id,
+        payload
+      );
     } else {
       addTreatment(payload);
     }
+
     closeModal();
   };
 
@@ -793,8 +892,97 @@ export default function SettingsView({
                 <input className="form-input" value={treatmentForm.name} onChange={(e) => setTreatmentForm({ ...treatmentForm, name: e.target.value })} />
               </div>
               <div className="form-group">
-                <label className="form-label">Duration (mins)</label>
-                <input className="form-input" type="number" value={treatmentForm.duration} onChange={(e) => setTreatmentForm({ ...treatmentForm, duration: Number(e.target.value) })} />
+                <label className="form-label">
+                  Duration (mins)
+                </label>
+
+                <select
+                  className="form-select"
+                  value={treatmentDurationOption}
+                  onChange={(event) => {
+                    const selectedValue =
+                      event.target.value;
+
+                    setTreatmentDurationOption(
+                      selectedValue
+                    );
+
+                    if (
+                      selectedValue ===
+                      'other'
+                    ) {
+                      /*
+                      * Clear the previous standard value so the user
+                      * must enter the custom duration explicitly.
+                      */
+                      setTreatmentForm(
+                        (current) => ({
+                          ...current,
+                          duration: '',
+                        })
+                      );
+
+                      return;
+                    }
+
+                    setTreatmentForm(
+                      (current) => ({
+                        ...current,
+                        duration:
+                          Number(selectedValue),
+                      })
+                    );
+                  }}
+                >
+                  {TREATMENT_DURATION_OPTIONS.map(
+                    (duration) => (
+                      <option
+                        key={duration}
+                        value={String(duration)}
+                      >
+                        {duration}
+                      </option>
+                    )
+                  )}
+
+                  <option value="other">
+                    Others
+                  </option>
+                </select>
+
+                {treatmentDurationOption ===
+                  'other' && (
+                  <input
+                    className="form-input mt-2"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    placeholder="Enter duration in minutes"
+                    value={treatmentForm.duration}
+                    onChange={(event) => {
+                      const customDuration =
+                        event.target.value;
+
+                      setTreatmentForm(
+                        (current) => ({
+                          ...current,
+
+                          /*
+                          * Keep the field empty while the user is
+                          * deleting or replacing its value.
+                          */
+                          duration:
+                            customDuration === ''
+                              ? ''
+                              : Number(
+                                  customDuration
+                                ),
+                        })
+                      );
+                    }}
+                  />
+                )}
               </div>
             </div>
             <div className="form-row">
