@@ -4,7 +4,7 @@ import { useGameState } from '../hooks/useGameState';
 const GAME_CONFIG: Record<string, { title: string; url: string; icon: string; gradient: string }> = {
     flappy: {
         title: 'Flappy Cat',
-        url: '/games/flappy-cat/index.html?v=20260731-11',
+        url: '/games/flappy-cat/index.html?v=20260731-12',
         icon: '🕊️',
         gradient: 'from-yellow-400 to-orange-500'
     },
