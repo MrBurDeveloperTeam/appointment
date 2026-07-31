@@ -63,6 +63,14 @@ const MAX_FRAME_DELTA = 2;
 let lastFrameTime = 0;
 let resizeTimer = null;
 
+/*
+ * Remember the current orientation so minor Safari toolbar
+ * resize events do not rebuild the Canvas during gameplay.
+ */
+let lastViewportIsLandscape =
+    window.innerWidth >
+    window.innerHeight;
+
 let gameOver = false;
 let score = 0;
 let started = false;
@@ -138,7 +146,13 @@ window.onload = function () {
     requestAnimationFrame(update);
     document.addEventListener("keydown", moveBird);
     // Allow mouse/touch clicks anywhere on the page to flap (mobile-friendly)
-    document.addEventListener("pointerdown", handlePointerFlap);
+    document.addEventListener(
+        "pointerdown",
+        handlePointerFlap,
+        {
+            passive: false
+        }
+    );
     /*
     * Apple browsers can produce repeated viewport resize events.
     * Use debouncing on Apple devices while preserving the
@@ -147,6 +161,11 @@ window.onload = function () {
     if (IS_APPLE_DEVICE) {
         window.addEventListener(
             "resize",
+            handleResize
+        );
+
+        window.addEventListener(
+            "orientationchange",
             handleResize
         );
     } else {
@@ -161,17 +180,42 @@ function update(timestamp) {
     requestAnimationFrame(update);
 
     /*
-     * Convert the frame interval into a multiplier based on 60 FPS.
-     * Limit delayed frames so objects do not suddenly jump.
+     * Calculate elapsed time since the previous rendered frame.
      */
-    const delta = lastFrameTime
-        ? Math.min(
-            (timestamp - lastFrameTime) / TARGET_FRAME_TIME,
-            MAX_FRAME_DELTA
-        )
-        : 1;
+    const elapsed = lastFrameTime
+        ? timestamp - lastFrameTime
+        : TARGET_FRAME_TIME;
 
-    lastFrameTime = timestamp;
+    /*
+     * ProMotion devices may call requestAnimationFrame at 120Hz.
+     * Skip callbacks that arrive before the next 60 FPS frame.
+     */
+    if (
+        lastFrameTime &&
+        elapsed <
+            TARGET_FRAME_TIME - 1
+    ) {
+        return;
+    }
+
+    /*
+     * Preserve the small timing remainder to reduce drift.
+     */
+    lastFrameTime =
+        timestamp -
+        (
+            elapsed %
+            TARGET_FRAME_TIME
+        );
+
+    /*
+     * Keep physics stable when a frame is delayed.
+     */
+    const delta = Math.min(
+        elapsed /
+            TARGET_FRAME_TIME,
+        MAX_FRAME_DELTA
+    );
 
     /*
      * The drawing context already uses DPR scaling, so clear using
@@ -285,10 +329,7 @@ function detectCollision(a, b) {
 }
 
 function handlePointerFlap() {
-    // Ignore clicks when game over and modal is showing unless they hit Play
-    if (gameOver && !gameOverModal.classList.contains("hidden")) return;
-    flap();
-}
+
 
 function flap() {
     // Do not process flap input after the game has ended
@@ -305,16 +346,13 @@ function flap() {
     velocityY = jumpStrength;
 
     /*
-    * Defer the wing sound on Apple devices so audio playback
-    * does not delay the jump input.
+    * Repeated HTMLAudioElement playback can stall an input frame
+    * on iPhone. Keep wing audio on other platforms while removing
+    * that per-tap cost from Apple mobile gameplay.
     *
-    * Other platforms retain immediate sound playback.
+    * Point, hit and death sounds remain enabled.
     */
-    if (IS_APPLE_DEVICE) {
-        requestAnimationFrame(() => {
-            playSfx(sfxWing);
-        });
-    } else {
+    if (!IS_APPLE_DEVICE) {
         playSfx(sfxWing);
     }
 }
@@ -342,23 +380,61 @@ function resetGame() {
 
 function handleResize() {
     if (resizeTimer) {
-        clearTimeout(resizeTimer);
+        clearTimeout(
+            resizeTimer
+        );
     }
 
-    resizeTimer = setTimeout(() => {
-        /*
-         * Preserve an active game during minor mobile viewport changes.
-         * Reset only when the game has not started or has already ended.
-         */
-        setBoardSize(!started || gameOver);
-        lastFrameTime = performance.now();
-    }, 150);
+    resizeTimer =
+        setTimeout(
+            () => {
+                const nextIsLandscape =
+                    window.innerWidth >
+                    window.innerHeight;
+
+                /*
+                 * Ignore same-orientation Safari toolbar changes
+                 * while gameplay is active.
+                 */
+                if (
+                    started &&
+                    !gameOver &&
+                    nextIsLandscape ===
+                        lastViewportIsLandscape
+                ) {
+                    lastFrameTime =
+                        performance.now();
+
+                    return;
+                }
+
+                /*
+                 * A real orientation change occurred, or the game
+                 * is not currently active.
+                 */
+                lastViewportIsLandscape =
+                    nextIsLandscape;
+
+                setBoardSize(
+                    !started ||
+                    gameOver
+                );
+
+                lastFrameTime =
+                    performance.now();
+            },
+            200
+        );
 }
 
 function setBoardSize(reset = false) {
     // FIX: Always fill the entire browser window
     boardWidth = window.innerWidth;
     boardHeight = window.innerHeight;
+
+    lastViewportIsLandscape =
+        boardWidth >
+        boardHeight;
 
     // Calculate scale based on the dimension that 'fits' best
     // This ensures the bird/pipes don't get too huge on wide screens 
@@ -372,8 +448,13 @@ function setBoardSize(reset = false) {
     const devicePixelRatio =
         window.devicePixelRatio || 1;
 
+    /*
+    * Render Apple devices at CSS-pixel resolution.
+    * A DPR 1 Canvas contains about one quarter of the pixels
+    * of a DPR 2 Canvas.
+    */
     const dpr = IS_APPLE_DEVICE
-        ? Math.min(devicePixelRatio, 2)
+        ? 1
         : devicePixelRatio;
 
     board.style.width = `${boardWidth}px`;
