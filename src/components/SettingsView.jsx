@@ -64,6 +64,11 @@ export default function SettingsView({
     slotDuration: (settings && settings.slotDuration) || 30,
     restDays: (settings && settings.restDays) || [],
   }));
+  const [slotDurationOption, setSlotDurationOption] = useState(
+    TREATMENT_DURATION_OPTIONS.includes(Number(form.slotDuration))
+      ? String(form.slotDuration)
+      : 'other'
+  );
   const [roomForm, setRoomForm] = useState({ id: '', name: '', color: '#4A90A4' });
   const [treatmentForm, setTreatmentForm] = useState({ id: '', name: '', duration: 30, color: '#7CB798', suppliesNeeded: '' });
   const [
@@ -102,18 +107,38 @@ export default function SettingsView({
   };
 
   const handleSaveSettings = () => {
-    // A clinic that marks every weekday as a rest day has no bookable days,
-    // which silently breaks the public booking page. Block that here.
-    if (form.restDays.length >= 7) {
-      addToast('You must keep at least one working day (not all 7 can be rest days).', 'error');
+    const slotDuration =
+      Number(form.slotDuration);
+
+    if (
+      !Number.isInteger(slotDuration) ||
+      slotDuration <= 0
+    ) {
+      addToast(
+        'Enter a valid slot duration',
+        'error'
+      );
       return;
     }
+
+    if (form.restDays.length >= 7) {
+      addToast(
+        'You must keep at least one working day (not all 7 can be rest days).',
+        'error'
+      );
+      return;
+    }
+
     saveSettings({
       clinicName: form.clinicName,
-      workingHours: { start: form.workingHoursStart, end: form.workingHoursEnd },
-      slotDuration: Number(form.slotDuration) || 30,
+      workingHours: {
+        start: form.workingHoursStart,
+        end: form.workingHoursEnd,
+      },
+      slotDuration,
       restDays: form.restDays,
     });
+
     addToast('Settings saved', 'success');
   };
 
@@ -690,13 +715,65 @@ export default function SettingsView({
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Slot Duration (mins)</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  value={form.slotDuration}
-                  onChange={(e) => setForm({ ...form, slotDuration: Number(e.target.value) })}
-                />
+                <label className="form-label">
+                  Slot Duration (mins)
+                </label>
+
+                <select
+                  className="form-select"
+                  value={slotDurationOption}
+                  onChange={(e) => {
+                    const value = e.target.value;
+
+                    setSlotDurationOption(value);
+
+                    setForm((current) => ({
+                      ...current,
+                      slotDuration:
+                        value === 'other'
+                          ? ''
+                          : Number(value),
+                    }));
+                  }}
+                >
+                  {TREATMENT_DURATION_OPTIONS.map(
+                    (duration) => (
+                      <option
+                        key={duration}
+                        value={String(duration)}
+                      >
+                        {duration}
+                      </option>
+                    )
+                  )}
+
+                  <option value="other">
+                    Others
+                  </option>
+                </select>
+
+                {slotDurationOption === 'other' && (
+                  <input
+                    className="form-input mt-2"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    placeholder="Enter slot duration"
+                    value={form.slotDuration}
+                    onChange={(e) => {
+                      const value = e.target.value;
+
+                      setForm((current) => ({
+                        ...current,
+                        slotDuration:
+                          value === ''
+                            ? ''
+                            : Number(value),
+                      }));
+                    }}
+                  />
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label">Rest Days</label>
@@ -900,38 +977,21 @@ export default function SettingsView({
                   className="form-select"
                   value={treatmentDurationOption}
                   onChange={(event) => {
-                    const selectedValue =
-                      event.target.value;
+                    const selectedValue = event.target.value;
+                    setTreatmentDurationOption(selectedValue);
 
-                    setTreatmentDurationOption(
-                      selectedValue
-                    );
-
-                    if (
-                      selectedValue ===
-                      'other'
-                    ) {
-                      /*
-                      * Clear the previous standard value so the user
-                      * must enter the custom duration explicitly.
-                      */
-                      setTreatmentForm(
-                        (current) => ({
-                          ...current,
-                          duration: '',
-                        })
-                      );
-
+                    if (selectedValue === 'other') {
+                      setTreatmentForm((current) => ({
+                        ...current,
+                        duration: '',
+                      }));
                       return;
                     }
 
-                    setTreatmentForm(
-                      (current) => ({
-                        ...current,
-                        duration:
-                          Number(selectedValue),
-                      })
-                    );
+                    setTreatmentForm((current) => ({
+                      ...current,
+                      duration: Number(selectedValue),
+                    }));
                   }}
                 >
                   {TREATMENT_DURATION_OPTIONS.map(
