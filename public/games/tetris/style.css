@@ -378,39 +378,109 @@ canvas#tetris {
     box-shadow: 0 2px 0 #3730a3, 0 4px 8px rgba(99, 102, 241, 0.3);
 }
 
-/* Side panel pause button */
+/*
+ * Pause button stays outside the scaled stage.
+ * Place it at the top center of the iframe so it
+ * cannot be clipped on narrow mobile screens.
+ */
 #btn-pause {
-    position: absolute;
-    top: -45px;
-    right: 10px;
-    width: 44px;
-    height: 44px;
-    font-size: 18px;
+    position: fixed;
+
+    top:
+        max(
+            10px,
+            env(safe-area-inset-top, 0px)
+        );
+
+    left: 50%;
+    right: auto;
+
+    width:
+        clamp(
+            40px,
+            8vmin,
+            46px
+        );
+
+    height:
+        clamp(
+            40px,
+            8vmin,
+            46px
+        );
+
+    margin: 0;
+    padding: 0;
+
+    transform:
+        translateX(-50%);
+
+    font-size:
+        clamp(
+            15px,
+            3vmin,
+            18px
+        );
+
     color: #fff;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+
+    background:
+        rgba(7, 18, 37, 0.78);
+
+    backdrop-filter:
+        blur(8px);
+
+    -webkit-backdrop-filter:
+        blur(8px);
+
+    border:
+        1px solid
+        rgba(255, 255, 255, 0.3);
+
     border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+
+    box-shadow:
+        0 6px 18px
+        rgba(0, 0, 0, 0.35);
+
     cursor: pointer;
-    display: flex;
+
     align-items: center;
     justify-content: center;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 1000;
+
+    z-index: 6200;
+
+    touch-action: manipulation;
+
+    -webkit-tap-highlight-color:
+        transparent;
+
+    transition:
+        transform 0.2s ease,
+        background 0.2s ease,
+        border-color 0.2s ease;
 }
 
 #btn-pause:hover {
-    transform: translateY(-2px);
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    transform:
+        translateX(-50%)
+        translateY(-2px);
+
+    background:
+        rgba(30, 41, 59, 0.94);
+
+    border-color:
+        rgba(255, 255, 255, 0.5);
 }
 
 #btn-pause:active {
-    transform: translateY(1px);
-    background: rgba(255, 255, 255, 0.05);
+    transform:
+        translateX(-50%)
+        translateY(1px)
+        scale(0.96);
+
+    background:
+        rgba(7, 18, 37, 0.9);
 }
 
 .side {
@@ -1246,5 +1316,50 @@ body {
     .mobile-guide-done {
         margin-top: 10px;
         padding: 10px 16px;
+    }
+}
+
+/*
+ * On touch devices, place pause below the
+ * back arrow instead of covering it.
+ */
+@media (hover: none) and (pointer: coarse) {
+    #btn-pause {
+        top:
+            max(
+                58px,
+                calc(
+                    env(
+                        safe-area-inset-top,
+                        0px
+                    ) + 54px
+                )
+            );
+
+        left:
+            max(
+                10px,
+                env(
+                    safe-area-inset-left,
+                    0px
+                )
+            );
+
+        right: auto;
+
+        width: 38px;
+        height: 38px;
+
+        transform: none;
+    }
+
+    #btn-pause:hover {
+        transform: none;
+    }
+
+    #btn-pause:active {
+        transform:
+            translateY(1px)
+            scale(0.96);
     }
 }
