@@ -3,7 +3,7 @@
  * Flappy Cat JavaScript has executed.
  */
 window.FLAPPY_BUILD =
-    "20260731-11";
+    "20260731-12";
 
 console.log(
     "[Flappy Cat] JavaScript loaded:",
@@ -270,23 +270,54 @@ function update(timestamp) {
         pipe.x += velocityX * delta;
         context.drawImage(pipe.img, pipe.x, pipe.y, pipe.width, pipe.height);
 
-        if (!pipe.passed && bird.x > pipe.x + pipe.width) {
-            score += 0.5; //0.5 because there are 2 pipes! so 0.5*2 = 1, 1 for each set of pipes
+        if (
+            pipe.countsForScore &&
+            !pipe.passed &&
+            bird.x >
+                pipe.x +
+                pipe.width
+        ) {
+            /*
+            * One pipe pair equals one complete point.
+            */
+            score += 1;
             pipe.passed = true;
+
+            /*
+            * Play the point sound only once per pipe pair.
+            */
             playSfx(sfxPoint);
 
-            // Sync score with virtual pet parent
-            // In Flappy, 1 point is much harder than 1 point in Tetris
-            // So we treat 1 Flappy point = 100 "Points" (which = 1 Coin)
-            window.parent.postMessage({
-                type: 'GAME_SCORE_UPDATE',
-                score: Math.floor(score * 100)
-            }, '*');
+            /*
+            * Send only one score update to the React parent.
+            */
+            window.parent.postMessage(
+                {
+                    type:
+                        "GAME_SCORE_UPDATE",
+
+                    score:
+                        Math.floor(
+                            score * 100
+                        )
+                },
+                "*"
+            );
         }
 
-        if (detectCollision(bird, pipe)) {
+        if (
+            detectCollision(
+                bird,
+                pipe
+            )
+        ) {
             playSfx(sfxHit);
             endGame();
+
+            /*
+            * Stop processing the remaining pipes after game over.
+            */
+            break;
         }
     }
 
@@ -317,18 +348,32 @@ function placePipes() {
         y: randomPipeY,
         width: pipeWidth,
         height: pipeHeight,
-        passed: false
-    }
+        passed: false,
+
+        /*
+        * Only one pipe in each pair should trigger scoring.
+        */
+        countsForScore: true
+    };
     pipeArray.push(topPipe);
 
     let bottomPipe = {
         img: bottomPipeImg,
         x: spawnX,
-        y: randomPipeY + pipeHeight + openingSpace,
+        y:
+            randomPipeY +
+            pipeHeight +
+            openingSpace,
         width: pipeWidth,
         height: pipeHeight,
-        passed: false
-    }
+        passed: false,
+
+        /*
+        * The lower pipe belongs to the same pair and must not
+        * trigger another score, sound or parent message.
+        */
+        countsForScore: false
+    };
     pipeArray.push(bottomPipe);
 }
 
