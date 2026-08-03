@@ -14,6 +14,12 @@ const getRequestTime = (request) =>
   request.preferredTimes?.[0] ||
   '';
 
+const TEST_NOW = '2026-08-05T15:00:00+08:00';
+
+const getCurrentDate = () => {
+  return TEST_NOW ? new Date(TEST_NOW) : new Date();
+};
+
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -29,7 +35,10 @@ const getLocalTimeString = (date = new Date()) => {
   return `${hours}:${minutes}`;
 };
 
-const isRequestExpired = (request, now = new Date()) => {
+const isRequestExpired = (
+  request,
+  now = getCurrentDate()
+) => {
   const requestDate = getRequestDate(request);
   const requestTime = getRequestTime(request);
 
@@ -39,11 +48,13 @@ const isRequestExpired = (request, now = new Date()) => {
 
   if (requestDate < today) return true;
   if (requestDate > today) return false;
-
   if (!requestTime) return false;
 
-  const currentTime = getLocalTimeString(now);
-  return requestTime <= currentTime;
+  const normalizedRequestTime =
+    String(requestTime).slice(0, 5);
+
+  return normalizedRequestTime <=
+    getLocalTimeString(now);
 };
 
 const getEffectiveStatus = (request) => {
@@ -149,17 +160,24 @@ export default function RequestsView({
     if (expiredRequests.length === 0) return;
 
     const markRequestsAsExpired = async () => {
-      await Promise.allSettled(
-        expiredRequests.map((request) =>
-          updateAppointmentRequest(request.id, {
-            status: 'expired',
-            reviewedAt: new Date().toISOString(),
-          })
-        )
-      );
+      try {
+        await Promise.all(
+          expiredRequests.map((request) =>
+            updateAppointmentRequest(request.id, {
+              status: 'expired',
+              reviewedAt: new Date().toISOString(),
+            })
+          )
+        );
 
-      if (refreshRequests) {
-        await refreshRequests();
+        if (refreshRequests) {
+          await refreshRequests();
+        }
+      } catch (error) {
+        console.error(
+          'Failed to update expired requests:',
+          error
+        );
       }
     };
 
