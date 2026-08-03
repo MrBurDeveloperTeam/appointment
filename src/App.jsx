@@ -44,12 +44,6 @@ import {
 import { useGetUserId } from './mutation/useGetUserId';
 import useGetSessionInfo from './hooks/useGetSessionInfo';
 
-const TEST_NOW = '2026-08-05T15:00:00+08:00';
-
-const getCurrentDate = () => {
-  return TEST_NOW ? new Date(TEST_NOW) : new Date();
-};
-
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -67,7 +61,7 @@ const getLocalTimeString = (date = new Date()) => {
 
 const isAppointmentRequestExpired = (
   request,
-  now = getCurrentDate()
+  now = new Date()
 ) => {
   const requestDate =
     request.appointmentDate ||
