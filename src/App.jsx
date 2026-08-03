@@ -44,6 +44,50 @@ import {
 import { useGetUserId } from './mutation/useGetUserId';
 import useGetSessionInfo from './hooks/useGetSessionInfo';
 
+const getLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const getLocalTimeString = (date = new Date()) => {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  return `${hours}:${minutes}`;
+};
+
+const isAppointmentRequestExpired = (
+  request,
+  now = new Date()
+) => {
+  const requestDate =
+    request.appointmentDate ||
+    request.preferredDates?.[0] ||
+    '';
+
+  const requestTime =
+    request.appointmentStartTime ||
+    request.preferredTimes?.[0] ||
+    '';
+
+  if (!requestDate) return false;
+
+  const today = getLocalDateString(now);
+
+  if (requestDate < today) return true;
+  if (requestDate > today) return false;
+  if (!requestTime) return false;
+
+  const normalizedRequestTime =
+    String(requestTime).slice(0, 5);
+
+  return normalizedRequestTime <=
+    getLocalTimeString(now);
+};
+
 const getBookingSlugFromPath = () => {
   const parts = window.location.pathname.split('/').filter(Boolean);
   if (parts[0] === 'book' && parts[1]) return parts[1];
@@ -281,7 +325,12 @@ function AppContent() {
   );
 
   // Count of pending appointment requests for the sidebar badge
-  const pendingRequestsCount = appointmentRequests.filter(r => r.status === 'pending').length;
+  const pendingRequestsCount =
+    appointmentRequests.filter(
+      (request) =>
+        request.status === 'pending' &&
+        !isAppointmentRequestExpired(request)
+    ).length;
 
   // Check if subscription is expired
   const isExpired = React.useMemo(() => {
