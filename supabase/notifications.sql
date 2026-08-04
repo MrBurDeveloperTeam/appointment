@@ -80,6 +80,148 @@ after update of status on public.appointment_requests
 for each row
 execute function public.send_request_declined();
 
+-- ---------- Booking request expired ----------
+create or replace function public.send_request_expired()
+returns trigger
+language plpgsql
+security definer
+set search_path = private, public, extensions
+as $$
+declare
+  v_email text := coalesce(new.email, new.lookup_email);
+  v_date text := coalesce(
+    new.appointment_date::text,
+    (new.preferred_dates)[1]::text,
+    ''
+  );
+  v_time text := coalesce(
+    new.appointment_start_time,
+    (new.preferred_times)[1],
+    ''
+  );
+  v_clinic text;
+  v_slug text;
+  v_booking_url text;
+begin
+  if new.status = 'expired'
+     and old.status is distinct from 'expired'
+     and v_email is not null
+     and v_email like '%@%' then
+
+    select c.name, c.slug
+    into v_clinic, v_slug
+    from public.apt_clinics c
+    where c.id = new.clinic_id;
+
+    v_clinic := coalesce(v_clinic, 'the clinic');
+
+    v_booking_url := case
+      when nullif(trim(v_slug), '') is not null
+        then 'https://appointment.snabbb.com/book/' || trim(v_slug)
+      else 'https://appointment.snabbb.com'
+    end;
+
+    perform private.send_email_internal(
+      v_email::text,
+      (
+        'Your booking request has expired' ||
+        coalesce(' - ' || v_clinic, '')
+      )::text,
+      format(
+        '<p>Hello %s,</p>
+        <p>Your appointment request at <b>%s</b> for
+        <b>%s at %s</b> has expired because the requested
+        appointment time has passed.</p>
+
+        <p>No appointment was confirmed.</p>
+
+        <p>Please choose a new future date and time by
+        clicking the button below.</p>
+
+        <table
+          role="presentation"
+          cellspacing="0"
+          cellpadding="0"
+          border="0"
+          style="margin:26px 0;"
+        >
+          <tr>
+            <td
+              bgcolor="#2563eb"
+              style="
+                background:#2563eb;
+                background:linear-gradient(
+                  180deg,
+                  #60a5fa 0%%,
+                  #2563eb 48%%,
+                  #1d4ed8 100%%
+                );
+                border:1px solid #1e40af;
+                border-bottom:5px solid #1e3a8a;
+                border-radius:11px;
+                box-shadow:0 8px 18px
+                  rgba(37,99,235,0.28);
+                text-align:center;
+              "
+            >
+              <a
+                href="%s"
+                target="_blank"
+                style="
+                  display:inline-block;
+                  padding:13px 24px;
+                  color:#ffffff;
+                  font-family:Arial,sans-serif;
+                  font-size:15px;
+                  font-weight:700;
+                  line-height:20px;
+                  letter-spacing:0.2px;
+                  text-decoration:none;
+                  text-shadow:0 1px 1px
+                    rgba(0,0,0,0.18);
+                  border-radius:10px;
+                  white-space:nowrap;
+                "
+              >
+                Book another appointment
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <p style="font-size:13px;color:#64748b;">
+          If the button does not work, open this link:
+          <br>
+          <a href="%s">%s</a>
+        </p>',
+        coalesce(new.patient_name, 'there'),
+        v_clinic,
+        v_date,
+        v_time,
+        v_booking_url,
+        v_booking_url,
+        v_booking_url
+      )::text,
+      (
+        v_clinic ||
+        ' <appointments@snabbb.com>'
+      )::text
+    );
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_request_expired
+on public.appointment_requests;
+
+create trigger trg_request_expired
+after update of status
+on public.appointment_requests
+for each row
+execute function public.send_request_expired();
+
 -- ---------- Item 3a: public busy-slots (no patient data exposed) ----------
 create or replace function public.booking_busy_slots(
   p_clinic_id uuid,
