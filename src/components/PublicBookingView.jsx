@@ -200,10 +200,7 @@ export default function PublicBookingView({ clinicSlug }) {
 
     const timer = setTimeout(async () => {
       const { data, error: lookupErr } = await supabase
-        .from('apt_patients')
-        .select('id, name, phone, email, id_number, address')
-        .eq('clinic_id', clinic.id)
-        .ilike('email', email)
+        .rpc('booking_lookup_patient', { p_clinic_id: clinic.id, p_email: email })
         .maybeSingle();
 
       if (lookupErr) {
