@@ -62,8 +62,8 @@ export default function RegisterPage() {
       <AuthField label="Password" icon={icon(ShieldCheck)}><input type="password" className="auth-input" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" required minLength={6} autoComplete="new-password" /></AuthField>
       <AuthField label="Confirm Password" icon={icon(ShieldCheck)}><input type="password" className="auth-input" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="••••••••" required minLength={6} autoComplete="new-password" /></AuthField>
       <label className="auth-terms"><input type="checkbox" checked={agreedToTerms} onChange={(event) => setAgreedToTerms(event.target.checked)} required /><span>I agree to the <a href="https://app.snabbb.com/terms" target="_blank" rel="noreferrer">Terms of Service</a>, <a href="https://app.snabbb.com/privacy" target="_blank" rel="noreferrer">Privacy Policy</a> and <a href="https://app.snabbb.com/disclaimer" target="_blank" rel="noreferrer">Disclaimer</a>.</span></label>
-      <button type="submit" disabled={loading} className="auth-submit">{loading ? 'Signing up…' : 'Sign up'}</button>
+      <button type="submit" disabled={loading} className="auth-submit">{loading ? 'Signing up…' : 'Sign Up'}</button>
     </form>
-    <p className="auth-switch">Already have an account? <a href="/login">Log in</a></p>
+    <p className="auth-switch">Already have an account? <a href="/login">Log In</a></p>
   </AuthShell>;
 }

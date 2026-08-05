@@ -37,6 +37,6 @@ export default function LoginPage() {
       <label className="auth-checkbox"><input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} /><span>Remember me</span></label>
       <button type="submit" disabled={loading} className="auth-submit">{loading ? 'Logging in…' : 'Log in'}</button>
     </form>
-    <p className="auth-switch"><a href="/register">Don't have an account? Sign up</a></p>
+    <p className="auth-switch"><a href="/register">Don't have an account? Sign Up</a></p>
   </AuthShell>;
 }

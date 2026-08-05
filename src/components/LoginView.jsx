@@ -52,7 +52,7 @@ export default function LoginView() {
         </div>
         <div className="landing-nav-actions">
           <button className="landing-btn-outline" onClick={() => goToAuth('/login')}>Log In</button>
-          <button className="landing-btn-primary" onClick={() => goToAuth('/register')}>Get Started</button>
+          <button className="landing-btn-primary" onClick={() => goToAuth('/register')}>Sign Up</button>
         </div>
       </nav>
 
