@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, BriefcaseBusiness, ChevronDown, Globe2, Mail, Phone, ShieldCheck, User } from 'lucide-react';
+import { Building2, BriefcaseBusiness, ChevronDown, Globe2, Mail, Phone, Share2, ShieldCheck, User } from 'lucide-react';
 import { signUp } from '../../auth/authApi';
 import { useToast } from '../../context/ToastProvider';
 import { COUNTRIES, DENTAL_POSITIONS } from '../../constants/signupOptions';
@@ -14,6 +14,10 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
+  const [referralCode, setReferralCode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('referral') || params.get('referral_code') || params.get('ref') || '';
+  });
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
   const [position, setPosition] = useState('');
@@ -35,7 +39,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const result = await signUp({ email, password, fullName: name, accountType, companyName, phone, position: effectivePosition, dob, country, agreedToTerms });
+      const result = await signUp({ email, password, fullName: name, accountType, companyName, referralCode, phone, position: effectivePosition, dob, country, agreedToTerms });
       addToast(result?.session ? 'Your account has been created.' : 'Sign up successful. Please check your email to confirm your account.', 'success');
       window.location.assign(result?.session ? '/' : '/login');
     } catch (error) {
@@ -52,6 +56,7 @@ export default function RegisterPage() {
     <form onSubmit={handleSubmit} className="auth-form">
       {company && <AuthField label="Company Name" icon={icon(Building2)}><input className="auth-input" value={companyName} onChange={(event) => setCompanyName(event.target.value)} placeholder="e.g. DENTA TECH" required /></AuthField>}
       {company && <AuthField label="Company Email" icon={icon(Mail)}><input type="email" className="auth-input" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="e.g. hello@denta.tech" required /></AuthField>}
+      <AuthField label="Referred by (optional)" icon={icon(Share2)} help="Referred by a doctor already on Snabbb? Enter their code, email, or use their referral link to auto-fill this field."><input className="auth-input" value={referralCode} onChange={(event) => setReferralCode(event.target.value)} placeholder="Referral code" autoComplete="off" /></AuthField>
       <AuthField label={company ? 'Name' : 'Your Name'} icon={icon(User)}><input className="auth-input" value={name} onChange={(event) => setName(event.target.value)} placeholder={company ? 'Contact Name' : 'e.g. Nour AYACHE'} required autoComplete="name" /></AuthField>
       {!company && <AuthField label="Your Email" icon={icon(Mail)} help="This will be your login email."><input type="email" className="auth-input" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="e.g. nur@email.com" required autoComplete="email" /></AuthField>}
       <AuthField label={company ? 'Phone' : 'Phone (WhatsApp)'} icon={icon(Phone)}><input type="tel" className="auth-input" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="e.g. +60123456789" required autoComplete="tel" /></AuthField>
@@ -62,7 +67,7 @@ export default function RegisterPage() {
       <AuthField label="Password" icon={icon(ShieldCheck)}><input type="password" className="auth-input" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" required minLength={6} autoComplete="new-password" /></AuthField>
       <AuthField label="Confirm Password" icon={icon(ShieldCheck)}><input type="password" className="auth-input" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="••••••••" required minLength={6} autoComplete="new-password" /></AuthField>
       <label className="auth-terms"><input type="checkbox" checked={agreedToTerms} onChange={(event) => setAgreedToTerms(event.target.checked)} required /><span>I agree to the <a href="https://app.snabbb.com/terms" target="_blank" rel="noreferrer">Terms of Service</a>, <a href="https://app.snabbb.com/privacy" target="_blank" rel="noreferrer">Privacy Policy</a> and <a href="https://app.snabbb.com/disclaimer" target="_blank" rel="noreferrer">Disclaimer</a>.</span></label>
-      <button type="submit" disabled={loading} className="auth-submit">{loading ? 'Signing up…' : 'Sign Up'}</button>
+      <button type="submit" disabled={loading} className="auth-submit">{loading ? 'Signing up…' : 'Sign up'}</button>
     </form>
     <p className="auth-switch">Already have an account? <a href="/login">Log In</a></p>
   </AuthShell>;
