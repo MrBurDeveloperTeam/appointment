@@ -51,6 +51,7 @@ export default function PublicBookingView({ clinicSlug }) {
 
   const [patientType, setPatientType] = useState('');
   const [lookupEmail, setLookupEmail] = useState('');
+  const [lookupPatients, setLookupPatients] = useState([]);
   const [lookupPatient, setLookupPatient] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
@@ -180,7 +181,10 @@ export default function PublicBookingView({ clinicSlug }) {
   // Existing patient lookup
   // -----------------------------
   useEffect(() => {
+    let cancelled = false;
+
     if (patientType !== 'existing') {
+      setLookupPatients([]);
       setLookupPatient(null);
       setLookupError('');
       setConfirmMatch(false);
@@ -188,7 +192,9 @@ export default function PublicBookingView({ clinicSlug }) {
     }
 
     const email = lookupEmail.trim().toLowerCase();
+
     if (!clinic?.id || email.length < 5 || !email.includes('@')) {
+      setLookupPatients([]);
       setLookupPatient(null);
       setLookupError('');
       setConfirmMatch(false);
@@ -197,6 +203,9 @@ export default function PublicBookingView({ clinicSlug }) {
 
     setLookupLoading(true);
     setLookupError('');
+    setLookupPatients([]);
+    setLookupPatient(null);
+    setConfirmMatch(false);
 
     const timer = setTimeout(async () => {
       const { data, error: lookupErr } = await supabase
@@ -204,9 +213,13 @@ export default function PublicBookingView({ clinicSlug }) {
         .select('id, name, phone, email, id_number, address')
         .eq('clinic_id', clinic.id)
         .ilike('email', email)
-        .maybeSingle();
+        .order('name', { ascending: true });
+
+      if (cancelled) return;
 
       if (lookupErr) {
+        console.error('Existing patient lookup failed:', lookupErr);
+        setLookupPatients([]);
         setLookupPatient(null);
         setLookupError('Unable to verify your email right now.');
         setConfirmMatch(false);
@@ -214,7 +227,8 @@ export default function PublicBookingView({ clinicSlug }) {
         return;
       }
 
-      if (!data) {
+      if (!data || data.length === 0) {
+        setLookupPatients([]);
         setLookupPatient(null);
         setLookupError('No patient record found for this email.');
         setConfirmMatch(false);
@@ -222,20 +236,26 @@ export default function PublicBookingView({ clinicSlug }) {
         return;
       }
 
-      setLookupPatient({
-        id: data.id,
-        name: data.name,
-        phone: data.phone || '',
-        email: data.email || '',
-        idNumber: data.id_number || '',
-        address: data.address || '',
-      });
+      const patients = data.map((item) => ({
+        id: item.id,
+        name: item.name,
+        phone: item.phone || '',
+        email: item.email || '',
+        idNumber: item.id_number || '',
+        address: item.address || '',
+      }));
+
+      setLookupPatients(patients);
+      setLookupPatient(null);
       setLookupError('');
       setConfirmMatch(false);
       setLookupLoading(false);
     }, 500);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [clinic, lookupEmail, patientType]);
 
   // -----------------------------
@@ -740,6 +760,7 @@ export default function PublicBookingView({ clinicSlug }) {
     setStep(0);
     setPatientType('');
     setLookupEmail('');
+    setLookupPatients([]);
     setLookupPatient(null);
     setConfirmMatch(false);
 
@@ -843,6 +864,8 @@ export default function PublicBookingView({ clinicSlug }) {
                       value={lookupEmail}
                       onChange={(event) => {
                         setLookupEmail(event.target.value);
+                        setLookupPatients([]);
+                        setLookupPatient(null);
                         setConfirmMatch(false);
                       }}
                       placeholder="you@example.com"
@@ -851,6 +874,55 @@ export default function PublicBookingView({ clinicSlug }) {
                     {lookupLoading && <div className="form-hint">Checking your record...</div>}
                     {!lookupLoading && lookupError && <div className="form-error">{lookupError}</div>}
                   </div>
+
+                  {lookupPatients.length > 0 && (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <div className="booking-confirm-title">
+                        Select patient
+                      </div>
+
+                      <p
+                        className="booking-subtitle"
+                        style={{
+                          fontSize: '0.9rem',
+                          marginBottom: '1rem',
+                        }}
+                      >
+                        Select the patient who is making this appointment.
+                      </p>
+
+                      <div className="booking-choice-grid">
+                        {lookupPatients.map((candidate) => (
+                          <button
+                            key={candidate.id}
+                            type="button"
+                            className={`booking-choice ${
+                              lookupPatient?.id === candidate.id
+                                ? 'active'
+                                : ''
+                            }`}
+                            onClick={() => {
+                              setLookupPatient(candidate);
+                              setConfirmMatch(false);
+                              resetOtpState();
+                            }}
+                          >
+                            <div className="booking-choice-title">
+                              {candidate.name}
+                            </div>
+
+                            <div className="booking-choice-sub">
+                              Phone: {maskData(candidate.phone)}
+                            </div>
+
+                            <div className="booking-choice-sub">
+                              IC/ID: {maskData(candidate.idNumber)}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {lookupPatient && (
                     <div className="booking-confirm-card">
@@ -1277,11 +1349,19 @@ export default function PublicBookingView({ clinicSlug }) {
                     <div className="booking-summary-grid">
                       <div>
                         <div className="booking-summary-label">Name</div>
-                        <div>{patientType === 'new' ? patient.name || '-' : 'Existing patient'}</div>
+                        <div>
+                          {patientType === 'new'
+                            ? patient.name || '-'
+                            : lookupPatient?.name || '-'}
+                        </div>
                       </div>
                       <div>
                         <div className="booking-summary-label">Phone</div>
-                        <div>{patientType === 'new' ? patient.phone || '-' : '-'}</div>
+                        <div>
+                          {patientType === 'new'
+                            ? patient.phone || '-'
+                            : maskData(lookupPatient?.phone)}
+                        </div>
                       </div>
                       <div>
                         <div className="booking-summary-label">Email</div>
@@ -1289,7 +1369,11 @@ export default function PublicBookingView({ clinicSlug }) {
                       </div>
                       <div>
                         <div className="booking-summary-label">IC/ID</div>
-                        <div>{patientType === 'new' ? patient.idNumber || '-' : '-'}</div>
+                        <div>
+                          {patientType === 'new'
+                            ? patient.idNumber || '-'
+                            : maskData(lookupPatient?.idNumber)}
+                        </div>
                       </div>
                       <div>
                         <div className="booking-summary-label">DOB</div>
