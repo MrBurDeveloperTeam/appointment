@@ -863,6 +863,27 @@ textarea:focus-visible,
   color: var(--danger-dark);
 }
 
+.request-status.expired {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--text-muted);
+}
+
+.request-footer-expired {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: var(--radius-md);
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text-muted);
+}
+
+.request-footer-expired strong {
+  color: var(--text-secondary);
+}
+
 .request-card-body {
   display: flex;
   flex-direction: column;
@@ -8583,4 +8604,69 @@ tbody tr:hover {
 .animate-tail {
   animation: tail-sway 3s infinite ease-in-out;
   transform-origin: 150px 150px;
+}
+
+/* Keep mobile header content on one row */
+@media (max-width: 768px) {
+  .header {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: var(--space-sm);
+    width: 100%;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    gap: var(--space-sm);
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: auto !important;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .header-title {
+    min-width: 0;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Keep mobile account dropdown inside the screen */
+@media (max-width: 768px) {
+  .header {
+    overflow: visible !important;
+  }
+
+  .account-dropdown-container {
+    position: static !important;
+  }
+
+  .account-dropdown-menu {
+    position: absolute !important;
+    top: 100% !important;
+    right: var(--space-md) !important;
+    left: auto !important;
+
+    width: min(248px, calc(100vw - 32px)) !important;
+    max-width: calc(100vw - 32px);
+
+    max-height: calc(100dvh - 80px);
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+
+    box-sizing: border-box;
+    z-index: 2100 !important;
+  }
 }

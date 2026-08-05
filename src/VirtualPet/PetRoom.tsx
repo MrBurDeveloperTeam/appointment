@@ -20,6 +20,17 @@ const POOP_REWARD_COINS = 5;
 const POOP_RESPAWN_MS = 2 * 60 * 60 * 1000;
 const POOP_NEXT_SPAWN_KEY = 'virtual_pet_next_poop_at';
 const OUTSIDE_PET_SCALE = 0.75;
+
+/*
+ * Bedroom scene reference dimensions.
+ * The bed and pet are resized from the same scale value
+ * so their relative size and position remain consistent.
+ */
+const BEDROOM_SCENE_WIDTH = 560;
+const BEDROOM_SCENE_HEIGHT = 430;
+const BEDROOM_BED_WIDTH = 550;
+const BEDROOM_BED_BOTTOM_OFFSET = 96;
+
 const SLEEP_WAKE_DURATION_MS = 760;
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
@@ -67,6 +78,14 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
   const [isPoopVisible, setIsPoopVisible] = useState(false);
   const [showPoopReward, setShowPoopReward] = useState(false);
 
+  /*
+  * Shared scale for the bedroom pet and bed.
+  * Both elements must use the same value.
+  */
+  const [
+    bedroomSceneScale,
+    setBedroomSceneScale
+  ] = useState(1);
 
   // Drag & Drop / Tool State
   const [draggedItem, setDraggedItem] = useState<FoodItem | null>(null);
@@ -96,6 +115,111 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
   const activeSoapType = useRef<'soap' | null>(null);
   const soapConsumedOnRinse = useRef(false);
   const activeSoapMultiplier = useRef(1);
+
+  /*
+  * Resize the complete bedroom scene according to the available
+  * play-area width. Height changes do not independently reposition
+  * the bed and pet, so they remain aligned.
+  */
+  useEffect(() => {
+    if (currentRoom !== RoomType.BEDROOM) {
+      setBedroomSceneScale(1);
+      return;
+    }
+
+    const playArea = playAreaRef.current;
+
+    if (!playArea) {
+      return;
+    }
+
+    const updateBedroomSceneScale = () => {
+      const rect = playArea.getBoundingClientRect();
+
+      /*
+      * Keep a small horizontal margin around the bedroom scene.
+      * The minimum value supports unusually narrow mobile viewports.
+      */
+      const horizontalPadding =
+        rect.width < 480
+          ? 16
+          : 32;
+
+      /*
+      * Reserve space for the top status HUD and a small
+      * amount of space at the bottom.
+      */
+      const topUiClearance = clamp(
+        rect.height * 0.2,
+        100,
+        160
+      );
+
+      const bottomClearance = 16;
+
+      const availableWidth = Math.max(
+        rect.width - horizontalPadding,
+        1
+      );
+
+      const availableHeight = Math.max(
+        rect.height -
+          topUiClearance -
+          bottomClearance,
+        1
+      );
+
+      const sceneFootprintHeight =
+        BEDROOM_SCENE_HEIGHT +
+        BEDROOM_BED_BOTTOM_OFFSET;
+
+      const nextScale = clamp(
+        Math.min(
+          availableWidth /
+            BEDROOM_SCENE_WIDTH,
+
+          availableHeight /
+            sceneFootprintHeight
+        ),
+        0.24,
+        1
+      );
+
+      setBedroomSceneScale(nextScale);
+    };
+
+    updateBedroomSceneScale();
+
+    const resizeObserver = new ResizeObserver(
+      updateBedroomSceneScale
+    );
+
+    resizeObserver.observe(playArea);
+
+    window.addEventListener(
+      'resize',
+      updateBedroomSceneScale
+    );
+
+    window.visualViewport?.addEventListener(
+      'resize',
+      updateBedroomSceneScale
+    );
+
+    return () => {
+      resizeObserver.disconnect();
+
+      window.removeEventListener(
+        'resize',
+        updateBedroomSceneScale
+      );
+
+      window.visualViewport?.removeEventListener(
+        'resize',
+        updateBedroomSceneScale
+      );
+    };
+  }, [currentRoom]);
 
   useEffect(() => {
     outsidePetPosRef.current = outsidePetPos;
@@ -521,7 +645,7 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
 
   return (
     <div
-      className={`h-screen w-full relative transition-colors duration-700 ease-in-out ${roomConfig.bg} overflow-hidden flex flex-col items-center justify-between py-6`}
+      className={`relative flex h-[100dvh] min-h-0 w-full flex-col items-center justify-between overflow-hidden py-[clamp(8px,2dvh,24px)] transition-colors duration-700 ease-in-out ${roomConfig.bg}`}
       onPointerDown={handleAppPointerDown}
       onPointerMove={handleAppPointerMove}
       onPointerUp={handleAppPointerUp}
@@ -535,19 +659,54 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
 
       {/* Bedroom Lamp Switch */}
       {currentRoom === RoomType.BEDROOM && (
-        <div className="absolute top-0 left-1/3 z-10 flex flex-col items-center">
-          {/* Lamp Cord - Changed h-32 to h-48 */}
-          <div className="w-1 h-48 bg-slate-800/80" />
-          {/* Lamp Bulb */}
+        <div
+          className="pointer-events-none absolute left-[72%] z-[5] flex -translate-x-1/2 flex-col items-center"
+          style={{
+            top: 'env(safe-area-inset-top, 0px)',
+          }}
+        >
+          {/*
+          * Use a responsive cord length so the bulb remains below
+          * the top status HUD on different viewport heights.
+          */}
+          <div className="h-[clamp(132px,20dvh,176px)] w-1 bg-slate-800/80" />
+
+          {/*
+          * Only the bulb receives pointer events.
+          * The cord does not block clicks on the cat.
+          */}
           <button
-            onClick={() => setIsSleeping(!isSleeping)}
-            // Added 'rotate-180' to flip the emoji upside down
-            className="text-6xl -mt-2 transition-all duration-300 hover:scale-110 active:scale-95 outline-none rotate-180"
+            type="button"
+            onPointerDown={(event) => {
+              event.stopPropagation();
+            }}
+            onPointerUp={(event) => {
+              event.stopPropagation();
+            }}
+            onClick={(event) => {
+              event.stopPropagation();
+
+              // Toggle the bedroom light without triggering the room pointer handler
+              setIsSleeping(!isSleeping);
+            }}
+            className="pointer-events-auto -mt-1 flex h-[clamp(44px,8dvh,56px)] w-[clamp(44px,8dvh,56px)] touch-manipulation items-center justify-center text-[clamp(36px,8dvh,60px)] outline-none transition-transform duration-300 hover:scale-110 active:scale-95"
             title={isSleeping ? "Turn On" : "Turn Off"}
+            aria-label={
+              isSleeping
+                ? "Turn on bedroom light"
+                : "Turn off bedroom light"
+            }
           >
-            <div className={`transition-all duration-500 ${isSleeping ? 'grayscale opacity-50 blur-[1px]' : 'filter drop-shadow-[0_0_25px_rgba(255,235,59,0.8)]'}`}>
+            {/* Flip the bulb so it appears to hang from the cord */}
+            <span
+              className={`rotate-180 transition-all duration-500 ${
+                isSleeping
+                  ? "grayscale opacity-50"
+                  : "drop-shadow-[0_0_20px_rgba(255,235,59,0.8)]"
+              }`}
+            >
               💡
-            </div>
+            </span>
           </button>
         </div>
       )}
@@ -588,7 +747,10 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
       )}
 
       {/* The Pet */}
-      <div ref={playAreaRef} className="flex-1 flex items-center justify-center relative w-full">
+      <div
+        ref={playAreaRef}
+        className="relative flex min-h-0 w-full flex-1 items-center justify-center"
+      >
         {currentRoom === RoomType.PLAYROOM ? (
           <div
             className="absolute z-20"
@@ -624,26 +786,81 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
             />
           </div>
         ) : currentRoom === RoomType.BEDROOM ? (
-          <div className="relative flex h-[430px] w-[min(92vw,560px)] items-center justify-center">
+          /*
+          * Keep the bedroom pet and bed in one shared scene.
+          * Both elements use the same responsive scale.
+          */
+          <div
+            className="absolute left-1/2 z-10 flex items-center justify-center"
+            style={{
+              width:
+                BEDROOM_SCENE_WIDTH *
+                bedroomSceneScale,
+
+              height:
+                BEDROOM_SCENE_HEIGHT *
+                bedroomSceneScale,
+
+              /*
+              * Raise the scene by the same amount that the bed
+              * extends below its internal container.
+              */
+              bottom:
+                BEDROOM_BED_BOTTOM_OFFSET *
+                bedroomSceneScale,
+
+              transform: 'translateX(-50%)',
+            }}
+          >
             {activeBed && (
               <img
                 src={activeBed.src}
                 alt=""
                 draggable={false}
-                className="pointer-events-none absolute -bottom-32 left-1/2 z-0 w-[min(85vw,550px)] -translate-x-1/2 select-none drop-shadow-2xl"
+                className="pointer-events-none absolute left-1/2 z-0 -translate-x-1/2 select-none drop-shadow-2xl"
+                style={{
+                  width:
+                    BEDROOM_BED_WIDTH *
+                    bedroomSceneScale,
+
+                  bottom:
+                    -BEDROOM_BED_BOTTOM_OFFSET *
+                    bedroomSceneScale,
+                }}
               />
             )}
-            <div className="relative z-10">
+
+            <div
+              className="relative z-10"
+              style={{
+                transform:
+                  `translateY(${8 * bedroomSceneScale}px)`,
+              }}
+            >
               <Pet
                 ref={petRef}
                 stats={stats}
                 isSleeping={isSleeping}
                 isEating={isEating}
                 isPlaying={isPlaying}
-                isHoveredWithFood={isHoveringPet && !!draggedItem}
+                isHoveredWithFood={
+                  isHoveringPet &&
+                  !!draggedItem
+                }
                 bubbles={bubbles}
-                lookAt={pointerState.isDown ? { x: pointerState.x, y: pointerState.y } : null}
-                sleepVisualOffsetY={72}
+                lookAt={
+                  pointerState.isDown
+                    ? {
+                        x: pointerState.x,
+                        y: pointerState.y,
+                      }
+                    : null
+                }
+                displayScale={bedroomSceneScale}
+                sleepVisualOffsetY={
+                  72 *
+                  bedroomSceneScale
+                }
                 sleepLabelClassName="top-24 right-14"
                 spriteSheetUrl={activePet.spriteSheetUrl}
                 mouthPosition={activePet.mouthPosition}
