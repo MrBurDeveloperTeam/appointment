@@ -11,6 +11,7 @@ export async function signUp({
   fullName,
   accountType = 'individual',
   companyName = '',
+  referralCode = '',
   phone = '',
   position = '',
   dob = '',
@@ -26,6 +27,7 @@ export async function signUp({
     phone: phone.trim() || null,
     position: position.trim() || null,
     company_name: accountType === 'company' ? companyName.trim() || null : null,
+    referral_code: referralCode.trim() || null,
     dob: dob || null,
     country: country || null,
     agreed_to_terms: Boolean(agreedToTerms),
@@ -40,6 +42,7 @@ export async function signUp({
     position: metadata.position,
     account_type: metadata.account_type,
     company_name: metadata.company_name,
+    referral_code: metadata.referral_code,
     dob: metadata.dob,
     country: metadata.country,
   });
