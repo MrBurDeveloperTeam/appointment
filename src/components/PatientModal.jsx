@@ -12,6 +12,15 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
     taxNumber: patient ? patient.taxNumber || '' : '',
     phone: patient ? patient.phone || '' : '',
     email: patient ? patient.email || '' : '',
+    emailIsGuardian: patient
+      ? Boolean(patient.emailIsGuardian)
+      : false,
+    guardianName: patient
+      ? patient.guardianName || ''
+      : '',
+    guardianRelationship: patient
+      ? patient.guardianRelationship || ''
+      : '',
     address: patient ? patient.address || '' : '',
     emergencyContactName: patient ? patient.emergencyContactName || '' : '',
     emergencyContactPhone: patient ? patient.emergencyContactPhone || '' : '',
@@ -28,15 +37,51 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
     if (!form.name.trim()) {
       addToast('Please enter patient name', 'error');
       return;
     }
+
     if (!form.phone.trim()) {
       addToast('Please enter phone number', 'error');
       return;
     }
-    onSave(form);
+
+    if (form.emailIsGuardian && !form.email.trim()) {
+      addToast(
+        'Please enter the parent or guardian email',
+        'error'
+      );
+      return;
+    }
+
+    if (form.emailIsGuardian && !form.guardianName.trim()) {
+      addToast('Please enter parent or guardian name', 'error');
+      return;
+    }
+
+    if (
+      form.emailIsGuardian &&
+      !form.guardianRelationship
+    ) {
+      addToast(
+        'Please select the guardian relationship',
+        'error'
+      );
+      return;
+    }
+
+    onSave({
+      ...form,
+      email: form.email.trim().toLowerCase(),
+      guardianName: form.emailIsGuardian
+        ? form.guardianName.trim()
+        : '',
+      guardianRelationship: form.emailIsGuardian
+        ? form.guardianRelationship
+        : '',
+    });
   };
 
   return (
@@ -76,13 +121,121 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Phone</label>
-              <input className="form-input" value={form.phone} onChange={(e) => handleChange('phone', e.target.value)} required />
+              <input
+                className="form-input"
+                value={form.phone}
+                onChange={(e) =>
+                  handleChange('phone', e.target.value)
+                }
+                required
+              />
             </div>
+
             <div className="form-group">
               <label className="form-label">Email</label>
-              <input className="form-input" type="email" value={form.email} onChange={(e) => handleChange('email', e.target.value)} />
+              <input
+                className="form-input"
+                type="email"
+                value={form.email}
+                onChange={(e) =>
+                  handleChange('email', e.target.value)
+                }
+                required={form.emailIsGuardian}
+              />
+
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  marginTop: '10px',
+                  cursor: 'pointer',
+                  fontSize: 'var(--font-size-sm)',
+                  lineHeight: 1.4,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={form.emailIsGuardian}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+
+                    setForm((previous) => ({
+                      ...previous,
+                      emailIsGuardian: checked,
+                      guardianName: checked
+                        ? previous.guardianName
+                        : '',
+                      guardianRelationship: checked
+                        ? previous.guardianRelationship
+                        : '',
+                    }));
+                  }}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    marginTop: '1px',
+                    flexShrink: 0,
+                  }}
+                />
+
+                <span>
+                  This email belongs to the patient's parent or
+                  legal guardian.
+                </span>
+              </label>
             </div>
           </div>
+
+          {form.emailIsGuardian && (
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">
+                  Parent / Guardian Name
+                </label>
+
+                <input
+                  className="form-input"
+                  value={form.guardianName}
+                  onChange={(e) =>
+                    handleChange(
+                      'guardianName',
+                      e.target.value
+                    )
+                  }
+                  placeholder="Enter full name"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Relationship to Patient
+                </label>
+
+                <select
+                  className="form-select"
+                  value={form.guardianRelationship}
+                  onChange={(e) =>
+                    handleChange(
+                      'guardianRelationship',
+                      e.target.value
+                    )
+                  }
+                  required
+                >
+                  <option value="">Select</option>
+                  <option value="parent">Parent</option>
+                  <option value="legal-guardian">
+                    Legal guardian
+                  </option>
+                  <option value="other-responsible-adult">
+                    Other responsible adult
+                  </option>
+                </select>
+              </div>
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">Address</label>

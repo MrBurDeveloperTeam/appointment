@@ -213,6 +213,18 @@ export default function RequestsView({
     );
   }, [appointmentRequests]);
 
+  const findPatientById = (patientId) => {
+    if (!patientId) return null;
+
+    return (
+      patients.find(
+        (patient) =>
+          String(patient.id) ===
+          String(patientId)
+      ) || null
+    );
+  };
+
   const findPatientByEmail = (email) => {
     const normalizedEmail = normalizeEmail(email);
 
@@ -305,17 +317,14 @@ export default function RequestsView({
         });
 
         patientId = createdPatient?.id || null;
-      } else if (
-        !request.isNewPatient &&
-        request.lookupEmail
-      ) {
-        const matchedPatient = findPatientByEmail(
-          request.lookupEmail
-        );
+      } else if (!request.isNewPatient) {
+        const matchedPatient =
+          findPatientById(request.patientId) ||
+          findPatientByEmail(request.lookupEmail);
 
         if (!matchedPatient) {
           throw new Error(
-            'No patient matched this email.'
+            'No patient matched this request.'
           );
         }
 
@@ -526,11 +535,9 @@ export default function RequestsView({
           );
 
           const matchedPatient =
-            !request.isNewPatient &&
-            request.lookupEmail
-              ? findPatientByEmail(
-                  request.lookupEmail
-                )
+            !request.isNewPatient
+              ? findPatientById(request.patientId) ||
+                findPatientByEmail(request.lookupEmail)
               : null;
 
           const existingMeta = request.isNewPatient
