@@ -18,6 +18,9 @@ const emptyPatient = {
   taxNumber: '',
   phone: '',
   email: '',
+  emailIsGuardian: false,
+  guardianName: '',
+  guardianRelationship: '',
   address: '',
   emergencyContactName: '',
   emergencyContactPhone: '',
@@ -633,12 +636,40 @@ export default function PublicBookingView({ clinicSlug }) {
       return true;
     }
 
-    const { ok, fieldErrors: errs } = validateNewPatient(patient);
+    const {
+      ok,
+      fieldErrors: validationErrors,
+    } = validateNewPatient(patient);
+
+    const errs = {
+      ...validationErrors,
+    };
+
+    let isValid = ok;
+
+    if (patient.emailIsGuardian) {
+      if (!patient.guardianName.trim()) {
+        errs.guardianName =
+          'Parent or guardian name is required.';
+        isValid = false;
+      }
+
+      if (!patient.guardianRelationship) {
+        errs.guardianRelationship =
+          'Please select the relationship.';
+        isValid = false;
+      }
+    }
+
     setFieldErrors(errs);
-    if (!ok) {
-      setError('Please complete all required fields correctly.');
+
+    if (!isValid) {
+      setError(
+        'Please complete all required fields correctly.'
+      );
       return false;
     }
+
     return true;
   };
 
@@ -722,6 +753,9 @@ export default function PublicBookingView({ clinicSlug }) {
         patient_name: patientType === 'new' ? patient.name.trim() : (lookupPatient?.name || '').trim(),
         phone: patientType === 'new' ? patient.phone.trim() || null : null,
         email: patientType === 'new' ? patient.email.trim().toLowerCase() || null : lookupEmail.trim().toLowerCase(),
+        email_is_guardian: patientType === 'new' ? Boolean(patient.emailIsGuardian) : false,
+        guardian_name: patientType === 'new' && patient.emailIsGuardian? patient.guardianName.trim() || null : null,
+        guardian_relationship: patientType === 'new' && patient.emailIsGuardian ? patient.guardianRelationship || null : null,
 
         preferred_dates: appointment.date ? [appointment.date] : [],
         preferred_times: appointment.startTime ? [appointment.startTime] : [],
@@ -1093,11 +1127,90 @@ export default function PublicBookingView({ clinicSlug }) {
                       {fieldErrors.phone && <div className="form-error">{fieldErrors.phone}</div>}
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Email *</label>
-                      <input className="form-input" type="email" value={patient.email} onChange={updatePatient('email')} required />
-                      {fieldErrors.email && <div className="form-error">{fieldErrors.email}</div>}
+                      <label className="form-label"> Email * </label>
+                      <input className="form-input" type="email" value={patient.email} onChange={updatePatient('email')} required/>
+                      {fieldErrors.email && ( <div className="form-error"> {fieldErrors.email} </div> )}
+
+                      <label className="booking-confirm-check"
+                        style={{ marginTop: '0.75rem', alignItems: 'flex-start', }}
+                      >
+                        <input type="checkbox" checked={patient.emailIsGuardian}
+                          onChange={(event) => { const checked = event.target.checked;
+                            setPatient((previous) => ({
+                              ...previous, emailIsGuardian: checked, guardianName: checked
+                                ? previous.guardianName
+                                : '',
+                              guardianRelationship: checked
+                                ? previous.guardianRelationship
+                                : '',
+                            }));
+
+                            setFieldErrors((previous) => ({
+                              ...previous, guardianName: '', guardianRelationship: '',
+                            }));
+                          }}
+                          style={{
+                            width: '1.2rem',
+                            height: '1.2rem',
+                            marginRight: '0.5rem',
+                            marginTop: '0.1rem',
+                          }}
+                        />
+
+                        <span>
+                          This email belongs to the patient's
+                          parent or legal guardian.
+                        </span>
+                      </label>
                     </div>
                   </div>
+                  
+                  {patient.emailIsGuardian && (
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label"> Parent / Guardian Name *  </label>
+
+                        <input className="form-input" value={patient.guardianName}
+                          onChange={updatePatient( 'guardianName' )} placeholder="Enter full name" required
+                        />
+
+                        {fieldErrors.guardianName && (
+                          <div className="form-error"> {fieldErrors.guardianName} </div>
+                        )}
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label"> Relationship to Patient * </label>
+
+                        <select
+                          className="form-select" value={patient.guardianRelationship}
+                          onChange={updatePatient( 'guardianRelationship' )} required
+                        >
+                          <option value="">
+                            Select
+                          </option>
+
+                          <option value="parent">
+                            Parent
+                          </option>
+
+                          <option value="legal-guardian">
+                            Legal guardian
+                          </option>
+
+                          <option value="other-responsible-adult">
+                            Other responsible adult
+                          </option>
+                        </select>
+
+                        {fieldErrors.guardianRelationship && (
+                          <div className="form-error">
+                            {fieldErrors.guardianRelationship}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="form-group">
                     <label className="form-label">Address *</label>
@@ -1358,6 +1471,36 @@ export default function PublicBookingView({ clinicSlug }) {
                             : lookupPatient?.name || '-'}
                         </div>
                       </div>
+                      {patientType === 'new' &&
+                          patient.emailIsGuardian && (
+                            <>
+                              <div>
+                                <div className="booking-summary-label"> Email Owner </div>
+                                <div> Parent / Legal Guardian </div>
+                              </div>
+
+                              <div>
+                                <div className="booking-summary-label"> Guardian Name </div>
+                                <div> {patient.guardianName || '-'} </div>
+                              </div>
+
+                              <div>
+                                <div className="booking-summary-label"> Relationship </div>
+                                <div>
+                                  {patient.guardianRelationship ===
+                                  'parent'
+                                    ? 'Parent'
+                                    : patient.guardianRelationship ===
+                                        'legal-guardian'
+                                      ? 'Legal guardian'
+                                      : patient.guardianRelationship ===
+                                          'other-responsible-adult'
+                                        ? 'Other responsible adult'
+                                        : '-'}
+                                </div>
+                              </div>
+                            </>
+                          )}
                       <div>
                         <div className="booking-summary-label">Phone</div>
                         <div>
