@@ -902,29 +902,40 @@ export const PetRoom: React.FC<PetRoomProps> = ({ onNavigateToGame }) => {
         {currentRoom === RoomType.BATHROOM && (
           <div className="absolute bottom-10 right-10 opacity-50 text-6xl animate-float">🦆</div>
         )}
-        {currentRoom === RoomType.BATHROOM && isPoopVisible && (
-          <button
-            type="button"
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-            onClick={handlePoopClick}
-            className="absolute left-1/2 top-1/2 z-40 translate-x-[140px] translate-y-[110px] rounded-2xl p-2 transition-transform duration-200 hover:scale-110 active:scale-95"
-            aria-label="Collect poop for 5 coins"
-            title="+5 coins"
+        {currentRoom === RoomType.BATHROOM && (isPoopVisible || showPoopReward) && (
+          <div
+            className="pointer-events-none absolute z-40 flex h-[clamp(72px,22vw,96px)] w-[clamp(72px,22vw,96px)] items-center justify-center"
+            style={{
+              right: 'max(clamp(12px,6vw,72px), env(safe-area-inset-right, 0px))',
+              bottom: 'clamp(150px,22dvh,210px)',
+            }}
           >
-            <img
-              src="/images/poop.png"
-              alt=""
-              draggable={false}
-              className="h-[80px] w-[80px] object-contain drop-shadow-xl"
-            />
-          </button>
-        )}
-        {currentRoom === RoomType.BATHROOM && showPoopReward && (
-          <div className="pointer-events-none absolute left-1/2 top-1/2 z-50 translate-x-[150px] translate-y-[78px]">
-            <div className="animate-poop-reward rounded-full bg-amber-400 px-3 py-1.5 text-[14px] font-black tracking-wider text-white">
-              +5 coins
-            </div>
+            {isPoopVisible && (
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
+                onClick={handlePoopClick}
+                className="pointer-events-auto flex h-full w-full touch-manipulation items-center justify-center rounded-2xl p-1.5 transition-transform duration-200 hover:scale-110 active:scale-95 sm:p-2"
+                aria-label="Collect poop for 5 coins"
+                title="+5 coins"
+              >
+                <img
+                  src="/images/poop.png"
+                  alt=""
+                  draggable={false}
+                  className="h-[clamp(56px,18vw,80px)] w-[clamp(56px,18vw,80px)] object-contain drop-shadow-xl"
+                />
+              </button>
+            )}
+
+            {showPoopReward && (
+              <div className="absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2">
+                <div className="animate-poop-reward whitespace-nowrap rounded-full bg-amber-400 px-3 py-1.5 text-[14px] font-black tracking-wider text-white shadow-lg">
+                  +5 coins
+                </div>
+              </div>
+            )}
           </div>
         )}
         {currentRoom === RoomType.GAMES && (
