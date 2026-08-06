@@ -256,12 +256,12 @@ const VirtualPetContent: React.FC<{
             <button
                 type="button"
                 onClick={handleCloseVirtualPet}
-                className="absolute left-3 top-3 z-[70] flex h-11 w-11 items-center justify-center rounded-xl border border-white/60 bg-white/75 text-slate-700 shadow-xl shadow-slate-900/10 backdrop-blur-md transition-all hover:-translate-x-0.5 hover:scale-105 hover:bg-white active:scale-95 sm:left-6 sm:top-6 sm:h-16 sm:w-16 sm:rounded-2xl"
+                className="absolute left-3 top-3 z-[70] flex h-11 w-11 items-center justify-center rounded-xl border border-white/60 bg-white/75 text-slate-700 shadow-xl shadow-slate-900/10 backdrop-blur-md transition-all hover:-translate-x-0.5 hover:scale-105 hover:bg-white active:scale-95 md:left-6 md:top-6 md:h-16 md:w-16 md:rounded-2xl"
                 title="Back"
                 aria-label="Back"
             >
                 <TiArrowBack
-                    className="h-8 w-8 sm:h-12 sm:w-12"
+                    className="h-8 w-8 md:h-12 md:w-12"
                     strokeWidth={0}
                 />
             </button>

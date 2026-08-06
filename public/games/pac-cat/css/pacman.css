@@ -491,3 +491,8 @@ h3 {
 #control {
     display: none !important;
 }
+#canvas-home-title-pacman,
+#canvas-panel-title-pacman {
+  display: none !important;
+  visibility: hidden !important;
+}
