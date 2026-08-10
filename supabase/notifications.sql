@@ -147,20 +147,14 @@ begin
         >
           <tr>
             <td
-              bgcolor="#2563eb"
+              bgcolor="#76BFBA"
               style="
-                background:#2563eb;
-                background:linear-gradient(
-                  180deg,
-                  #60a5fa 0%%,
-                  #2563eb 48%%,
-                  #1d4ed8 100%%
-                );
-                border:1px solid #1e40af;
-                border-bottom:5px solid #1e3a8a;
-                border-radius:11px;
+                background-color:#76BFBA;
+                border:1px solid #579E99;
+                border-bottom:5px solid #39736F;
+                border-radius:10px;
                 box-shadow:0 8px 18px
-                  rgba(37,99,235,0.28);
+                  rgba(57,115,111,0.28);
                 text-align:center;
               "
             >
@@ -170,7 +164,7 @@ begin
                 style="
                   display:inline-block;
                   padding:13px 24px;
-                  color:#ffffff;
+                  color:#000000;
                   font-family:Arial,sans-serif;
                   font-size:15px;
                   font-weight:700;
@@ -178,7 +172,7 @@ begin
                   letter-spacing:0.2px;
                   text-decoration:none;
                   text-shadow:0 1px 1px
-                    rgba(0,0,0,0.18);
+                    rgba(255,255,255,0.28);
                   border-radius:10px;
                   white-space:nowrap;
                 "
