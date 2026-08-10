@@ -1,26 +1,145 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthProvider';
 import { motion, AnimatePresence } from 'framer-motion';
-import api, {creditApi} from "../services/odooApi";
 
 export default function Header({ createAppLink, title, onNewAppointment, onToggleSidebar, credits, onOpenCredits, isSidebarOpen, isUnconfigured }) {
     const { user, signOut } = useAuth();
     const [showAccountMenu, setShowAccountMenu] = useState(false);
-    const [creditBalance, setCreditBalance] = useState(null)
+    const [
+        creditBalance,
+        setCreditBalance
+    ] = useState(null);
+
+    const [
+        creditLoading,
+        setCreditLoading
+    ] = useState(false);
+
+    const [
+        creditError,
+        setCreditError
+    ] = useState(null);
     const menuRef = useRef(null);
 
+    /*
+    * Load Snabbb Credit using the authenticated
+    * Supabase user's email.
+    */
     useEffect(() => {
-        console.log('user changed in Header.jsx:', user);
-      const partnerId = user?.partner_id // or however you store partner_id after login
-      if (!partnerId) return
+        const email =
+            user?.email?.trim();
 
-      fetch(`https://app.snabbb.com/api/wallet?partner_id=${partnerId}`, {
-        credentials: 'include',
-      })
-        .then(r => r.json())
-        .then(data => setCreditBalance(data?.data?.balance ?? null))
-        .catch(() => setCreditBalance(null))
-    }, [user]);
+        if (!email) {
+            setCreditBalance(null);
+            setCreditLoading(false);
+            setCreditError(null);
+
+            return;
+        }
+
+        const controller =
+            new AbortController();
+
+        async function loadCreditBalance() {
+            setCreditLoading(true);
+            setCreditError(null);
+
+            try {
+                const response =
+                    await fetch(
+                        `/api/wallet?email=${encodeURIComponent(
+                            email
+                        )}`,
+                        {
+                            method: 'GET',
+                            credentials: 'include',
+                            headers: {
+                                Accept:
+                                    'application/json',
+                            },
+                            signal:
+                                controller.signal,
+                        }
+                    );
+
+                const result =
+                    await response
+                        .json()
+                        .catch(() => null);
+
+                if (
+                    !response.ok ||
+                    !result?.ok
+                ) {
+                    throw new Error(
+                        result?.error ||
+                        'Unable to load balance'
+                    );
+                }
+
+                /*
+                * E-learning uses snabbb_balance.
+                * Keep balance as a fallback for compatibility.
+                */
+                const rawBalance =
+                    result?.data
+                        ?.snabbb_balance ??
+                    result?.data?.balance ??
+                    result?.snabbb_balance ??
+                    result?.balance;
+
+                const parsedBalance =
+                    Number(rawBalance);
+
+                if (
+                    !Number.isFinite(
+                        parsedBalance
+                    )
+                ) {
+                    throw new Error(
+                        'Invalid wallet balance'
+                    );
+                }
+
+                setCreditBalance(
+                    parsedBalance
+                );
+            } catch (error) {
+                if (
+                    error?.name ===
+                    'AbortError'
+                ) {
+                    return;
+                }
+
+                console.error(
+                    'Failed to load Snabbb Credit:',
+                    error
+                );
+
+                setCreditBalance(null);
+
+                setCreditError(
+                    'Unable to load balance'
+                );
+            } finally {
+                if (
+                    !controller.signal.aborted
+                ) {
+                    setCreditLoading(false);
+                }
+            }
+        }
+
+        loadCreditBalance();
+
+        return () => {
+            controller.abort();
+        };
+    }, [
+        user?.id,
+        user?.email
+    ]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -29,22 +148,6 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                 setShowAccountMenu(false);
             }
         }
-
-        async function loadWallet() {
-          try {
-            const info  = await api.post('/web/session/get_session_info', {}).catch(err => {
-              console.error('Session info error:', err);
-            });
-            const { data: sessionData } = info || {};
-            const { data } = await creditApi.get(`/api/wallet?partner_id=${sessionData.result.partner_id}`);
-            console.log("data from wallet API:", data.data);
-            setCreditBalance(data.data.snabbb_balance);
-          } catch (err) {
-            console.error(err);
-          }
-        }
-
-        loadWallet();
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -149,7 +252,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                     className="absolute right-0 mt-3 w-80 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] overflow-hidden"
                   >
                     {/* Profile Info */}
-                    <div className="p-6 border-b border-[var(--border-light)]]">
+                    <div className="p-6 border-b border-[var(--border-light)]">
                       <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-4">
                         Profile Info
                       </p>
@@ -157,7 +260,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                       <div className="flex flex-col gap-3">
                         <div>
                           <p className="text-base font-bold text-[var(--text-primary)] truncate leading-tight">
-                            {user?.user_metadata.name}
+                            {user?.user_metadata?.name}
                           </p>
 
                           {user?.jobPosition && (
@@ -209,7 +312,13 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">Snabbb Credit</p>
                           <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">
-                            {creditBalance !== null ? `${creditBalance} credits` : 'Loading...'}
+                              {creditLoading
+                                  ? 'Loading...'
+                                  : creditError
+                                      ? creditError
+                                      : creditBalance !== null
+                                          ? `${creditBalance} credits`
+                                          : 'Balance unavailable'}
                           </p>
                         </div>
                         <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors"></i>

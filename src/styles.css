@@ -863,6 +863,27 @@ textarea:focus-visible,
   color: var(--danger-dark);
 }
 
+.request-status.expired {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--text-muted);
+}
+
+.request-footer-expired {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: var(--radius-md);
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text-muted);
+}
+
+.request-footer-expired strong {
+  color: var(--text-secondary);
+}
+
 .request-card-body {
   display: flex;
   flex-direction: column;

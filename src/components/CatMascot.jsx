@@ -9,6 +9,7 @@ const MALLOW_FRAME_HEIGHT = 208;
 const MALLOW_SCALE = 0.42;
 const PET_SLEEPING_KEY = 'pet_is_sleeping';
 const PET_SLEEPING_UPDATED_AT_KEY = 'pet_is_sleeping_updated_at';
+const DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS = 6000;
 const MALLOW_ROWS = {
   idle: { row: 0, frames: 6, duration: '1.1s' },
   runRight: { row: 1, frames: 8, duration: '0.7s' },
@@ -105,24 +106,95 @@ export default function CatMascot({ onCatClick, disabled = false }) {
   const [currentUserId, setCurrentUserId] = useState(null);
   const autoCloseTimerRef = useRef(null);
   const isEntryWalkComplete = useRef(false);
-  const hasDismissedDialog = useRef(false);
+  // Which dialog type is currently prepared to show ('intro' | 'welcomeBack' | null),
+  // and which dialog types have already been dismissed during this page lifecycle.
+  // Tracking dismissal per-type (rather than one shared flag) means dismissing the
+  // Post-Login Intro no longer permanently blocks the Welcome Back dialog, or vice versa.
+  const currentDialogType = useRef(null);
+  const dismissedDialogs = useRef(new Set());
+  // Holds the auto-close duration for a prepared 'welcomeBack' dialog, set when
+  // its content is fetched but only ever consumed by tryActivateDialog() at the
+  // moment it actually shows — see the comment on tryActivateDialog for why.
+  const welcomeBackAutoCloseMsRef = useRef(DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS);
+  // Mirrors isDialogActive synchronously (React state updates aren't immediate).
+  // Without this, tryActivateDialog() can be called again while a dialog is
+  // already showing (e.g. StrictMode's dev double-invoke of the fetch effect,
+  // or the click-to-move handler firing again) and would re-arm the Welcome
+  // Back timer from scratch every time, so it could keep getting reset before
+  // ever completing a full countdown.
+  const isDialogActiveRef = useRef(false);
 
-  const closeDialog = () => {
-    hasDismissedDialog.current = true;
-    setIsDialogActive(false);
-    if (autoCloseTimerRef.current) {
+  const clearWelcomeBackAutoCloseTimer = () => {
+    if (autoCloseTimerRef.current !== null) {
       clearTimeout(autoCloseTimerRef.current);
       autoCloseTimerRef.current = null;
     }
-    if (!disabled && currentUserId) {
-      localStorage.setItem(`intro_shown_${currentUserId}`, 'true');
+  };
+
+  const startWelcomeBackAutoCloseTimer = () => {
+    clearWelcomeBackAutoCloseTimer();
+
+    const configuredDuration = Number(welcomeBackAutoCloseMsRef.current);
+    const duration = Number.isFinite(configuredDuration) && configuredDuration > 0
+      ? configuredDuration
+      : DEFAULT_WELCOME_BACK_AUTO_CLOSE_MS;
+
+    autoCloseTimerRef.current = setTimeout(() => {
+      autoCloseTimerRef.current = null;
+      closeDialog();
+    }, duration);
+  };
+
+  // Marks the Post-Login Intro stage complete for a given user — either because
+  // they actually dismissed a visible Intro, or because a successful query
+  // confirmed there's no Intro configured/usable to show. Takes an explicit
+  // userId (rather than reading currentUserId state) so it's safe to call from
+  // inside initDialog() itself, where the just-fetched userId may not yet be
+  // reflected in currentUserId (state updates aren't synchronous).
+  const markIntroCompleted = (uid) => {
+    if (!uid) return;
+    localStorage.setItem(`intro_shown_${uid}`, 'true');
+  };
+
+  const closeDialog = () => {
+    const dialogType = currentDialogType.current;
+    if (dialogType) {
+      dismissedDialogs.current.add(dialogType);
+    }
+    isDialogActiveRef.current = false;
+    setIsDialogActive(false);
+    clearWelcomeBackAutoCloseTimer();
+    if (dialogType === 'intro' && !disabled && currentUserId) {
+      markIntroCompleted(currentUserId);
     }
   };
 
-  const [dialogSteps, setDialogSteps] = useState([
-    "👋 Hi there! I'm your AI assistant for Snabbb.io.\nI'm here to help you explore and understand all the features available.",
-    "Click on me to open the Virtual Pet ecosystem, or ask me any questions about the app!"
-  ]);
+  // Single source of truth for showing a prepared dialog: only activates once the
+  // entry walk has finished AND a dialog type has been prepared AND that specific
+  // type hasn't already been dismissed this page lifecycle. Idempotent via
+  // isDialogActiveRef — once active, further calls (StrictMode's dev double-invoke
+  // of the fetch effect, click-to-move, etc.) are no-ops instead of re-arming the
+  // Welcome Back timer from scratch every time.
+  const tryActivateDialog = () => {
+    const dialogType = currentDialogType.current;
+    if (
+      !isEntryWalkComplete.current ||
+      !dialogType ||
+      dismissedDialogs.current.has(dialogType) ||
+      isDialogActiveRef.current
+    ) {
+      return;
+    }
+
+    isDialogActiveRef.current = true;
+    setIsDialogActive(true);
+
+    if (dialogType === 'welcomeBack') {
+      startWelcomeBackAutoCloseTimer();
+    }
+  };
+
+  const [dialogSteps, setDialogSteps] = useState([]);
 
   const [meowMsg, setMeowMsg] = useState(null);
   const [petStates, setPetStates] = useState(['Normal']);
@@ -263,86 +335,128 @@ export default function CatMascot({ onCatClick, disabled = false }) {
   useEffect(() => {
     const initDialog = async () => {
       let userId = null;
+      let userMeta = null;
+      let userEmail = null;
       try {
         const { data: { session } } = await supabase.auth.getSession();
         userId = session?.user?.id || null;
+        userMeta = session?.user?.user_metadata || null;
+        userEmail = session?.user?.email || null;
         setCurrentUserId(userId);
       } catch (err) {
         console.error("Error fetching session in initDialog:", err);
       }
 
-      // If user is logged in (disabled = false) and has seen the intro, show Welcome Back and auto-close
+      // If user is logged in (disabled = false) and has seen the intro, fetch
+      // the configurable Welcome Back message and auto-close after a few seconds.
       if (!disabled && userId && localStorage.getItem(`intro_shown_${userId}`) === 'true') {
-        setDialogSteps(["Welcome back! 👋"]);
-        setDialogStep(0);
+        try {
+          const { data: config, error } = await supabase
+            .from('aiboard_simulator_configs')
+            .select('welcome_back_text, welcome_back_auto_close_ms')
+            .eq('module_name', 'Appointment')
+            .limit(1)
+            .maybeSingle();
 
-        if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
-          setIsDialogActive(true);
-        }
+          let welcomeText = !error ? config?.welcome_back_text : null;
+          const autoCloseMs = (!error && config?.welcome_back_auto_close_ms) || 6000;
 
-        if (autoCloseTimerRef.current) {
-          clearTimeout(autoCloseTimerRef.current);
+          if (welcomeText && /\[name\]/i.test(welcomeText)) {
+            let displayName = null;
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('name, full_name')
+                .eq('user_id', userId)
+                .maybeSingle();
+              displayName = profile?.name || profile?.full_name || null;
+            } catch (err) {
+              console.error("Error fetching profile for welcome back name:", err);
+            }
+            if (!displayName) displayName = userMeta?.name || null;
+            if (!displayName && userEmail) displayName = userEmail.split('@')[0];
+            // Never show a raw email address, even if it came from profiles.name/full_name.
+            if (displayName && displayName.includes('@')) displayName = displayName.split('@')[0];
+
+            welcomeText = displayName
+              ? welcomeText.replace(/\[name\]/gi, displayName)
+              : welcomeText
+                  .replace(/,\s*\[name\]/gi, '')
+                  .replace(/\[name\],\s*/gi, '')
+                  .replace(/\[name\]/gi, '')
+                  .replace(/\s{2,}/g, ' ')
+                  .trim();
+          }
+
+          if (welcomeText) {
+            setDialogSteps([welcomeText]);
+            setDialogStep(0);
+            currentDialogType.current = 'welcomeBack';
+            welcomeBackAutoCloseMsRef.current = autoCloseMs;
+            tryActivateDialog();
+          }
+        } catch (err) {
+          console.error("Error fetching welcome back message:", err);
         }
-        autoCloseTimerRef.current = setTimeout(() => {
-          hasDismissedDialog.current = true;
-          setIsDialogActive(false);
-        }, 6000); // disappear after 6 seconds
         return;
       }
 
-      // Default fallback dialogs
-      const fallbackPreLogin = [
-        "👋 Welcome to Snabbb Appointment!",
-        "Please sign in to manage your appointments and clinic."
-      ];
-
-      const fallbackPostLogin = [
-        "👋 Welcome back! I'm your Appointment Assistant.",
-        "Click on me to open the Virtual Pet ecosystem, or ask me for help!"
-      ];
-
       try {
-        const { data: configs } = await supabase
+        const { data: configs, error: configsError } = await supabase
           .from('aiboard_simulator_configs')
           .select('id')
           .eq('module_name', 'Appointment')
           .limit(1);
 
-        if (configs && configs.length > 0) {
-          const configId = configs[0].id;
-
-          const { data, error } = await supabase
-            .from('aiboard_simulator_dialog_steps')
-            .select('step_text, sort_order')
-            .eq('config_id', configId)
-            .eq('is_post_login', !disabled)
-            .order('sort_order', { ascending: true });
-
-          if (!error && data && data.length > 0) {
-            setDialogSteps(data.map(d => d.step_text));
-            setDialogStep(0);
-            if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
-              setIsDialogActive(true);
-            }
-            return;
-          }
+        if (configsError) {
+          // Infrastructure/query failure — do not mark the intro stage
+          // complete; preserve the ability to retry on the next login/reload.
+          return;
         }
 
-        // If no config found or no steps returned, use fallback based on login state
-        setDialogSteps(disabled ? fallbackPreLogin : fallbackPostLogin);
-        setDialogStep(0);
-        if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
-          setIsDialogActive(true);
+        if (!configs || configs.length === 0) {
+          // Query succeeded and confirmed no simulator config exists at all
+          // for this module — there is no Intro to ever show. Mark the stage
+          // complete so future post-login visits proceed to Welcome Back
+          // instead of retrying the missing Intro forever.
+          if (!disabled) markIntroCompleted(userId);
+          return;
         }
 
+        const configId = configs[0].id;
+
+        const { data, error } = await supabase
+          .from('aiboard_simulator_dialog_steps')
+          .select('step_text, sort_order')
+          .eq('config_id', configId)
+          .eq('is_post_login', !disabled)
+          .order('sort_order', { ascending: true });
+
+        if (error) {
+          // Infrastructure/query failure — do not mark the intro stage complete.
+          return;
+        }
+
+        const steps = (data || [])
+          .map(d => d.step_text)
+          .filter(text => typeof text === 'string' && text.trim().length > 0);
+
+        if (steps.length > 0) {
+          setDialogSteps(steps);
+          setDialogStep(0);
+          currentDialogType.current = 'intro';
+          tryActivateDialog();
+          return;
+        }
+
+        // Query succeeded but returned no usable intro content (zero rows, or
+        // every row was empty/whitespace-only) — there is nothing to show.
+        // Mark the stage complete so this doesn't retry forever on every login.
+        if (!disabled) markIntroCompleted(userId);
       } catch (err) {
         console.error("Error fetching dialog steps:", err);
-        // Fallback on error
-        setDialogSteps(disabled ? fallbackPreLogin : fallbackPostLogin);
-        setDialogStep(0);
-        if (isEntryWalkComplete.current && !hasDismissedDialog.current) {
-          setIsDialogActive(true);
-        }
+        // Do not mark the intro stage complete on an unexpected/network
+        // failure — preserve the ability to retry on the next login or reload.
       }
     };
 
@@ -537,9 +651,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
     walkTimeoutRef.current = setTimeout(() => {
       setIsWalking(false);
       isEntryWalkComplete.current = true;
-      if (!hasDismissedDialog.current) {
-        setIsDialogActive(true);
-      }
+      tryActivateDialog();
     }, duration * 1000);
 
     const getInterpolatedPos = () => {
@@ -585,9 +697,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
       walkTimeoutRef.current = setTimeout(() => {
         setIsWalking(false);
         isEntryWalkComplete.current = true;
-        if (!hasDismissedDialog.current) {
-          setIsDialogActive(true);
-        }
+        tryActivateDialog();
       }, duration * 1000);
     };
 
@@ -728,7 +838,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
         }}
       >
         <AnimatePresence mode="wait">
-          {isDialogActive && (
+          {isDialogActive && dialogSteps.length > 0 && (
             <div
               className="cat-popup-clamp"
               style={{ '--cat-x': `${catPos.x}vw` }}
@@ -740,7 +850,7 @@ export default function CatMascot({ onCatClick, disabled = false }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="w-max shrink-0 max-w-[280px] bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-visible relative pointer-events-auto mb-4 mr-1 cursor-default"
+              className="w-max shrink-0 max-w-[min(85vw,340px)] bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col overflow-visible relative pointer-events-auto mb-4 mr-1 cursor-default"
               onClick={(e) => e.stopPropagation()}
             >
               <div

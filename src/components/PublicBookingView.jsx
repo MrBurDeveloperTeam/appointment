@@ -18,6 +18,9 @@ const emptyPatient = {
   taxNumber: '',
   phone: '',
   email: '',
+  emailIsGuardian: false,
+  guardianName: '',
+  guardianRelationship: '',
   address: '',
   emergencyContactName: '',
   emergencyContactPhone: '',
@@ -51,6 +54,7 @@ export default function PublicBookingView({ clinicSlug }) {
 
   const [patientType, setPatientType] = useState('');
   const [lookupEmail, setLookupEmail] = useState('');
+  const [lookupPatients, setLookupPatients] = useState([]);
   const [lookupPatient, setLookupPatient] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
@@ -180,7 +184,10 @@ export default function PublicBookingView({ clinicSlug }) {
   // Existing patient lookup
   // -----------------------------
   useEffect(() => {
+    let cancelled = false;
+
     if (patientType !== 'existing') {
+      setLookupPatients([]);
       setLookupPatient(null);
       setLookupError('');
       setConfirmMatch(false);
@@ -188,7 +195,9 @@ export default function PublicBookingView({ clinicSlug }) {
     }
 
     const email = lookupEmail.trim().toLowerCase();
+
     if (!clinic?.id || email.length < 5 || !email.includes('@')) {
+      setLookupPatients([]);
       setLookupPatient(null);
       setLookupError('');
       setConfirmMatch(false);
@@ -197,16 +206,24 @@ export default function PublicBookingView({ clinicSlug }) {
 
     setLookupLoading(true);
     setLookupError('');
+    setLookupPatients([]);
+    setLookupPatient(null);
+    setConfirmMatch(false);
 
     const timer = setTimeout(async () => {
-      const { data, error: lookupErr } = await supabase
-        .from('apt_patients')
-        .select('id, name, phone, email, id_number, address')
-        .eq('clinic_id', clinic.id)
-        .ilike('email', email)
-        .maybeSingle();
+      const { data, error: lookupErr } = await supabase.rpc(
+        'lookup_patients_by_email',
+        {
+          p_clinic_id: clinic.id,
+          p_email: email,
+        }
+      );
+
+      if (cancelled) return;
 
       if (lookupErr) {
+        console.error('Existing patient lookup failed:', lookupErr);
+        setLookupPatients([]);
         setLookupPatient(null);
         setLookupError('Unable to verify your email right now.');
         setConfirmMatch(false);
@@ -214,7 +231,8 @@ export default function PublicBookingView({ clinicSlug }) {
         return;
       }
 
-      if (!data) {
+      if (!data || data.length === 0) {
+        setLookupPatients([]);
         setLookupPatient(null);
         setLookupError('No patient record found for this email.');
         setConfirmMatch(false);
@@ -222,20 +240,26 @@ export default function PublicBookingView({ clinicSlug }) {
         return;
       }
 
-      setLookupPatient({
-        id: data.id,
-        name: data.name,
-        phone: data.phone || '',
-        email: data.email || '',
-        idNumber: data.id_number || '',
-        address: data.address || '',
-      });
+      const patients = data.map((item) => ({
+        id: item.id,
+        name: item.name,
+        phone: item.phone || '',
+        email: item.email || '',
+        idNumber: item.id_number || '',
+        address: item.address || '',
+      }));
+
+      setLookupPatients(patients);
+      setLookupPatient(null);
       setLookupError('');
       setConfirmMatch(false);
       setLookupLoading(false);
     }, 500);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [clinic, lookupEmail, patientType]);
 
   // -----------------------------
@@ -612,12 +636,40 @@ export default function PublicBookingView({ clinicSlug }) {
       return true;
     }
 
-    const { ok, fieldErrors: errs } = validateNewPatient(patient);
+    const {
+      ok,
+      fieldErrors: validationErrors,
+    } = validateNewPatient(patient);
+
+    const errs = {
+      ...validationErrors,
+    };
+
+    let isValid = ok;
+
+    if (patient.emailIsGuardian) {
+      if (!patient.guardianName.trim()) {
+        errs.guardianName =
+          'Parent or guardian name is required.';
+        isValid = false;
+      }
+
+      if (!patient.guardianRelationship) {
+        errs.guardianRelationship =
+          'Please select the relationship.';
+        isValid = false;
+      }
+    }
+
     setFieldErrors(errs);
-    if (!ok) {
-      setError('Please complete all required fields correctly.');
+
+    if (!isValid) {
+      setError(
+        'Please complete all required fields correctly.'
+      );
       return false;
     }
+
     return true;
   };
 
@@ -696,16 +748,21 @@ export default function PublicBookingView({ clinicSlug }) {
     const { error: insertError } = await supabase.from('appointment_requests').insert([
       {
         clinic_id: clinic.id,
+
+        patient_id: patientType === 'existing' ? lookupPatient?.id || null : null,
         patient_name: patientType === 'new' ? patient.name.trim() : (lookupPatient?.name || '').trim(),
         phone: patientType === 'new' ? patient.phone.trim() || null : null,
-        email: patientType === 'new' ? patient.email.trim() || null : lookupEmail.trim(),
+        email: patientType === 'new' ? patient.email.trim().toLowerCase() || null : lookupEmail.trim().toLowerCase(),
+        email_is_guardian: patientType === 'new' ? Boolean(patient.emailIsGuardian) : false,
+        guardian_name: patientType === 'new' && patient.emailIsGuardian? patient.guardianName.trim() || null : null,
+        guardian_relationship: patientType === 'new' && patient.emailIsGuardian ? patient.guardianRelationship || null : null,
 
         preferred_dates: appointment.date ? [appointment.date] : [],
         preferred_times: appointment.startTime ? [appointment.startTime] : [],
         notes: appointment.notes.trim() || null,
 
         is_new_patient: patientType === 'new',
-        lookup_email: patientType === 'existing' ? lookupEmail.trim() : null,
+        lookup_email: patientType === 'existing' ? lookupEmail.trim().toLowerCase() : null,
 
         patient_id_number: patientType === 'new' ? patient.idNumber.trim() || null : null,
         patient_dob: patientType === 'new' ? patient.dob || null : null,
@@ -740,6 +797,7 @@ export default function PublicBookingView({ clinicSlug }) {
     setStep(0);
     setPatientType('');
     setLookupEmail('');
+    setLookupPatients([]);
     setLookupPatient(null);
     setConfirmMatch(false);
 
@@ -843,6 +901,8 @@ export default function PublicBookingView({ clinicSlug }) {
                       value={lookupEmail}
                       onChange={(event) => {
                         setLookupEmail(event.target.value);
+                        setLookupPatients([]);
+                        setLookupPatient(null);
                         setConfirmMatch(false);
                       }}
                       placeholder="you@example.com"
@@ -851,6 +911,55 @@ export default function PublicBookingView({ clinicSlug }) {
                     {lookupLoading && <div className="form-hint">Checking your record...</div>}
                     {!lookupLoading && lookupError && <div className="form-error">{lookupError}</div>}
                   </div>
+
+                  {lookupPatients.length > 0 && (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <div className="booking-confirm-title">
+                        Select patient
+                      </div>
+
+                      <p
+                        className="booking-subtitle"
+                        style={{
+                          fontSize: '0.9rem',
+                          marginBottom: '1rem',
+                        }}
+                      >
+                        Select the patient who is making this appointment.
+                      </p>
+
+                      <div className="booking-choice-grid">
+                        {lookupPatients.map((candidate) => (
+                          <button
+                            key={candidate.id}
+                            type="button"
+                            className={`booking-choice ${
+                              lookupPatient?.id === candidate.id
+                                ? 'active'
+                                : ''
+                            }`}
+                            onClick={() => {
+                              setLookupPatient(candidate);
+                              setConfirmMatch(false);
+                              resetOtpState();
+                            }}
+                          >
+                            <div className="booking-choice-title">
+                              {candidate.name}
+                            </div>
+
+                            <div className="booking-choice-sub">
+                              Phone: {maskData(candidate.phone)}
+                            </div>
+
+                            <div className="booking-choice-sub">
+                              IC/ID: {maskData(candidate.idNumber)}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {lookupPatient && (
                     <div className="booking-confirm-card">
@@ -1018,11 +1127,90 @@ export default function PublicBookingView({ clinicSlug }) {
                       {fieldErrors.phone && <div className="form-error">{fieldErrors.phone}</div>}
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Email *</label>
-                      <input className="form-input" type="email" value={patient.email} onChange={updatePatient('email')} required />
-                      {fieldErrors.email && <div className="form-error">{fieldErrors.email}</div>}
+                      <label className="form-label"> Email * </label>
+                      <input className="form-input" type="email" value={patient.email} onChange={updatePatient('email')} required/>
+                      {fieldErrors.email && ( <div className="form-error"> {fieldErrors.email} </div> )}
+
+                      <label className="booking-confirm-check"
+                        style={{ marginTop: '0.75rem', alignItems: 'flex-start', }}
+                      >
+                        <input type="checkbox" checked={patient.emailIsGuardian}
+                          onChange={(event) => { const checked = event.target.checked;
+                            setPatient((previous) => ({
+                              ...previous, emailIsGuardian: checked, guardianName: checked
+                                ? previous.guardianName
+                                : '',
+                              guardianRelationship: checked
+                                ? previous.guardianRelationship
+                                : '',
+                            }));
+
+                            setFieldErrors((previous) => ({
+                              ...previous, guardianName: '', guardianRelationship: '',
+                            }));
+                          }}
+                          style={{
+                            width: '1.2rem',
+                            height: '1.2rem',
+                            marginRight: '0.5rem',
+                            marginTop: '0.1rem',
+                          }}
+                        />
+
+                        <span>
+                          This email belongs to the patient's
+                          parent or legal guardian.
+                        </span>
+                      </label>
                     </div>
                   </div>
+                  
+                  {patient.emailIsGuardian && (
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label"> Parent / Guardian Name *  </label>
+
+                        <input className="form-input" value={patient.guardianName}
+                          onChange={updatePatient( 'guardianName' )} placeholder="Enter full name" required
+                        />
+
+                        {fieldErrors.guardianName && (
+                          <div className="form-error"> {fieldErrors.guardianName} </div>
+                        )}
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label"> Relationship to Patient * </label>
+
+                        <select
+                          className="form-select" value={patient.guardianRelationship}
+                          onChange={updatePatient( 'guardianRelationship' )} required
+                        >
+                          <option value="">
+                            Select
+                          </option>
+
+                          <option value="parent">
+                            Parent
+                          </option>
+
+                          <option value="legal-guardian">
+                            Legal guardian
+                          </option>
+
+                          <option value="other-responsible-adult">
+                            Other responsible adult
+                          </option>
+                        </select>
+
+                        {fieldErrors.guardianRelationship && (
+                          <div className="form-error">
+                            {fieldErrors.guardianRelationship}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="form-group">
                     <label className="form-label">Address *</label>
@@ -1277,11 +1465,49 @@ export default function PublicBookingView({ clinicSlug }) {
                     <div className="booking-summary-grid">
                       <div>
                         <div className="booking-summary-label">Name</div>
-                        <div>{patientType === 'new' ? patient.name || '-' : 'Existing patient'}</div>
+                        <div>
+                          {patientType === 'new'
+                            ? patient.name || '-'
+                            : lookupPatient?.name || '-'}
+                        </div>
                       </div>
+                      {patientType === 'new' &&
+                          patient.emailIsGuardian && (
+                            <>
+                              <div>
+                                <div className="booking-summary-label"> Email Owner </div>
+                                <div> Parent / Legal Guardian </div>
+                              </div>
+
+                              <div>
+                                <div className="booking-summary-label"> Guardian Name </div>
+                                <div> {patient.guardianName || '-'} </div>
+                              </div>
+
+                              <div>
+                                <div className="booking-summary-label"> Relationship </div>
+                                <div>
+                                  {patient.guardianRelationship ===
+                                  'parent'
+                                    ? 'Parent'
+                                    : patient.guardianRelationship ===
+                                        'legal-guardian'
+                                      ? 'Legal guardian'
+                                      : patient.guardianRelationship ===
+                                          'other-responsible-adult'
+                                        ? 'Other responsible adult'
+                                        : '-'}
+                                </div>
+                              </div>
+                            </>
+                          )}
                       <div>
                         <div className="booking-summary-label">Phone</div>
-                        <div>{patientType === 'new' ? patient.phone || '-' : '-'}</div>
+                        <div>
+                          {patientType === 'new'
+                            ? patient.phone || '-'
+                            : maskData(lookupPatient?.phone)}
+                        </div>
                       </div>
                       <div>
                         <div className="booking-summary-label">Email</div>
@@ -1289,7 +1515,11 @@ export default function PublicBookingView({ clinicSlug }) {
                       </div>
                       <div>
                         <div className="booking-summary-label">IC/ID</div>
-                        <div>{patientType === 'new' ? patient.idNumber || '-' : '-'}</div>
+                        <div>
+                          {patientType === 'new'
+                            ? patient.idNumber || '-'
+                            : maskData(lookupPatient?.idNumber)}
+                        </div>
                       </div>
                       <div>
                         <div className="booking-summary-label">DOB</div>
