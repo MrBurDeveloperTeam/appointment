@@ -43,6 +43,8 @@ import {
 } from './utils/themeSync';
 import { useGetUserId } from './mutation/useGetUserId';
 import useGetSessionInfo from './hooks/useGetSessionInfo';
+import { useAppointmentPersonalizedInsight } from './aiExperience/hooks/useAppointmentPersonalizedInsight';
+import PersonalizedInsight from './aiExperience/components/PersonalizedInsight';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -287,6 +289,12 @@ function AppContent() {
   } = useDataStore(activeClinicId, dataEnabled);
 
   const [view, setView] = useState('calendar');
+  // Phase-2A first slice: Appointment Within 2 Hours only. Pure,
+  // synchronous, reevaluates whenever `appointments` (already owned above
+  // via useDataStore) changes or the local minute clock ticks — no new
+  // Supabase query, no dedupe, no polling of the database. See
+  // ./aiExperience/hooks/useAppointmentPersonalizedInsight.ts.
+  const appointmentPersonalizedInsight = useAppointmentPersonalizedInsight(appointments);
   const [currentDate, setCurrentDate] = useState(new Date());
 
   // Sync date range for appointments
@@ -799,22 +807,34 @@ function AppContent() {
         />
         <div className="content">
           {view === 'calendar' && (
-            <CalendarView
-              currentDate={currentDate}
-              setCurrentDate={setCurrentDate}
-              calendarView={calendarView}
-              setCalendarView={setCalendarView}
-              appointments={appointments}
-              patients={patients}
-              rooms={rooms}
-              treatments={treatments}
-              staff={staff}
-              holidays={holidays}
-              settings={settings}
-              onSlotSelect={(date, time) => openNewAppointment(date, time)}
-              onAppointmentSelect={handleAppointmentClick}
-              onAppointmentReschedule={handleRescheduleAppointment}
-            />
+            <>
+              {appointmentPersonalizedInsight && (
+                <PersonalizedInsight
+                  candidate={appointmentPersonalizedInsight}
+                  onAction={() => {
+                    // Reuses CalendarView.jsx's exact existing "Today"
+                    // button behavior — never a fabricated navigation.
+                    if (appointmentPersonalizedInsight.action) setCurrentDate(new Date());
+                  }}
+                />
+              )}
+              <CalendarView
+                currentDate={currentDate}
+                setCurrentDate={setCurrentDate}
+                calendarView={calendarView}
+                setCalendarView={setCalendarView}
+                appointments={appointments}
+                patients={patients}
+                rooms={rooms}
+                treatments={treatments}
+                staff={staff}
+                holidays={holidays}
+                settings={settings}
+                onSlotSelect={(date, time) => openNewAppointment(date, time)}
+                onAppointmentSelect={handleAppointmentClick}
+                onAppointmentReschedule={handleRescheduleAppointment}
+              />
+            </>
           )}
           {view === 'today' && (
             <TodayView
