@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+﻿import React, { useEffect, useState, useRef } from 'react';
 import { useGameState } from '../hooks/useGameState';
+import { supabase } from '../../lib/supabaseClient';
 import { ArrowLeft } from 'lucide-react';
 
 const GAME_CONFIG: Record<string, { title: string; url: string; icon: string; gradient: string }> = {
@@ -22,6 +23,12 @@ const GAME_CONFIG: Record<string, { title: string; url: string; icon: string; gr
         icon: '🧱',
         gradient:
             'from-red-400 to-pink-600'
+    },
+    meowdoku: {
+        title: 'Meowdoku',
+        url: '/games/meowdoku/index.html?v=20260817-meowdoku-1',
+        icon: '🐱',
+        gradient: 'from-blue-400 to-indigo-600'
     }
 };
 
@@ -75,10 +82,231 @@ export const GamePage: React.FC<GamePageProps> = ({ gameId, onClose }) => {
     const [isLoading, setIsLoading] = useState(true);
     const { stats, setStats } = useGameState();
     const [sessionCoins, setSessionCoins] = useState(0);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+    const meowdokuUserIdRef = useRef<string | null>(null);
+
+    const postToGame = (message: Record<string, unknown>) => {
+        iframeRef.current?.contentWindow?.postMessage(message, window.location.origin);
+    };
+
+    const sendMeowdokuProgress = (progress: {
+        unlocked_level: number;
+        completed_modes: Record<string, unknown>;
+    }) => {
+        postToGame({ type: 'MEOWDOKU_PROGRESS', progress });
+    };
+
+    const sendUnlockedAchievements = (value: unknown) => {
+        const achievements = Array.isArray(value) ? value : [];
+        if (achievements.length > 0) {
+            postToGame({
+                type: 'MEOWDOKU_ACHIEVEMENTS_UNLOCKED',
+                achievements
+            });
+        }
+    };
+
+    const loadMeowdokuAchievements = async () => {
+        if (!meowdokuUserIdRef.current) return;
+        const { data, error } = await supabase.rpc('meowdoku_get_achievements');
+        postToGame(error
+            ? { type: 'MEOWDOKU_ACHIEVEMENTS_ERROR', message: error.message }
+            : { type: 'MEOWDOKU_ACHIEVEMENTS', achievements: data });
+    };
+
+    const loadMeowdokuCheckIn = async () => {
+        if (!meowdokuUserIdRef.current) return;
+        const { data, error } = await supabase.rpc('meowdoku_get_check_in');
+        postToGame(error
+            ? { type: 'MEOWDOKU_CHECK_IN_ERROR', message: error.message }
+            : { type: 'MEOWDOKU_CHECK_IN', checkIn: data });
+    };
+
+    const loadMeowdokuProgress = async () => {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
+            meowdokuUserIdRef.current = null;
+            postToGame({ type: 'MEOWDOKU_PROGRESS_LOCAL_ONLY' });
+            return false;
+        }
+
+        meowdokuUserIdRef.current = user.id;
+        const { data, error } = await supabase.rpc('meowdoku_get_mode_progress');
+        if (error) {
+            console.error('Unable to load Meowdoku progress:', error);
+            postToGame({ type: 'MEOWDOKU_PROGRESS_LOCAL_ONLY' });
+            return true;
+        }
+
+        const progress = Array.isArray(data) ? data[0] : data;
+        sendMeowdokuProgress({
+            unlocked_level: Math.max(1, Math.min(60, Number(progress?.unlocked_level) || 1)),
+            completed_modes: progress?.completed_modes && typeof progress.completed_modes === 'object'
+                ? progress.completed_modes as Record<string, unknown>
+                : {}
+        });
+        return true;
+    };
+
+    const initializeMeowdoku = async () => {
+        const hasAuthenticatedUser = await loadMeowdokuProgress();
+        if (!hasAuthenticatedUser) return;
+        await Promise.all([
+            loadMeowdokuCheckIn(),
+            loadMeowdokuAchievements()
+        ]);
+    };
+
+    const saveMeowdokuProgress = async (payload: {
+        completed_level?: unknown;
+        mode?: unknown;
+        score?: unknown;
+        mistakes?: unknown;
+        time_seconds?: unknown;
+        hints_used?: unknown;
+        lives_remaining?: unknown;
+    }) => {
+        if (!meowdokuUserIdRef.current) return;
+        const completedLevel = Math.max(1, Math.min(60, Math.floor(Number(payload.completed_level) || 0)));
+        if (!completedLevel) return;
+        const mode = String(payload.mode || '').toLowerCase();
+        if (!['easy', 'medium', 'hard', 'hell'].includes(mode)) return;
+
+        const { data, error } = await supabase.rpc('meowdoku_complete_mode_with_achievements', {
+            p_level_number: completedLevel,
+            p_mode: mode,
+            p_score: Math.max(0, Math.floor(Number(payload.score) || 0)),
+            p_mistakes: Math.max(0, Math.floor(Number(payload.mistakes) || 0)),
+            p_time_seconds: Math.max(0, Math.floor(Number(payload.time_seconds) || 0)),
+            p_hints_used: Math.max(0, Math.floor(Number(payload.hints_used) || 0)),
+            p_lives_remaining: Math.max(1, Math.min(3, Math.floor(Number(payload.lives_remaining) || 3)))
+        });
+
+        if (error) {
+            console.error('Unable to save Meowdoku progress:', error);
+            return;
+        }
+        const result = Array.isArray(data) ? data[0] : data;
+        sendUnlockedAchievements(result?.new_achievements);
+        await Promise.all([
+            loadMeowdokuProgress(),
+            loadMeowdokuAchievements()
+        ]);
+    };
+
+    const recordMeowdokuCatFound = async (payload: {
+        level?: unknown;
+        cat_index?: unknown;
+    }) => {
+        if (!meowdokuUserIdRef.current) return;
+        const { data, error } = await supabase.rpc('meowdoku_record_cat_found', {
+            p_level_number: Math.max(1, Math.min(60, Math.floor(Number(payload.level) || 1))),
+            p_cat_index: Math.max(0, Math.floor(Number(payload.cat_index) || 0))
+        });
+        if (error) {
+            console.error('Unable to save Meowdoku cat discovery:', error);
+            return;
+        }
+        const result = Array.isArray(data) ? data[0] : data;
+        sendUnlockedAchievements(result?.new_achievements);
+        await loadMeowdokuAchievements();
+    };
+
+    const claimMeowdokuCheckIn = async () => {
+        if (!meowdokuUserIdRef.current) return;
+        const { data, error } = await supabase.rpc('meowdoku_claim_check_in');
+        if (error) {
+            postToGame({ type: 'MEOWDOKU_CHECK_IN_ERROR', message: error.message });
+            return;
+        }
+        const result = Array.isArray(data) ? data[0] : data;
+        if (result?.coins != null) {
+            setStats(previous => ({
+                ...previous,
+                coins: Number(result.coins) || previous.coins || 0
+            }));
+        }
+        postToGame({ type: 'MEOWDOKU_CHECK_IN_CLAIMED', checkIn: result });
+        sendUnlockedAchievements(result?.new_achievements);
+        await loadMeowdokuAchievements();
+    };
 
     // Sync score from games
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
+            if (
+                event.origin !== window.location.origin ||
+                event.source !== iframeRef.current?.contentWindow
+            ) return;
+
+            if (gameId === 'meowdoku') {
+                if (event.data?.type === 'MEOWDOKU_READY') {
+                    postToGame({
+                        type: 'MEOWDOKU_WALLET',
+                        coins: stats.coins || 0
+                    });
+                    void initializeMeowdoku();
+                }
+
+                if (event.data?.type === 'MEOWDOKU_SAVE_PROGRESS') {
+                    void saveMeowdokuProgress(event.data.progress || {});
+                }
+
+                if (event.data?.type === 'MEOWDOKU_CAT_FOUND') {
+                    void recordMeowdokuCatFound(event.data || {});
+                }
+
+                if (event.data?.type === 'MEOWDOKU_GET_CHECK_IN') {
+                    void loadMeowdokuCheckIn();
+                }
+
+                if (event.data?.type === 'MEOWDOKU_CLAIM_CHECK_IN') {
+                    void claimMeowdokuCheckIn();
+                }
+
+                if (event.data?.type === 'MEOWDOKU_GET_ACHIEVEMENTS') {
+                    void loadMeowdokuAchievements();
+                }
+
+                if (event.data?.type === 'MEOWDOKU_SPEND_COINS') {
+                    const amount = Math.max(0, Math.floor(Number(event.data.amount) || 0));
+                    const requestId = String(event.data.requestId || '');
+                    if (amount > 0 && (stats.coins || 0) >= amount) {
+                        setStats(previous => ({
+                            ...previous,
+                            coins: Math.max(0, (previous.coins || 0) - amount)
+                        }));
+                        postToGame({
+                            type: 'MEOWDOKU_SPEND_RESULT',
+                            requestId,
+                            ok: true
+                        });
+                    } else {
+                        postToGame({
+                            type: 'MEOWDOKU_SPEND_RESULT',
+                            requestId,
+                            ok: false
+                        });
+                    }
+                }
+
+                if (event.data?.type === 'MEOWDOKU_REWARD') {
+                    const reward = Math.max(
+                        0,
+                        Math.min(1000, Math.floor(Number(event.data.coins) || 0))
+                    );
+                    if (reward > 0) {
+                        setStats(previous => ({
+                            ...previous,
+                            coins: (previous.coins || 0) + reward,
+                            happiness: Math.min(100, (previous.happiness || 0) + 15)
+                        }));
+                    }
+                }
+
+                return;
+            }
+
             // Update temporary display score
             if (event.data?.type === 'GAME_SCORE_UPDATE') {
                 const totalScore = event.data.score || 0;
@@ -103,7 +331,7 @@ export const GamePage: React.FC<GamePageProps> = ({ gameId, onClose }) => {
 
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [setStats]);
+    }, [gameId, setStats, stats.coins]);
 
     // Prevent the parent document from scrolling while a game is open
     useEffect(() => {
@@ -226,6 +454,7 @@ export const GamePage: React.FC<GamePageProps> = ({ gameId, onClose }) => {
                     )}
 
                     <iframe
+                        ref={iframeRef}
                         src={config.url}
                         className="block h-full w-full overflow-hidden border-0"
                         title={config.title}
@@ -239,3 +468,6 @@ export const GamePage: React.FC<GamePageProps> = ({ gameId, onClose }) => {
         </div>
     );
 };
+
+
+
