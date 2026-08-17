@@ -28,13 +28,20 @@ export type InsightApp = 'appointments';
 
 /** Canonical trigger identity. Extend only when a new provider is actually
  *  implemented — never speculatively. Reuses the Gallery reference's
- *  existing `appointment_soon` trigger identity for the same condition. */
-export type InsightTriggerId = 'appointment_soon';
+ *  existing `appointment_soon` trigger identity for the same condition.
+ *  `appointment_daily_summary` / `appointment_none_today` are this
+ *  slice's two new aggregate candidates — "today count" and "room in
+ *  use" are internal facts composing `appointment_daily_summary`, never
+ *  separate public trigger ids of their own (there is still only ever
+ *  one selected local insight at a time). */
+export type InsightTriggerId = 'appointment_soon' | 'appointment_daily_summary' | 'appointment_none_today';
 
 /** Local-only severity scale for Appointments' own resolver — NOT Gallery's
- *  global DialoguePriority. `HIGH` is the only value used in this first
- *  slice (a real, meaningful upcoming operational alert); later slices
- *  (Daily Summary, No Appointments Today) will need lower tiers. */
+ *  global DialoguePriority. `HIGH` is Appointment Soon's real, meaningful
+ *  upcoming-operational-alert tier; `MEDIUM` is Daily Summary's
+ *  operational-status tier; `INFO` is No Appointments Today's purely
+ *  informational tier. The resolver's explicit precedence order (not
+ *  these values) is what's authoritative — see resolveAppointmentInsight.ts. */
 export type InsightPriority = 'HIGH' | 'MEDIUM' | 'INFO';
 
 /**

@@ -39,6 +39,36 @@ function parseDateParts(rawDate: unknown): [number, number, number] | null {
  * re-read and compared against the input to catch JavaScript's silent
  * rollover (e.g. hour 24 would otherwise roll into the next day).
  */
+/**
+ * Local (never UTC-shifted) `YYYY-MM-DD` calendar key for a `Date` —
+ * mirrors App.jsx's own existing `getLocalDateString` helper exactly
+ * (manual `getFullYear`/`getMonth`/`getDate` reads, never
+ * `toISOString().slice(0, 10)`, which shifts to UTC and can land on the
+ * wrong calendar day near midnight in timezones ahead of UTC).
+ */
+export function getLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Normalizes a raw `appointments.date` value down to its `YYYY-MM-DD`
+ * calendar key (matching `getLocalDateKey`'s format) for same-day
+ * comparison, or `null` if it isn't a real calendar date. Deliberately
+ * string-slice-based (never `new Date(rawDate)`), since a bare
+ * `YYYY-MM-DD` string parses as UTC midnight in JavaScript and can
+ * disagree with local "today" near midnight — the same class of bug
+ * documented above for `buildClinicDeviceLocalAppointmentStart`.
+ */
+export function normalizeDateKey(rawDate: unknown): string | null {
+  const parts = parseDateParts(rawDate);
+  if (!parts) return null;
+  const [year, month, day] = parts;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 export function buildClinicDeviceLocalAppointmentStart(date: unknown, startTime: unknown): Date | null {
   const dateParts = parseDateParts(date);
   if (!dateParts) return null;

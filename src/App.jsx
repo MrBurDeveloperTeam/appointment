@@ -250,6 +250,7 @@ function AppContent() {
     patients,
     appointments,
     rooms,
+    dateRange,
     treatments,
     settings,
     activity,
@@ -289,12 +290,13 @@ function AppContent() {
   } = useDataStore(activeClinicId, dataEnabled);
 
   const [view, setView] = useState('calendar');
-  // Phase-2A first slice: Appointment Within 2 Hours only. Pure,
-  // synchronous, reevaluates whenever `appointments` (already owned above
-  // via useDataStore) changes or the local minute clock ticks — no new
+  // Phase-2A: Appointment Within 2 Hours, Daily Summary (today's count +
+  // room-in-use), No Appointments Today. Pure, synchronous, reevaluates
+  // whenever `appointments`/`rooms`/`dateRange` (already owned above via
+  // useDataStore) change or the local minute clock ticks — no new
   // Supabase query, no dedupe, no polling of the database. See
   // ./aiExperience/hooks/useAppointmentPersonalizedInsight.ts.
-  const appointmentPersonalizedInsight = useAppointmentPersonalizedInsight(appointments);
+  const appointmentPersonalizedInsight = useAppointmentPersonalizedInsight(appointments, rooms, dateRange);
   const [currentDate, setCurrentDate] = useState(new Date());
 
   // Sync date range for appointments
