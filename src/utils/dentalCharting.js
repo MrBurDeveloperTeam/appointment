@@ -1,4 +1,4 @@
-const DENTAL_CHARTING_URL = import.meta.env.VITE_DENTAL_CHARTING_URL || 'https://dental-charting.snabbb.com';
+const DENTAL_CHARTING_URL = import.meta.env.VITE_DENTAL_CHARTING_URL || 'https://charting.snabbb.com';
 
 export function dentalChartingUrl(params = {}) {
   const url = new URL(DENTAL_CHARTING_URL);
