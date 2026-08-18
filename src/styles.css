@@ -8727,6 +8727,11 @@ tbody tr:hover {
   transition: all var(--transition-fast);
 }
 
+.patient-dental-record-action {
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border-light);
+}
+
 .patient-dental-record-button:hover {
   filter: brightness(0.94);
   transform: translateY(-1px);
