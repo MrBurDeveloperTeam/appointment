@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import DataStore from '../data';
 
 // Data hook wrapping DataStore (localStorage/Supabase)
@@ -15,6 +15,31 @@ export default function useDataStore(activeClinicId, enabled = true) {
   const [activeClinicData, setActiveClinicData] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const [dateRange, setDateRange] = useState({ start: null, end: null });
+  // Phase-3 Data-Driven Chat readiness: the existing appointment fetch
+  // below has no loading/error distinction today (a failed query only
+  // `console.error`s and leaves `appointments` at its previous value) —
+  // `[]` cannot tell "still loading"/"query failed" apart from
+  // "successfully empty". `loadedAppointmentRange` is the range that was
+  // ACTUALLY fetched successfully, set together with a successful
+  // result — distinct from `dateRange` (the currently REQUESTED range,
+  // which may already have moved on to a new value while a fetch for an
+  // older range is still in flight or just failed).
+  const [appointmentDataStatus, setAppointmentDataStatus] = useState('loading');
+  const [loadedAppointmentRange, setLoadedAppointmentRange] = useState({ start: null, end: null });
+  // Shared latest-request-wins generation counter for appointment data.
+  // Both the dateRange-keyed fetch effect below AND `refreshAppointments`
+  // (called imperatively after appointment mutations) write to
+  // `appointments`/`appointmentDataStatus`/`loadedAppointmentRange` —
+  // without a SINGLE shared counter, an older in-flight request from
+  // either flow could resolve after a newer one and overwrite current
+  // state with stale data (or a stale loading->error/ready flip). Every
+  // fetch increments this ref when it STARTS; only the fetch whose
+  // captured id still matches `appointmentRequestIdRef.current` when it
+  // resolves is allowed to write state. Also bumped on clinic
+  // change/clear (see the static-data effect below) so a late response
+  // from a since-abandoned clinic can never repopulate state — a privacy
+  // boundary, not just UI correctness.
+  const appointmentRequestIdRef = useRef(0);
   // MOCK CREDIT SYSTEM
   const [credits, setCredits] = useState(5);
   const [creditHistory, setCreditHistory] = useState([
@@ -37,6 +62,13 @@ export default function useDataStore(activeClinicId, enabled = true) {
   useEffect(() => {
     let cancelled = false;
 
+    // Invalidate any appointment request (main fetch OR
+    // refreshAppointments) still in flight for a clinic/enabled state
+    // this effect is about to move away from — runs on every
+    // activeClinicId/enabled change, including a clear-to-null
+    // transition, regardless of which branch below actually executes.
+    appointmentRequestIdRef.current += 1;
+
     // Load everything EXCEPT appointments on initial load or clinic change
     const loadStatic = async () => {
       if (!enabled) return;
@@ -55,6 +87,10 @@ export default function useDataStore(activeClinicId, enabled = true) {
         setHolidays([]);
         setAppointmentRequests([]);
         setActiveClinicData(null);
+        // Clinic cleared/switched — a stale previous clinic's appointment
+        // readiness must never authorize a Data Chat answer.
+        setAppointmentDataStatus('loading');
+        setLoadedAppointmentRange({ start: null, end: null });
         return;
       }
 
@@ -98,12 +134,28 @@ export default function useDataStore(activeClinicId, enabled = true) {
     let cancelled = false;
     if (!enabled || !activeClinicId || !dateRange.start) return;
 
+    // Captured now (not re-read after the await) so a successful result
+    // records the range that was ACTUALLY requested for this fetch, even
+    // if `dateRange` has already moved on by the time it resolves.
+    const requestedRange = { start: dateRange.start, end: dateRange.end };
+    // Latest-request-wins: this fetch owns generation `requestId` for as
+    // long as it remains the most recently STARTED appointment request
+    // (main fetch or refreshAppointments) — see the ref's own comment.
+    const requestId = ++appointmentRequestIdRef.current;
+    setAppointmentDataStatus('loading');
+
+    const isStale = () => cancelled || requestId !== appointmentRequestIdRef.current;
+
     const loadAppointments = async () => {
       try {
-        const data = await DataStore.getAppointments(activeClinicId, dateRange.start, dateRange.end);
-        if (!cancelled) setAppointments(data || []);
+        const data = await DataStore.getAppointments(activeClinicId, requestedRange.start, requestedRange.end);
+        if (isStale()) return;
+        setAppointments(data || []);
+        setAppointmentDataStatus('ready');
+        setLoadedAppointmentRange(requestedRange);
       } catch (err) {
         console.error("Failed to load appointments", err);
+        if (!isStale()) setAppointmentDataStatus('error');
       }
     };
 
@@ -112,10 +164,24 @@ export default function useDataStore(activeClinicId, enabled = true) {
   }, [activeClinicId, enabled, dateRange]);
 
   const refreshAppointments = () => {
-    handleAsync(
-      DataStore.getAppointments(activeClinicId, dateRange.start, dateRange.end),
-      (data) => setAppointments(data || [])
-    );
+    const requestedRange = { start: dateRange.start, end: dateRange.end };
+    // Shares the SAME generation counter as the main dateRange fetch
+    // effect above — one request domain, so whichever of the two flows
+    // started most recently is the only one allowed to write state,
+    // regardless of which resolves first.
+    const requestId = ++appointmentRequestIdRef.current;
+    toPromise(DataStore.getAppointments(activeClinicId, dateRange.start, dateRange.end))
+      .then((data) => {
+        if (requestId !== appointmentRequestIdRef.current) return;
+        setAppointments(data || []);
+        setAppointmentDataStatus('ready');
+        setLoadedAppointmentRange(requestedRange);
+      })
+      .catch((error) => {
+        console.error('DataStore error:', error);
+        if (requestId !== appointmentRequestIdRef.current) return;
+        setAppointmentDataStatus('error');
+      });
   };
   const refreshPatients = () => handleAsync(DataStore.getPatients(), (data) => setPatients(data || []));
   const refreshRooms = () => handleAsync(DataStore.getRooms(), (data) => setRooms(data || []));
@@ -310,6 +376,8 @@ export default function useDataStore(activeClinicId, enabled = true) {
     isReady,
     dateRange,
     setDateRange,
+    appointmentDataStatus,
+    loadedAppointmentRange,
     addPatient,
     updatePatient,
     deletePatient,

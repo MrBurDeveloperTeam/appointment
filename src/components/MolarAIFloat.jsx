@@ -2,14 +2,31 @@ import { useState, useRef, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MolarChat from './MolarChat';
-import { chatWithMolarAI } from '../services/geminiService';
+import { chatWithMolarAI, chatWithGroundedAppointmentFacts } from '../services/geminiService';
 import { supabase } from '../lib/supabaseClient';
+import { isAppointmentMutationRequest } from '../aiExperience/dataChat/router/isAppointmentMutationRequest';
+import { classifyAppointmentDataIntent } from '../aiExperience/dataChat/router/classifyAppointmentDataIntent';
+import { resolveAppointmentDataQuery } from '../aiExperience/dataChat/resolver/resolveAppointmentDataQuery';
+import {
+  buildUnsupportedParameterMessage,
+  buildUnsupportedScopeMessage,
+  buildUnsupportedSensitiveScopeMessage,
+} from '../aiExperience/dataChat/utils/unsupportedParameterMessage';
+import { formatGroundedAppointmentFallback } from '../aiExperience/dataChat/utils/formatGroundedAppointmentFallback';
 
 /**
  * Self-contained floating Molar AI button + chat panel.
  * Drop this anywhere in the layout.
  */
-export default function MolarAIFloat({ userContext, disabled = false, onPetToggle }) {
+export default function MolarAIFloat({
+  userContext,
+  disabled = false,
+  onPetToggle,
+  appointments = [],
+  rooms = [],
+  appointmentDataStatus = 'loading',
+  loadedAppointmentRange = null,
+}) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [chatInput, setChatInput] = useState('');
@@ -44,6 +61,100 @@ export default function MolarAIFloat({ userContext, disabled = false, onPetToggl
     setIsChatLoading(true);
 
     try {
+      // ── Phase-3 Data-Driven Chat (read-only pilot) ──────────────────
+      // Runs BEFORE the existing predefined-response/legacy General Chat
+      // pipeline below, and is fully separate from it: a matched request
+      // here never calls the DB-backed predefined-keyword lookup or
+      // `chatWithMolarAI`, and its output is never scanned for the
+      // fenced ```json action block / never reaches
+      // `window.__MOLAR_ACTIONS__`. See src/aiExperience/dataChat/ for
+      // the deterministic router/provider/resolver pipeline this uses.
+
+      // 1. Explicit appointment MUTATION requests are intercepted with a
+      // deterministic refusal — zero Gemini calls, zero mutation. This
+      // is REQUIRED (not optional) here: unlike the To-Do repo,
+      // `window.__MOLAR_ACTIONS__` in THIS app is live-wired (see
+      // App.jsx's own effect assigning real handlers to it) — see
+      // isAppointmentMutationRequest.ts's file header.
+      if (isAppointmentMutationRequest(msg)) {
+        setChatHistory(prev => [
+          ...prev,
+          { role: 'model', parts: [{ text: "This data chat can check appointment information, but it can't make appointment changes." }] },
+        ]);
+        // `finally` below still runs setIsChatLoading(false) + the scroll.
+        return;
+      }
+
+      // 2. Deterministic LOCAL intent classification (no Gemini call).
+      const dataRoute = classifyAppointmentDataIntent(msg);
+
+      if (dataRoute.kind === 'unsupported_sensitive_scope') {
+        // Recognized PATIENT-specific questions must never fall through
+        // to legacy General Chat, which embeds raw patient PII in its
+        // own `aiContext` — see buildUnsupportedSensitiveScopeMessage's
+        // file header.
+        setChatHistory(prev => [
+          ...prev,
+          { role: 'model', parts: [{ text: buildUnsupportedSensitiveScopeMessage(dataRoute.reason) }] },
+        ]);
+        return;
+      }
+
+      if (dataRoute.kind === 'unsupported_parameter') {
+        setChatHistory(prev => [
+          ...prev,
+          { role: 'model', parts: [{ text: buildUnsupportedParameterMessage(dataRoute.reason) }] },
+        ]);
+        return;
+      }
+
+      if (dataRoute.kind === 'unsupported_scope') {
+        setChatHistory(prev => [
+          ...prev,
+          { role: 'model', parts: [{ text: buildUnsupportedScopeMessage(dataRoute.reason) }] },
+        ]);
+        return;
+      }
+
+      if (dataRoute.kind === 'matched') {
+        const result = resolveAppointmentDataQuery(
+          dataRoute.intent,
+          appointments,
+          rooms,
+          appointmentDataStatus,
+          loadedAppointmentRange
+        );
+
+        let dataChatResponseText;
+        if (result.status === 'unavailable') {
+          // Unknown/unavailable appointment state is never reinterpreted
+          // as a zero-result answer, and a matched grounded intent owns
+          // this request even when its provider is temporarily
+          // unavailable — it does not fall through to legacy chat.
+          dataChatResponseText = "I couldn't check your appointment data right now.";
+        } else {
+          try {
+            // 3. Grounded Gemini phrasing — receives ONLY the question,
+            // the approved intent, and the already-minimized, patient-
+            // free facts. Plain text only; never scanned for action
+            // blocks.
+            dataChatResponseText = await chatWithGroundedAppointmentFacts(msg, result.intent, result.facts);
+          } catch (groundedErr) {
+            // Mandatory deterministic fallback — never falls through to
+            // legacy General Chat on a Gemini failure at this stage.
+            console.error('Grounded appointment response failed:', groundedErr);
+            dataChatResponseText = formatGroundedAppointmentFallback(result.intent, result.facts);
+          }
+        }
+
+        setChatHistory(prev => [
+          ...prev,
+          { role: 'model', parts: [{ text: dataChatResponseText }] },
+        ]);
+        return;
+      }
+      // ── End Phase-3 Data-Driven Chat (dataRoute.kind === 'no_match') ─
+
       let response = null;
 
       // 1. Check custom responses first

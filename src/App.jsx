@@ -287,6 +287,8 @@ function AppContent() {
     credits,
     creditHistory,
     addCredits,
+    appointmentDataStatus,
+    loadedAppointmentRange,
   } = useDataStore(activeClinicId, dataEnabled);
 
   const [view, setView] = useState('calendar');
@@ -987,10 +989,14 @@ function AppContent() {
       {/* 🐱 MOLAR ECOSYSTEM */}
       <div className={isVirtualPetOpen ? 'hidden' : 'contents'}>
         <CatMascot onCatClick={() => setIsVirtualPetOpen(true)} />
-        <MolarAIFloat 
-          userContext={aiContext} 
-          disabled={!isReady || !user || !activeClinicId} 
+        <MolarAIFloat
+          userContext={aiContext}
+          disabled={!isReady || !user || !activeClinicId}
           onPetToggle={() => setIsVirtualPetOpen(true)}
+          appointments={appointments}
+          rooms={rooms}
+          appointmentDataStatus={appointmentDataStatus}
+          loadedAppointmentRange={loadedAppointmentRange}
         />
       </div>
       <VirtualPetContainer 
