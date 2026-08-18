@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { todayISO, formatDayLong } from '../utils/date';
 import { addMinutes, formatTime } from '../utils/time';
 import { getInitials } from '../utils/people';
+import { dentalChartingUrl } from '../utils/dentalCharting';
 
 const PAGE_SIZE = 4;
 
@@ -53,6 +54,17 @@ export default function TodayView({ appointments, patients, rooms, treatments, o
   const statusLabel = (status) => {
     if (status === 'no-show') return 'No Show';
     return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Confirmed';
+  };
+
+  const openDentalChart = (event, appointment, selectedPatient) => {
+    event.stopPropagation();
+    if (!selectedPatient?.id) return;
+
+    window.open(dentalChartingUrl({
+      patient_id: selectedPatient.id,
+      visit_date: appointment.date,
+      appointment_id: appointment.id,
+    }), '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -116,9 +128,21 @@ export default function TodayView({ appointments, patients, rooms, treatments, o
                     </span>
                     <span>{patientName(apt.patientId)}</span>
                   </div>
-                  <span className={`today-status-pill ${apt.status || 'confirmed'}`}>
-                    {statusLabel(apt.status)}
-                  </span>
+                  <div className="today-appointment-actions">
+                    <span className={`today-status-pill ${apt.status || 'confirmed'}`}>
+                      {statusLabel(apt.status)}
+                    </span>
+                    <button
+                      type="button"
+                      className="today-dental-chart-button"
+                      disabled={!patient}
+                      onClick={(event) => openDentalChart(event, apt, patient)}
+                      aria-label={`Open ${patient?.name || 'patient'} in dental charting`}
+                    >
+                      Open in Dental Charting
+                      <span aria-hidden="true">↗</span>
+                    </button>
+                  </div>
                 </div>
                 <div className="today-appointment-meta">
                   <span className="today-appointment-meta-item">{apt.duration || 30} mins</span>
