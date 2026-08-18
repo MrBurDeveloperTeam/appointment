@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatTime } from '../utils/time';
 import { getInitials } from '../utils/people';
+import { dentalChartingUrl } from '../utils/dentalCharting';
 
 const PAGE_SIZE = 8;
 
@@ -220,6 +221,13 @@ export default function PatientsView({
                             {apt.notes ? <div className="patient-history-notes">{apt.notes}</div> : null}
                           </div>
                         ))}
+                        <button
+                          type="button"
+                          className="patient-dental-record-button"
+                          onClick={() => window.open(dentalChartingUrl({ patient_id: p.id, record: 'latest' }), '_blank', 'noopener,noreferrer')}
+                        >
+                          View Latest Dental Record <span aria-hidden="true">↗</span>
+                        </button>
                       </div>
                     )}
 
