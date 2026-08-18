@@ -221,13 +221,6 @@ export default function PatientsView({
                             {apt.notes ? <div className="patient-history-notes">{apt.notes}</div> : null}
                           </div>
                         ))}
-                        <button
-                          type="button"
-                          className="patient-dental-record-button"
-                          onClick={() => window.open(dentalChartingUrl({ patient_id: p.id, record: 'latest' }), '_blank', 'noopener,noreferrer')}
-                        >
-                          View Latest Dental Record <span aria-hidden="true">↗</span>
-                        </button>
                       </div>
                     )}
 
@@ -255,6 +248,16 @@ export default function PatientsView({
                         <div className="history-empty">No appointments yet</div>
                       </div>
                     )}
+
+                    <div className="patient-dental-record-action">
+                      <button
+                        type="button"
+                        className="patient-dental-record-button"
+                        onClick={() => window.open(dentalChartingUrl({ patient_id: p.id, record: 'latest' }), '_blank', 'noopener,noreferrer')}
+                      >
+                        View Latest Dental Record <span aria-hidden="true">↗</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
