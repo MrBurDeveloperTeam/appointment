@@ -43,6 +43,7 @@ import {
 } from './utils/themeSync';
 import { useGetUserId } from './mutation/useGetUserId';
 import useGetSessionInfo from './hooks/useGetSessionInfo';
+import usePageDurationTracker from './hooks/usePageDurationTracker';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -279,6 +280,7 @@ function AppContent() {
     clearAll,
     updateAppointmentRequest,
     refreshRequests,
+    refreshActivity,
     setDateRange,
     searchPatients,
     credits,
@@ -349,6 +351,12 @@ function AppContent() {
     activity: 'Activity Log',
     requests: 'Requests',
   }[view];
+
+  // Track how long the user spends on each page and log it to the
+  // appointment activity log (apt_activity_log — same table/Odoo sync as
+  // every other activity entry) whenever they navigate away, hide the tab,
+  // or close it.
+  usePageDurationTracker(view, viewTitle, dataEnabled && isReady, refreshActivity);
 
   // Force configuration of settings for new clinics
   useEffect(() => {

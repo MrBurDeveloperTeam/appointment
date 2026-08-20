@@ -3393,6 +3393,11 @@ p {
   color: var(--danger);
 }
 
+.activity-icon.view {
+  background: var(--info-bg-subtle);
+  color: var(--text-muted);
+}
+
 .activity-content {
   flex: 1;
 }

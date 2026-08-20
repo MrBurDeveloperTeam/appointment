@@ -332,6 +332,7 @@ export default function useDataStore(activeClinicId, enabled = true) {
     deleteHoliday,
     clearAll,
     refreshRequests,
+    refreshActivity,
     searchPatients: (query) => DataStore.searchPatients(query),
     // Mock Credits
     credits,
