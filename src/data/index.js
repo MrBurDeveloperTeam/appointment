@@ -513,9 +513,9 @@ const DataStore = {
     return Activity.getActivityLog(activeClinic);
   },
 
-  async logActivity(type, description) {
+  async logActivity(type, description, meta = {}) {
     const activeClinic = requireActiveClinic(getClinicId());
-    return Activity.addActivityLog(activeClinic, { type, description });
+    return Activity.addActivityLog(activeClinic, { type, description, ...meta });
   },
 
   // ============ UTIL ============

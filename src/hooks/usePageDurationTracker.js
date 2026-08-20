@@ -15,9 +15,13 @@ function formatDuration(totalSeconds) {
 
 /**
  * Tracks how long the user spends on each page (`view`) inside the app and
- * writes a "page_view" entry to the appointment activity log (apt_activity_log,
- * synced to Odoo the same way every other activity entry is) whenever they
- * navigate away, hide the tab, or close it.
+ * writes a "page_view" entry to the appointment activity log whenever they
+ * navigate away, hide the tab, or close it. This lands in two places:
+ *  - apt_activity_log in Supabase (the local/source-of-truth log the
+ *    Activity Log screen reads from), with a human-readable description.
+ *  - the appointment_activity_log Odoo module's dedicated page_path /
+ *    page_duration_seconds columns (it has its own list/form/search views
+ *    and filters built specifically for these), via the existing Odoo sync.
  *
  * Time only accrues while the tab is actually visible — switching to another
  * browser tab or minimizing pauses the clock so idle background time isn't
@@ -33,6 +37,7 @@ export default function usePageDurationTracker(view, pageLabel, enabled, onLogge
   const activeSinceRef = useRef(null);
   // Seconds already accumulated for the current view before the current visible period.
   const accumulatedRef = useRef(0);
+  const viewRef = useRef(null);
   const labelRef = useRef(null);
   const enabledRef = useRef(enabled);
   const onLoggedRef = useRef(onLogged);
@@ -45,9 +50,14 @@ export default function usePageDurationTracker(view, pageLabel, enabled, onLogge
     onLoggedRef.current = onLogged;
   }, [onLogged]);
 
-  const logDuration = (label, seconds) => {
-    if (!enabledRef.current || !label || seconds < MIN_LOGGED_SECONDS) return;
-    DataStore.logActivity('page_view', `Viewed ${label} page for ${formatDuration(seconds)}`)
+  const logDuration = (viewKey, label, seconds) => {
+    if (!enabledRef.current || !viewKey || !label || seconds < MIN_LOGGED_SECONDS) return;
+    const roundedSeconds = Math.round(seconds);
+    DataStore.logActivity(
+      'page_view',
+      `Viewed ${label} page for ${formatDuration(roundedSeconds)}`,
+      { pagePath: `/${viewKey}`, pageDurationSeconds: roundedSeconds }
+    )
       .then(() => onLoggedRef.current?.())
       .catch((err) => console.error('Failed to log page view duration:', err?.message || err));
   };
@@ -62,7 +72,7 @@ export default function usePageDurationTracker(view, pageLabel, enabled, onLogge
   };
 
   const resume = () => {
-    if (labelRef.current && document.visibilityState === 'visible') {
+    if (viewRef.current && document.visibilityState === 'visible') {
       activeSinceRef.current = Date.now();
     }
   };
@@ -71,8 +81,9 @@ export default function usePageDurationTracker(view, pageLabel, enabled, onLogge
   // previous page, then start the clock for the new one.
   useEffect(() => {
     pause();
-    logDuration(labelRef.current, accumulatedRef.current);
+    logDuration(viewRef.current, labelRef.current, accumulatedRef.current);
     accumulatedRef.current = 0;
+    viewRef.current = view || null;
     labelRef.current = pageLabel || null;
     resume();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,7 +107,7 @@ export default function usePageDurationTracker(view, pageLabel, enabled, onLogge
   useEffect(() => {
     const flushOnExit = () => {
       pause();
-      logDuration(labelRef.current, accumulatedRef.current);
+      logDuration(viewRef.current, labelRef.current, accumulatedRef.current);
       accumulatedRef.current = 0;
     };
     window.addEventListener('pagehide', flushOnExit);

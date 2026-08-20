@@ -13,7 +13,12 @@ const mapActivity = (row) => ({
 // mirroring the same sync built for the inventory app. Fire-and-forget so a
 // slow/unreachable worker or Odoo instance never blocks or fails the local
 // Supabase write, which stays the source of truth either way.
-async function syncActivityToOdoo(row, clinicId) {
+//
+// `extra` carries fields that only apply to certain event types and aren't
+// columns on apt_activity_log itself (e.g. pagePath/pageDurationSeconds for
+// type: "page_view") — they're forwarded to Odoo's dedicated columns without
+// being persisted locally.
+async function syncActivityToOdoo(row, clinicId, extra = {}) {
   try {
     const { data: { user } = {} } = await supabase.auth.getUser();
     if (!user?.email) return;
@@ -26,6 +31,8 @@ async function syncActivityToOdoo(row, clinicId) {
       type: row.type,
       description: row.description,
       occurredAt: row.created_at,
+      pagePath: extra.pagePath ?? null,
+      pageDurationSeconds: extra.pageDurationSeconds ?? null,
     });
   } catch (err) {
     console.error("Failed to sync activity to Odoo:", err?.message || err);
@@ -55,7 +62,10 @@ export async function addActivityLog(clinicId, entry) {
     .select("*")
     .single();
   if (error) throw error;
-  syncActivityToOdoo(data, clinicId);
+  syncActivityToOdoo(data, clinicId, {
+    pagePath: entry.pagePath,
+    pageDurationSeconds: entry.pageDurationSeconds,
+  });
   return mapActivity(data);
 }
 

@@ -31,9 +31,11 @@ const ACTIVITY_ENDPOINT = "/api/appointment/activity";
  *   actorName: string | null,
  *   supabaseUserId: string | null,
  *   clinicId: string | null,       // null for admin-level activity (no clinic)
- *   type: string,                  // e.g. "patient_added", "appointment_updated", ...
+ *   type: string,                  // e.g. "patient_added", "appointment_updated", "page_view", ...
  *   description: string,
  *   occurredAt: string,            // ISO timestamp
+ *   pagePath?: string | null,              // e.g. "/patients" — only set for type: "page_view"
+ *   pageDurationSeconds?: number | null,   // only set for type: "page_view"
  * }} params
  * @returns {Promise<boolean>}
  */
@@ -54,6 +56,13 @@ export async function logActivityToOdoo(params) {
     type: params.type,
     description: params.description,
     occurred_at: params.occurredAt,
+    // Structured page-view fields — the appointment_activity_log Odoo module
+    // has dedicated page_path / page_duration_seconds columns (with their
+    // own list/form/search filters) specifically for type: "page_view"
+    // events, rather than only the free-text description. Omitted for every
+    // other event type.
+    ...(params.pagePath != null ? { page_path: params.pagePath } : {}),
+    ...(params.pageDurationSeconds != null ? { page_duration_seconds: params.pageDurationSeconds } : {}),
   };
 
   try {
