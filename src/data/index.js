@@ -523,7 +523,12 @@ const DataStore = {
 
   async saveSettings(settings, clinicId) {
     const activeClinic = requireActiveClinic(getClinicId(clinicId));
-    return Settings.saveSettings(activeClinic, settings);
+    const saved = await Settings.saveSettings(activeClinic, settings);
+    await Activity.addActivityLog(activeClinic, {
+      type: "settings_updated",
+      description: `Updated schedule: ${saved.workingHours?.start || "?"}-${saved.workingHours?.end || "?"}, ${saved.slotDuration || "?"} min slots`,
+    });
+    return saved;
   },
 
   // ============ ACTIVITY LOG ============
