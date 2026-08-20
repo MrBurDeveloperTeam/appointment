@@ -370,15 +370,35 @@ const DataStore = {
 
   async addTreatment(treatment) {
     const activeClinic = requireActiveClinic(getClinicId());
-    return Treatments.addTreatment(activeClinic, treatment);
+    const created = await Treatments.addTreatment(activeClinic, treatment);
+    await Activity.addActivityLog(activeClinic, {
+      type: "treatment_added",
+      description: `Added treatment: ${created.name}`,
+    });
+    return created;
   },
 
   async updateTreatment(id, updates) {
-    return Treatments.updateTreatment(id, updates);
+    const activeClinic = requireActiveClinic(getClinicId());
+    const updated = await Treatments.updateTreatment(id, updates);
+    await Activity.addActivityLog(activeClinic, {
+      type: "treatment_updated",
+      description: `Updated treatment: ${updated.name}`,
+    });
+    return updated;
   },
 
   async deleteTreatment(id) {
-    return Treatments.deleteTreatment(id);
+    const activeClinic = requireActiveClinic(getClinicId());
+    const treatment = await Treatments.getTreatments(activeClinic)
+      .then((list) => list.find((t) => t.id === id))
+      .catch(() => null);
+    await Treatments.deleteTreatment(id);
+    await Activity.addActivityLog(activeClinic, {
+      type: "treatment_deleted",
+      description: `Deleted treatment: ${treatment?.name || id}`,
+    });
+    return true;
   },
 
   // ============ STAFF ============
