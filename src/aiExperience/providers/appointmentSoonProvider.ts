@@ -109,19 +109,16 @@ function buildMessage(start: Date): string {
   }
 }
 
-export function evaluateAppointmentSoon(
-  appointments: AppointmentLike[],
-  now: Date = new Date()
-): InsightCandidate<AppointmentSoonFacts> | null {
+function collectQualifyingSources(appointments: AppointmentLike[], now: Date): QualifyingSource[] {
   const sources: QualifyingSource[] = [];
   for (const appt of appointments) {
     const source = selectQualifyingSource(appt, now);
     if (source) sources.push(source);
   }
+  return sources;
+}
 
-  if (sources.length === 0) return null;
-
-  const winner = [...sources].sort(compareForSelection)[0];
+function buildCandidateFromSource(winner: QualifyingSource): InsightCandidate<AppointmentSoonFacts> {
   const message = buildMessage(winner.start);
   const startAt = winner.start.toISOString();
 
@@ -148,4 +145,33 @@ export function evaluateAppointmentSoon(
     sourceRecordId: winner.appointmentId,
     evaluatedAt: new Date().toISOString(),
   };
+}
+
+export function evaluateAppointmentSoon(
+  appointments: AppointmentLike[],
+  now: Date = new Date()
+): InsightCandidate<AppointmentSoonFacts> | null {
+  const sources = collectQualifyingSources(appointments, now);
+  if (sources.length === 0) return null;
+
+  const winner = [...sources].sort(compareForSelection)[0];
+  return buildCandidateFromSource(winner);
+}
+
+/**
+ * Additive: every independently eligible Appointment Soon record, in the
+ * exact same business order compareForSelection already produces —
+ * `evaluateAppointmentSoonCandidates(appointments, now)[0]` is always
+ * identical to `evaluateAppointmentSoon(appointments, now)` (same `now`,
+ * same eligibility window, same tie-break). Used only by the dialogue-layer
+ * pool selector (see aiExperience/petDialogue/) so a Cat-dismissed soon
+ * appointment can reveal the next still-eligible one instead of the whole
+ * family silently disappearing — the inline PersonalizedInsight banner
+ * keeps using evaluateAppointmentSoon above, unaffected.
+ */
+export function evaluateAppointmentSoonCandidates(
+  appointments: AppointmentLike[],
+  now: Date = new Date()
+): InsightCandidate<AppointmentSoonFacts>[] {
+  return [...collectQualifyingSources(appointments, now)].sort(compareForSelection).map(buildCandidateFromSource);
 }

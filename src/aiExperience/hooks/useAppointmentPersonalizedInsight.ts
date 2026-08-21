@@ -57,16 +57,30 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { resolveAppointmentInsight } from '../resolver/resolveAppointmentInsight';
+import { buildAppointmentDialoguePool } from '../petDialogue/buildAppointmentDialoguePool';
 import { projectAppointmentsForInsight } from '../utils/appointmentProjection';
 import { projectAppointmentsForDailySummary, projectRoomsForDailySummary } from '../utils/appointmentDailyProjection';
 import type { DateRangeLike } from '../utils/appointmentCoverage';
 import type { InsightCandidate } from '../contracts/insightCandidate';
 
+export interface AppointmentPersonalizedInsightResult {
+  /** The pure Phase-2 business winner — identical to what this hook always
+   *  returned before the starvation-fix hardening. Feeds ONLY the inline
+   *  PersonalizedInsight banner. */
+  candidate: InsightCandidate<unknown> | null;
+  /** Additive: ordered dialogue pool across Appointment Soon > Daily
+   *  Summary > None Today (see buildAppointmentDialoguePool.ts).
+   *  `candidates[0] ?? null` is always identical to `candidate` above when
+   *  no suppression applies. Feeds ONLY Cat's dismissal-aware selection —
+   *  never the inline banner. */
+  candidates: InsightCandidate<unknown>[];
+}
+
 export function useAppointmentPersonalizedInsight(
   appointments: unknown[],
   rooms: unknown[],
   dateRange: DateRangeLike | null | undefined
-): InsightCandidate<unknown> | null {
+): AppointmentPersonalizedInsightResult {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -101,7 +115,16 @@ export function useAppointmentPersonalizedInsight(
       const soonInput = projectAppointmentsForInsight(appointments);
       const dailyInput = projectAppointmentsForDailySummary(appointments);
       const roomsInput = projectRoomsForDailySummary(rooms);
-      return resolveAppointmentInsight(soonInput, dailyInput, roomsInput, dateRange);
+      // ONE captured instant, threaded into BOTH the inline resolver and
+      // the Cat-only dialogue pool builder for this exact evaluation cycle
+      // — never two independent `new Date()` calls that could disagree
+      // about which side of a 2-hour-window/minute boundary "now" falls
+      // on. See resolveAppointmentInsight.ts's `now` param doc and
+      // buildAppointmentDialoguePool.ts's header for the full rationale.
+      const now = new Date();
+      const candidate = resolveAppointmentInsight(soonInput, dailyInput, roomsInput, dateRange, now);
+      const candidates = buildAppointmentDialoguePool(soonInput, dailyInput, roomsInput, dateRange, now);
+      return { candidate, candidates };
     } catch (err) {
       // A provider failure must never produce a fabricated personalized
       // claim or a raw error surfaced to the user — in particular it must
@@ -110,7 +133,7 @@ export function useAppointmentPersonalizedInsight(
       // a malformed appointment/room row; the safe behavior is simply "no
       // insight this render". Never logs the appointments/rooms arrays.
       console.warn('[aiExperience] appointment personalized insight evaluation failed:', err);
-      return null;
+      return { candidate: null, candidates: [] };
     }
     // `tick` is intentionally a dependency purely to force re-evaluation as
     // the clock passes — its value is never read inside the callback.

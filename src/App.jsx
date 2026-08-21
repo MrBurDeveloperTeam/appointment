@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import React from 'react';
 import useDataStore from './hooks/useDataStore';
 import { useAuth } from './context/AuthProvider';
@@ -45,6 +45,7 @@ import { useGetUserId } from './mutation/useGetUserId';
 import useGetSessionInfo from './hooks/useGetSessionInfo';
 import { useAppointmentPersonalizedInsight } from './aiExperience/hooks/useAppointmentPersonalizedInsight';
 import PersonalizedInsight from './aiExperience/components/PersonalizedInsight';
+import { isTodayCoveredByDateRange } from './aiExperience/utils/appointmentCoverage';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -298,7 +299,59 @@ function AppContent() {
   // useDataStore) change or the local minute clock ticks — no new
   // Supabase query, no dedupe, no polling of the database. See
   // ./aiExperience/hooks/useAppointmentPersonalizedInsight.ts.
-  const appointmentPersonalizedInsight = useAppointmentPersonalizedInsight(appointments, rooms, dateRange);
+  const { candidate: appointmentPersonalizedInsight, candidates: appointmentDialoguePool } =
+    useAppointmentPersonalizedInsight(appointments, rooms, dateRange);
+  // Takes the candidate to act on explicitly — never closes over
+  // `appointmentPersonalizedInsight` — so this stays correct even when the
+  // caller is Cat showing a different (dismissal-revealed) Appointment
+  // Soon candidate than the inline banner's current winner. Every current
+  // candidate's action is the same "Today" behavior regardless of which
+  // one is passed, but the binding is implemented explicitly rather than
+  // relying on that coincidence — see personalizedInsightState.onAction's
+  // doc below.
+  const handleAppointmentInsightAction = useCallback((candidate) => {
+    // Reuses CalendarView.jsx's exact existing "Today" button behavior —
+    // never a fabricated navigation.
+    if (candidate?.action) setCurrentDate(new Date());
+  }, []);
+  // Proactive Cat reminder readiness: reuses the SAME authoritative signals
+  // already piped to MolarAIFloat for Phase-3 Data Chat's own readiness
+  // gate (see resolveAppointmentDataQuery.ts's identical
+  // `appointmentDataStatus !== 'ready'` + `isTodayCoveredByDateRange`
+  // check) — not a new query, not a new readiness flag. `loadedAppointmentRange`
+  // is the SUCCESSFULLY LOADED range (not the currently-requested
+  // `dateRange`), so a calendar-range change in flight never authorizes a
+  // Personalized reminder against stale prior data before the new fetch
+  // actually completes. CatMascot is a direct child of THIS component (not
+  // reached through a separate layout/Home file), so this is passed as a
+  // plain prop rather than through a Context bridge — a Provider rendered
+  // inside this same component's own return couldn't supply a context
+  // value back to this component's own hook calls above the return
+  // statement, so Context would not actually work for this specific tree;
+  // see CatMascot.jsx for how the equivalent read-only contract is
+  // preserved via props instead.
+  const personalizedInsightState =
+    appointmentDataStatus === 'ready' && isTodayCoveredByDateRange(loadedAppointmentRange)
+      ? {
+          status: 'ready',
+          candidate: appointmentPersonalizedInsight,
+          // Additive (starvation fix): ordered pool across Appointment
+          // Soon > Daily Summary > None Today — see
+          // useAppointmentPersonalizedInsight.ts /
+          // buildAppointmentDialoguePool.ts. `candidates[0] ?? null` is
+          // always identical to `candidate` above when no suppression
+          // applies. CatMascot scans this via
+          // selectFirstEligibleDialogueCandidate instead of only ever
+          // seeing the single inline winner.
+          candidates: appointmentDialoguePool,
+          // Takes the candidate to act on explicitly (see
+          // handleAppointmentInsightAction above) so CatMascot always
+          // executes the action belonging to the exact candidate it is
+          // currently showing, even if that differs from the inline
+          // banner's current winner.
+          onAction: handleAppointmentInsightAction,
+        }
+      : { status: 'not_ready' };
   const [currentDate, setCurrentDate] = useState(new Date());
 
   // Sync date range for appointments
@@ -815,11 +868,7 @@ function AppContent() {
               {appointmentPersonalizedInsight && (
                 <PersonalizedInsight
                   candidate={appointmentPersonalizedInsight}
-                  onAction={() => {
-                    // Reuses CalendarView.jsx's exact existing "Today"
-                    // button behavior — never a fabricated navigation.
-                    if (appointmentPersonalizedInsight.action) setCurrentDate(new Date());
-                  }}
+                  onAction={() => handleAppointmentInsightAction(appointmentPersonalizedInsight)}
                 />
               )}
               <CalendarView
@@ -988,7 +1037,10 @@ function AppContent() {
 
       {/* 🐱 MOLAR ECOSYSTEM */}
       <div className={isVirtualPetOpen ? 'hidden' : 'contents'}>
-        <CatMascot onCatClick={() => setIsVirtualPetOpen(true)} />
+        <CatMascot
+          onCatClick={() => setIsVirtualPetOpen(true)}
+          personalizedInsightState={personalizedInsightState}
+        />
         <MolarAIFloat
           userContext={aiContext}
           disabled={!isReady || !user || !activeClinicId}

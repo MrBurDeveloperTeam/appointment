@@ -32,10 +32,19 @@ export function resolveAppointmentInsight(
   soonAppointments: AppointmentLike[],
   dailyAppointments: DailyAppointmentLike[],
   rooms: RoomLike[],
-  dateRange: DateRangeLike | null | undefined
+  dateRange: DateRangeLike | null | undefined,
+  // Additive, optional (defaults to `new Date()`, identical to this
+  // function's previous unconditional internal `new Date()` — every
+  // existing caller that omits it behaves byte-for-byte the same). Exists
+  // so useAppointmentPersonalizedInsight.ts can pass ONE captured instant
+  // into both this resolver and the Cat-only dialogue pool builder
+  // (buildAppointmentDialoguePool.ts) for the same evaluation cycle —
+  // never two independent `new Date()` calls that could disagree about
+  // which side of a 2-hour-window/minute boundary "now" falls on. This is
+  // a shared time INPUT only; it does not make this resolver
+  // dismissal-aware or storage-dependent in any way.
+  now: Date = new Date()
 ): InsightCandidate<unknown> | null {
-  const now = new Date();
-
   const soon = evaluateAppointmentSoon(soonAppointments, now);
   if (soon) return soon;
 
