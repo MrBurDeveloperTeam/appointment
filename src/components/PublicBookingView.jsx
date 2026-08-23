@@ -790,6 +790,7 @@ export default function PublicBookingView({ clinicSlug }) {
         appointment_start_time: appointment.startTime || null,
         appointment_duration: appointment.duration || null,
         appointment_treatment_id: appointment.treatmentId || null,
+        requested_dentist_id: appointment.dentistId || null,
         appointment_notes: appointment.notes.trim() || null,
       },
     ]);
