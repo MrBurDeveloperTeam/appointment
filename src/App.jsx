@@ -888,6 +888,7 @@ function AppContent() {
               treatments={treatments}
               settings={settings}
               appointments={appointments}
+              dentists={staff.filter((s) => s.role === 'dentist')}
               addPatient={addPatient}
               addAppointment={addAppointment}
               updateAppointmentRequest={updateAppointmentRequest}
