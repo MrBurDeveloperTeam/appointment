@@ -8,7 +8,7 @@ import {
   sanitizeName,
   validateNewPatient,
 } from '../utils/bookingValidation';
-import { filterAvailableSlots, filterAvailableSlotsByDentist } from '../utils/availability';
+import { filterAvailableSlotsByDentist } from '../utils/availability';
 
 const emptyPatient = {
   name: '',

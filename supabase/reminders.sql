@@ -151,7 +151,8 @@ security definer
 set search_path = private, public, extensions
 as $$
 begin
-  if new.status = 'confirmed'
+  if old.status = 'confirmed'
+     and new.status = 'confirmed'
      and (new.date is distinct from old.date
           or new.start_time is distinct from old.start_time) then
     perform public.send_appointment_reschedule(new.id);
