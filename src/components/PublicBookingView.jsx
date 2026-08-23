@@ -8,7 +8,7 @@ import {
   sanitizeName,
   validateNewPatient,
 } from '../utils/bookingValidation';
-import { filterAvailableSlots } from '../utils/availability';
+import { filterAvailableSlots, filterAvailableSlotsByDentist } from '../utils/availability';
 
 const emptyPatient = {
   name: '',
@@ -38,6 +38,7 @@ const emptyAppointment = {
   startTime: '09:00',
   duration: 30,
   treatmentId: '',
+  dentistId: '',
   notes: '',
 };
 
@@ -442,10 +443,16 @@ export default function PublicBookingView({ clinicSlug }) {
       if (t < minMinutes) continue;
       slots.push(minutesToTime(t));
     }
-    // Capacity 1: a single confirmed appointment disables that slot so patients
-    // cannot book a time that is already taken (no public double-booking).
-    return filterAvailableSlots(slots, selectedDuration, busySlots, 1);
-  }, [appointment.date, selectedDuration, slotDuration, workingHoursStart, workingHoursEnd, busySlots]);
+    // Per-dentist availability: specific dentist blocks only their overlaps;
+    // "Any" uses the clinic's dentist-count capacity.
+    return filterAvailableSlotsByDentist(
+      slots,
+      selectedDuration,
+      busySlots,
+      clinicCapacity,
+      appointment.dentistId,
+    );
+  }, [appointment.date, selectedDuration, slotDuration, workingHoursStart, workingHoursEnd, busySlots, clinicCapacity, appointment.dentistId]);
 
   useEffect(() => {
     if (!appointment.date) return;
@@ -1412,6 +1419,37 @@ export default function PublicBookingView({ clinicSlug }) {
                             {formatTimeLabel(slot)}
                           </button>
                         ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Dentist</label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <select
+                          className="form-select"
+                          value={appointment.dentistId}
+                          onChange={updateAppointment('dentistId')}
+                        >
+                          <option value="">Any dentist</option>
+                          {dentists.map((dentist) => (
+                            <option key={dentist.id} value={dentist.id}>
+                              {dentist.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => {
+                            if (!dentists.length) return;
+                            const pick = dentists[Math.floor(Math.random() * dentists.length)];
+                            setAppointment((prev) => ({ ...prev, dentistId: pick.id }));
+                          }}
+                        >
+                          Random
+                        </button>
                       </div>
                     </div>
                   </div>
