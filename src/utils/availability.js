@@ -57,3 +57,41 @@ export const findAppointmentConflicts = (candidate, appointments, ignoreId = nul
     return intervalsOverlap(start, end, aStart, aEnd);
   });
 };
+
+/**
+ * Dentist-aware slot filtering for public booking.
+ * @param {string[]} candidates - slot start times "HH:MM"
+ * @param {number} durationMin
+ * @param {Array<{start_time:string,end_time:string,dentist_id:string|null}>} busy
+ * @param {number} dentistCount - clinic dentist headcount (>=1)
+ * @param {string|null} selectedDentistId - specific dentist id, or null/'' for "Any"
+ * @returns {string[]} available slots
+ */
+export const filterAvailableSlotsByDentist = (
+  candidates,
+  durationMin,
+  busy,
+  dentistCount,
+  selectedDentistId,
+) => {
+  const cap = Math.max(1, Number(dentistCount) || 1);
+  const specific = selectedDentistId != null && selectedDentistId !== '';
+  return (candidates || []).filter((slot) => {
+    const start = toMinutes(slot);
+    if (start == null) return false;
+    const end = start + Number(durationMin || 0);
+    if (specific) {
+      // Blocked only if THIS dentist has an overlapping confirmed appointment.
+      for (const b of busy || []) {
+        if (String(b.dentist_id) !== String(selectedDentistId)) continue;
+        const bStart = toMinutes(b.start_time);
+        const bEnd = toMinutes(b.end_time);
+        if (bStart == null || bEnd == null) continue;
+        if (intervalsOverlap(start, end, bStart, bEnd)) return false;
+      }
+      return true;
+    }
+    // "Any": full when overlapping count reaches dentist capacity.
+    return countOverlapping(start, durationMin, busy) < cap;
+  });
+};

@@ -6,6 +6,7 @@ import {
   isSlotFull,
   filterAvailableSlots,
   findAppointmentConflicts,
+  filterAvailableSlotsByDentist,
 } from './availability';
 
 const busy = [
@@ -93,5 +94,43 @@ describe('findAppointmentConflicts', () => {
   it('returns empty when no times overlap', () => {
     const c = findAppointmentConflicts({ date: '2026-06-29', startTime: '12:00', duration: 30 }, existing);
     expect(c).toEqual([]);
+  });
+});
+
+describe('filterAvailableSlotsByDentist', () => {
+  const slots = ['09:00', '09:30', '10:00'];
+  const busyMulti = [
+    { start_time: '09:00', end_time: '09:30', dentist_id: 'd1' },
+    { start_time: '09:00', end_time: '09:30', dentist_id: 'd2' },
+  ];
+
+  it('specific dentist: blocks only that dentist\'s overlap', () => {
+    // d1 is busy 09:00-09:30; d1 should lose 09:00 but keep 09:30/10:00
+    expect(filterAvailableSlotsByDentist(slots, 30, busyMulti, 2, 'd1'))
+      .toEqual(['09:30', '10:00']);
+  });
+
+  it('specific dentist: free when only OTHER dentists are busy', () => {
+    // d3 not in busy -> all slots free
+    expect(filterAvailableSlotsByDentist(slots, 30, busyMulti, 2, 'd3'))
+      .toEqual(['09:00', '09:30', '10:00']);
+  });
+
+  it('Any: slot full only when overlap count >= dentistCount', () => {
+    // 2 dentists busy at 09:00, capacity 2 -> 09:00 full; others free
+    expect(filterAvailableSlotsByDentist(slots, 30, busyMulti, 2, null))
+      .toEqual(['09:30', '10:00']);
+  });
+
+  it('Any: slot still free when fewer busy than dentistCount', () => {
+    // capacity 3, only 2 busy -> 09:00 still free
+    expect(filterAvailableSlotsByDentist(slots, 30, busyMulti, 3, ''))
+      .toEqual(['09:00', '09:30', '10:00']);
+  });
+
+  it('specific dentist: null-dentist legacy range does not block a named dentist', () => {
+    const legacy = [{ start_time: '09:00', end_time: '09:30', dentist_id: null }];
+    expect(filterAvailableSlotsByDentist(slots, 30, legacy, 2, 'd1'))
+      .toEqual(['09:00', '09:30', '10:00']);
   });
 });

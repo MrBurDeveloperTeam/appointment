@@ -275,6 +275,7 @@ CREATE TABLE public.appointment_requests (
   appointment_duration integer,
   appointment_treatment_id uuid,
   appointment_notes text,
+  requested_dentist_id uuid,
   is_new_patient boolean DEFAULT true,
   lookup_email text,
   is_existing_verified boolean NOT NULL DEFAULT false,
@@ -284,6 +285,7 @@ CREATE TABLE public.appointment_requests (
   CONSTRAINT appointment_requests_clinic_id_fkey FOREIGN KEY (clinic_id) REFERENCES public.apt_clinics(id),
   CONSTRAINT appointment_requests_preferred_dentist_id_fkey FOREIGN KEY (preferred_dentist_id) REFERENCES public.apt_staff(id),
   CONSTRAINT appointment_requests_appointment_treatment_id_fkey FOREIGN KEY (appointment_treatment_id) REFERENCES public.apt_treatments(id),
+  CONSTRAINT appointment_requests_requested_dentist_id_fkey FOREIGN KEY (requested_dentist_id) REFERENCES public.apt_staff(id),
   CONSTRAINT appointment_requests_verification_id_fkey FOREIGN KEY (verification_id) REFERENCES public.apt_booking_verifications(id)
 );
 

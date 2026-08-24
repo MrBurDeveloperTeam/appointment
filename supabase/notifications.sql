@@ -232,12 +232,18 @@ as $$
         select count(*) from public.apt_staff s
         where s.clinic_id = p_clinic_id and s.role = 'dentist'
       ))::int,
+    'dentist_count',
+      greatest(1, (
+        select count(*) from public.apt_staff s
+        where s.clinic_id = p_clinic_id and s.role = 'dentist'
+      ))::int,
     'busy',
       coalesce((
         select jsonb_agg(jsonb_build_object(
           'start_time', a.start_time,
           'end_time', coalesce(a.end_time,
-            to_char(((a.start_time)::time + make_interval(mins => coalesce(a.duration, 30))), 'HH24:MI'))
+            to_char(((a.start_time)::time + make_interval(mins => coalesce(a.duration, 30))), 'HH24:MI')),
+          'dentist_id', a.dentist_id
         ))
         from public.appointments a
         where a.clinic_id = p_clinic_id

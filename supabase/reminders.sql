@@ -108,6 +108,65 @@ after insert on public.appointments
 for each row
 execute function public.trigger_send_confirmation();
 
+-- 5) Reschedule email: notify the patient when a confirmed appointment's
+--    date/start_time changes (via any path: form edit, drag-drop, AI).
+create or replace function public.send_appointment_reschedule(p_appointment_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = private, public, extensions
+as $$
+declare
+  v_email text;
+  v_date  text;
+  v_time  text;
+  v_name  text;
+  v_clinic text;
+begin
+  select p.email, a.date::text, a.start_time::text, p.name, c.name
+  into v_email, v_date, v_time, v_name, v_clinic
+  from public.appointments a
+  join public.apt_patients p on a.patient_id = p.id
+  left join public.apt_clinics c on a.clinic_id = c.id
+  where a.id = p_appointment_id;
+
+  if v_email is not null and v_email like '%@%' then
+    perform private.send_email_internal(
+      v_email::text,
+      ('Appointment Rescheduled' || coalesce(' - ' || v_clinic, ''))::text,
+      format(
+        '<p>Hello %s,</p><p>Your appointment at <b>%s</b> has been rescheduled to <b>%s at %s</b>.</p><p>See you then!</p>',
+        v_name, coalesce(v_clinic, 'the clinic'), v_date, v_time
+      )::text,
+      (coalesce(v_clinic, 'Appointments') || ' <appointments@snabbb.com>')::text
+    );
+  end if;
+end;
+$$;
+
+create or replace function public.trigger_send_reschedule()
+returns trigger
+language plpgsql
+security definer
+set search_path = private, public, extensions
+as $$
+begin
+  if old.status = 'confirmed'
+     and new.status = 'confirmed'
+     and (new.date is distinct from old.date
+          or new.start_time is distinct from old.start_time) then
+    perform public.send_appointment_reschedule(new.id);
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_appointment_reschedule on public.appointments;
+create trigger trg_appointment_reschedule
+after update of date, start_time on public.appointments
+for each row
+execute function public.trigger_send_reschedule();
+
 
 -- 4) Function to send REMINDER email (Scheduled)
 create or replace function public.send_appointment_reminder(p_appointment_id uuid)

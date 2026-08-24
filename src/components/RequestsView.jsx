@@ -68,6 +68,7 @@ export default function RequestsView({
   treatments,
   settings,
   appointments = [],
+  dentists = [],
   addPatient,
   addAppointment,
   updateAppointmentRequest,
@@ -278,6 +279,31 @@ export default function RequestsView({
     }
   };
 
+  // Resolve which dentist to assign when approving a request.
+  // - explicit request choice wins;
+  // - otherwise ("Any") pick the first dentist with no confirmed overlap at that slot.
+  const resolveDentistId = (request, date, startTime, duration) => {
+    if (request.requestedDentistId) return request.requestedDentistId;
+    const start = toMinutes(startTime);
+    if (start == null) return null;
+    const end = start + Number(duration || 0);
+    // All confirmed appointments overlapping this slot (any dentist, incl. null-dentist).
+    const overlapping = (appointments || []).filter((a) => {
+      if (!a || a.date !== date || a.status !== 'confirmed') return false;
+      const aStart = toMinutes(a.startTime);
+      const aEnd = a.endTime ? toMinutes(a.endTime) : (aStart == null ? null : aStart + (a.duration || 30));
+      return aStart != null && aEnd != null && intervalsOverlap(start, end, aStart, aEnd);
+    });
+    // Slot is full when overlaps reach the dentist headcount (matches the public
+    // "Any" capacity model, which counts null-dentist ranges too).
+    if (overlapping.length >= (dentists || []).length) return null;
+    const busyDentistIds = new Set(
+      overlapping.filter((a) => a.dentistId).map((a) => String(a.dentistId)),
+    );
+    const free = (dentists || []).find((d) => !busyDentistIds.has(String(d.id)));
+    return free ? free.id : null;
+  };
+
   const approveRequest = async (request, options = {}) => {
     const { addPatientRecord = false } = options;
 
@@ -332,12 +358,14 @@ export default function RequestsView({
       }
 
       const duration = getDefaultDuration(request);
+      const dentistId = resolveDentistId(request, date, startTime, duration);
 
       await addAppointment({
         patientId,
         date,
         startTime,
         duration,
+        dentistId,
         treatmentId:
           request.appointmentTreatmentId || null,
         notes:
