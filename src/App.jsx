@@ -27,7 +27,7 @@ import { supabase } from './lib/supabaseClient';
 import DataStore from "./data";
 import { api } from './services/api';
 import CatMascot from './components/CatMascot';
-import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
+import AppointmentsVirtualPet from './petExperience/AppointmentsVirtualPet';
 import MolarAIFloat from './components/MolarAIFloat';
 import {
   normalizeTheme,
@@ -1051,9 +1051,9 @@ function AppContent() {
           loadedAppointmentRange={loadedAppointmentRange}
         />
       </div>
-      <VirtualPetContainer 
-        isOpen={isVirtualPetOpen} 
-        onClose={() => setIsVirtualPetOpen(false)} 
+      <AppointmentsVirtualPet
+        isOpen={isVirtualPetOpen}
+        onClose={() => setIsVirtualPetOpen(false)}
       />
 
     </div>
