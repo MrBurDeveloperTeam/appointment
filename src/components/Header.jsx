@@ -19,7 +19,33 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
         creditError,
         setCreditError
     ] = useState(null);
+    const [isOpeningSupportTickets, setIsOpeningSupportTickets] = useState(false);
     const menuRef = useRef(null);
+
+    async function openSupportTickets() {
+        if (isOpeningSupportTickets) return;
+
+        setShowAccountMenu(false);
+        setIsOpeningSupportTickets(true);
+
+        try {
+            const response = await fetch('/ticketing/sso', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { Accept: 'application/json' },
+            });
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok || !data?.url) {
+                throw new Error(data?.error || 'Unable to open the support portal.');
+            }
+
+            window.location.assign(data.url);
+        } catch (error) {
+            console.error('Ticketing SSO failed:', error);
+            setIsOpeningSupportTickets(false);
+        }
+    }
 
     /*
     * Load Snabbb Credit using the authenticated
@@ -349,6 +375,23 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                           <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">Manage your channel</p>
                         </div>
                         <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors"></i>
+                      </button>
+
+                      {/* Support Tickets */}
+                      <button
+                        type="button"
+                        disabled={isOpeningSupportTickets}
+                        onClick={openSupportTickets}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <div className="w-7 h-7 rounded-xl bg-[var(--info-bg-subtle)] flex items-center justify-center shrink-0">
+                          <i className="fa-solid fa-life-ring text-[11px] text-[var(--primary)]" aria-hidden="true"></i>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">Support Tickets</p>
+                          <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">Create and track your support tickets</p>
+                        </div>
+                        <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors" aria-hidden="true"></i>
                       </button>
                         
                       {/* Settings */}
