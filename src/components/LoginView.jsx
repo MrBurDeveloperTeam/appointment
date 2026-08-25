@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import CatMascot from "./CatMascot";
 import MolarAIFloat from "./MolarAIFloat";
+import { SNABBB_SIGNUP_URL } from "../constants/authLinks";
 
 export default function LoginView() {
   // 3D Carousel State
@@ -52,7 +53,7 @@ export default function LoginView() {
         </div>
         <div className="landing-nav-actions">
           <button className="landing-btn-outline" onClick={() => goToAuth('/login')}>Log In</button>
-          <button className="landing-btn-primary" onClick={() => goToAuth('/register')}>Sign Up</button>
+          <a className="landing-btn-primary" href={SNABBB_SIGNUP_URL}>Sign Up</a>
         </div>
       </nav>
 
@@ -68,7 +69,7 @@ export default function LoginView() {
             With our simple online booking system, scheduling dental appointments has never been easier. Focus on your patients, we handle the workflow.
           </p>
           <div className="landing-hero-actions">
-            <button className="landing-btn-primary" onClick={() => goToAuth('/register')}>Get Started</button>
+            <a className="landing-btn-primary" href={SNABBB_SIGNUP_URL}>Get Started</a>
             <button className="landing-btn-secondary" onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}>
               Learn More →
             </button>
@@ -195,7 +196,7 @@ export default function LoginView() {
             <h3>Monthly</h3>
             <p className="price-desc">Pay as you go, cancel anytime.</p>
             <div className="landing-price-amount">$39<span>/ mo</span></div>
-            <button className="landing-price-btn" onClick={() => goToAuth('/register')}>Get Started</button>
+            <a className="landing-price-btn" href={SNABBB_SIGNUP_URL}>Get Started</a>
             <ul className="landing-price-features">
               <li><span className="landing-check-icon">✓</span> Uncapped appointments</li>
               <li><span className="landing-check-icon">✓</span> Custom domain integration</li>
@@ -210,7 +211,7 @@ export default function LoginView() {
             <h3>Annually</h3>
             <p className="price-desc">Commit for a year and save big on your clinic.</p>
             <div className="landing-price-amount">$234<span>/ yr</span></div>
-            <button className="landing-price-btn" onClick={() => goToAuth('/register')}>Get Started</button>
+            <a className="landing-price-btn" href={SNABBB_SIGNUP_URL}>Get Started</a>
             <ul className="landing-price-features">
               <li><span className="landing-check-icon">✓</span> Everything in Monthly</li>
               <li><span className="landing-check-icon">✓</span> Priority 24/7 support</li>
@@ -246,7 +247,7 @@ export default function LoginView() {
         <div className="landing-cta-box">
           <h2>Easy Access for Easy Bookings.</h2>
           <p>Deliver the best booking experience today and take your clinic's workflow to the next level.</p>
-          <button className="landing-btn-white" onClick={() => goToAuth('/register')}>Get Started Now</button>
+          <a className="landing-btn-white" href={SNABBB_SIGNUP_URL}>Get Started Now</a>
         </div>
       </section>
 
