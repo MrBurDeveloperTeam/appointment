@@ -29,18 +29,18 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
         setIsOpeningSupportTickets(true);
 
         try {
-            const response = await fetch('/ticketing/sso', {
+            const response = await fetch('/api/ticketing/sso', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { Accept: 'application/json' },
             });
             const data = await response.json().catch(() => null);
 
-            if (!response.ok || !data?.url) {
+            if (!response.ok || !data?.redirectUrl) {
                 throw new Error(data?.error || 'Unable to open the support portal.');
             }
 
-            window.location.assign(data.url);
+            window.location.assign(data.redirectUrl);
         } catch (error) {
             console.error('Ticketing SSO failed:', error);
             setIsOpeningSupportTickets(false);
