@@ -8746,3 +8746,60 @@ tbody tr:hover {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+
+/* Appointment SNAI support shortcut. These theme-owned styles sit after the
+   utility layer so the support action remains distinct in both modes. */
+.appointment-support-link {
+  border-color: rgba(203, 213, 225, 0.9);
+  color: #334155;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+
+.appointment-support-link:hover {
+  border-color: rgba(42, 157, 143, 0.72);
+  background: rgba(232, 246, 244, 0.96);
+  box-shadow: 0 8px 20px rgba(42, 157, 143, 0.14);
+}
+
+.appointment-support-link:focus-visible {
+  outline: 2px solid #2a9d8f;
+  outline-offset: 2px;
+}
+
+.appointment-support-icon {
+  border-color: #b8e5df;
+  color: #1f7a6f;
+  background: #dff3f0;
+}
+
+.appointment-support-title { color: #334155; }
+.appointment-support-meta { color: #64748b; }
+.appointment-support-link:hover .appointment-support-title { color: #155e56; }
+
+:root[data-theme="dark"] .appointment-support-link {
+  border-color: #334155;
+  color: #e2e8f0;
+  background: rgba(30, 41, 59, 0.94);
+  box-shadow: 0 5px 16px rgba(2, 6, 23, 0.34);
+}
+
+:root[data-theme="dark"] .appointment-support-link:hover {
+  border-color: rgba(90, 184, 174, 0.78);
+  background: rgba(20, 59, 59, 0.96);
+  box-shadow: 0 8px 22px rgba(2, 6, 23, 0.46);
+}
+
+:root[data-theme="dark"] .appointment-support-link:focus-visible {
+  outline-color: #5ab8ae;
+}
+
+:root[data-theme="dark"] .appointment-support-icon {
+  border-color: rgba(90, 184, 174, 0.38);
+  color: #7dd3c8;
+  background: rgba(42, 157, 143, 0.18);
+}
+
+:root[data-theme="dark"] .appointment-support-title { color: #e2e8f0; }
+:root[data-theme="dark"] .appointment-support-meta { color: #94a3b8; }
+:root[data-theme="dark"] .appointment-support-link:hover .appointment-support-title { color: #b8e5df; }
