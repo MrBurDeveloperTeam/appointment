@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { SharedMolarAI } from '@mrburdeveloperteam/molar-experience/ai';
 import { supabase } from '../lib/supabaseClient';
 import { createAppointmentsMolarAdapter } from '../aiExperience/appointmentsMolarAdapter';
+import { MOLAR_LOGO_URL } from '../aiExperience/molarExperienceAssets';
 
 // PHASE 8D (Molar AI migration): thin host wrapper around
 // `@mrburdeveloperteam/molar-experience/ai`'s <SharedMolarAI>. Generic chat
@@ -93,6 +94,7 @@ export default function MolarAIFloat({
       disabled={disabled}
       onPetToggle={onPetToggle}
       emptyState={emptyState}
+      logoUrl={MOLAR_LOGO_URL}
     />
   );
 }

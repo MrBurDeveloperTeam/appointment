@@ -1036,10 +1036,26 @@ function AppContent() {
       />
 
       {/* 🐱 MOLAR ECOSYSTEM */}
+      {/* APPOINTMENTS-2: `key` on CatMascot forces a fresh mount (and
+          therefore a fresh useSharedCatDialogueRuntime instance) on every
+          distinct authenticated identity boundary — this JSX only ever
+          renders once `user` is confirmed non-null (see the `!user` ->
+          LoginView early-return above), so `user.id` is always the real
+          canonical Supabase Auth uuid here, never "still resolving".
+          `catCacheOwnerId` account-scopes CatMascot's own ambient
+          presentation cache (sleep/mood/selected-pet) so a fresh mount for
+          a different signed-in user never reads a previous user's bare
+          localStorage values — same canonical identity as `key`, threaded
+          in synchronously as a prop so even the very first render's lazy
+          useState initializers read the right namespace. The permanent-
+          mount `hidden`/`contents` wrapper below is unchanged — Cat still
+          never unmounts merely because Virtual Pet opens/closes. */}
       <div className={isVirtualPetOpen ? 'hidden' : 'contents'}>
         <CatMascot
+          key={user.id}
           onCatClick={() => setIsVirtualPetOpen(true)}
           personalizedInsightState={personalizedInsightState}
+          catCacheOwnerId={user.id}
         />
         <MolarAIFloat
           userContext={aiContext}
@@ -1051,9 +1067,16 @@ function AppContent() {
           loadedAppointmentRange={loadedAppointmentRange}
         />
       </div>
+      {/* APPOINTMENTS-2: `key` forces a fresh Pet runtime mount on every
+          distinct canonical identity boundary — mirroring CatMascot's own
+          `key={user.id}` above. `userId` is now host-supplied (see
+          AppointmentsVirtualPet.tsx), never independently re-resolved by
+          the component itself. */}
       <AppointmentsVirtualPet
+        key={user.id}
         isOpen={isVirtualPetOpen}
         onClose={() => setIsVirtualPetOpen(false)}
+        userId={user.id}
       />
 
     </div>

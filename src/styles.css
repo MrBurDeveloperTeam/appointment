@@ -1,7 +1,35 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap');
-@import url('./login-landing.css');
-@import url('./auth-pages.css');
+@import url('./login-landing.css') layer(appointments-host);
+@import url('./auth-pages.css') layer(appointments-host);
+
+/* APPOINTMENTS-3H: cascade-layer architecture recovery. Everything from
+   here to the end of the file (Tailwind v3's base/components/utilities
+   output, plus every hand-authored rule already in this file) is wrapped
+   in a single named layer, appointments-host. Shared's own raw-injected
+   dist/styles.css keeps its native browser @layer theme / @layer
+   utilities / @layer properties blocks (that's the whole reason it has
+   to be ?raw-imported instead of run through this app's own PostCSS
+   pipeline — see main.jsx). Per the CSS Cascade Layers spec, layer
+   priority is decided by the ORDER each layer name is first encountered
+   across the whole document, later beats earlier, and this document's
+   own Tailwind CSS (from this <link>-loaded stylesheet, present in <head>
+   before any JS executes) is always parsed before Shared's <style>
+   element (appended at runtime by main.jsx, after the page has already
+   started loading) — so appointments-host is always the first-declared,
+   lowest-priority layer, and Shared's theme/utilities/properties layers
+   are always declared after it, giving them natural priority. Unlike the
+   compat/shared-molar-tailwind-v3.css revert-layer matrix (APPOINTMENTS-
+   3D through 3G), this doesn't require enumerating which Shared utility
+   classes exist anywhere; any Shared layered rule now naturally outranks
+   any rule in this file for the same property, without listing selectors
+   one at a time. A plain element with no competing Shared utility (e.g.
+   the Virtual Pet level badge button, which carries no Shared padding,
+   border, or background utility class) still falls through correctly to
+   this layer's own Tailwind Preflight reset, since nothing in Shared's
+   layers declares anything for it; layers only ever affect properties an
+   element actually has competing declarations for. */
+@layer appointments-host {
 
 /* ============================================
    Appointment Book App - Calm UI Design System
@@ -8670,3 +8698,4 @@ tbody tr:hover {
     z-index: 2100 !important;
   }
 }
+} /* end @layer appointments-host — APPOINTMENTS-3H */

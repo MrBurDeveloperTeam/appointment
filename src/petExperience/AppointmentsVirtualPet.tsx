@@ -45,6 +45,7 @@ import { useEffect, useRef, useState } from 'react';
 import { SharedVirtualPet } from '@mrburdeveloperteam/molar-experience/pet';
 import { supabase } from '../lib/supabaseClient';
 import { appointmentsPetRepository } from './appointmentsPetRepository';
+import { PET_ASSET_URLS } from '../aiExperience/molarExperienceAssets';
 
 interface GeoInfo {
   ip: string;
@@ -156,25 +157,26 @@ async function detectAndLogVisit(): Promise<string> {
 interface AppointmentsVirtualPetProps {
   isOpen: boolean;
   onClose: () => void;
+  /**
+   * Canonical Pet backend owner id — the same Supabase Auth session
+   * user.id App.jsx already resolves via AuthProvider's `user` and keeps
+   * live-synced via onAuthStateChange (the same identity that drives
+   * CatMascot's own identity-bound key). `null` means a confirmed
+   * signed-out guest — never "still resolving": App.jsx's own auth
+   * lifecycle (the `!user` -> LoginView branch) already prevents this
+   * component from mounting at all before identity resolves. This
+   * component must never independently re-derive Pet ownership identity
+   * (e.g. via its own `supabase.auth.getSession()` call) — the Host is the
+   * sole source, so an account switch is only ever reflected via a fresh
+   * prop value paired with a Host-owned `key` boundary (see App.jsx's call
+   * site), never by this component noticing a change on its own.
+   */
+  userId: string | null;
 }
 
-export default function AppointmentsVirtualPet({ isOpen, onClose }: AppointmentsVirtualPetProps) {
+export default function AppointmentsVirtualPet({ isOpen, onClose, userId }: AppointmentsVirtualPetProps) {
   const hasLoggedRef = useRef(false);
   const [detectedCurrency, setDetectedCurrency] = useState(DEFAULT_CURRENCY_CODE);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!cancelled) setUserId(session?.user?.id || null);
-      } catch (err) {
-        console.error('Error fetching session in AppointmentsVirtualPet:', err);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -197,6 +199,7 @@ export default function AppointmentsVirtualPet({ isOpen, onClose }: Appointments
       repository={appointmentsPetRepository}
       userId={userId}
       currencyCode={detectedCurrency}
+      assetUrls={PET_ASSET_URLS}
     />
   );
 }

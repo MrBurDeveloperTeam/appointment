@@ -66,8 +66,14 @@ export const appointmentsPetRepository: PetRepository = {
       .maybeSingle();
 
     if (error) {
+      // ERROR != EMPTY: a query/auth/network failure must never be treated
+      // the same as "no row exists yet" — the latter is what tells the
+      // runtime to seed fresh starter stats, so silently returning `null`
+      // here on a transient failure would let a real user's existing
+      // snapshot be overwritten by starter defaults. Only a genuinely
+      // successful query with no matching row (below) means "first login".
       console.error('[appointmentsPetRepository] Failed to load inventory_pet:', error);
-      return null;
+      throw error;
     }
     if (!data) return null;
 
@@ -122,8 +128,12 @@ export const appointmentsPetRepository: PetRepository = {
       .eq('user_id', userId);
 
     if (error) {
+      // ERROR != EMPTY: a query/auth/network failure must never be treated
+      // as "user owns zero items" — the runtime's full-sync `saveInventory`
+      // would later write that false-empty state back as real data, wiping
+      // a genuinely non-empty inventory on a transient read failure.
       console.error('[appointmentsPetRepository] Failed to load pet_inventory:', error);
-      return [];
+      throw error;
     }
 
     return (data as PetInventoryRow[]).map((row) => ({ itemId: row.item_id, quantity: row.quantity }));
