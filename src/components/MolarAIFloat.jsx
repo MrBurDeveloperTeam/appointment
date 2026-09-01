@@ -12,8 +12,11 @@ import { MOLAR_LOGO_URL } from '../aiExperience/molarExperienceAssets';
 // byte-identical from this file's own pre-8D `MolarAIFloat.jsx`/
 // `MolarChat.jsx` (confirmed via reading the installed `dist/ai.js`
 // directly). Every actual response — General Chat, Data Chat, Gemini calls,
-// the live `window.__MOLAR_ACTIONS__` action parser/dispatcher — is
-// entirely local, in `../aiExperience/appointmentsMolarAdapter.ts`.
+// Gemini calls (now server-proxied via the molar-chat Edge Function,
+// never a client-side API key) — is entirely local, in
+// `../aiExperience/appointmentsMolarAdapter.ts`. That adapter has no
+// mutation-dispatch capability (removed in phase
+// APPOINTMENT-MOLAR-AI-P0-SECURITY-HARDENING).
 export default function MolarAIFloat({
   userContext,
   disabled = false,

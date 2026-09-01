@@ -1,33 +1,23 @@
 // PHASE 8D (Molar AI migration): thin host `AIAdapter` implementation for
 // `@mrburdeveloperteam/molar-experience/ai`'s `<SharedMolarAI>`.
 //
-// This file is a MECHANICAL relocation of `MolarAIFloat.jsx`'s pre-8D
-// `handleSendMessage` body — every branch, message string, query, and the
-// fenced ```json action-block parser/dispatcher are preserved verbatim.
-// Nothing here is a redesign.
+// Phase APPOINTMENT-MOLAR-AI-P0-SECURITY-HARDENING: this adapter no longer
+// parses or dispatches any fenced ```json action block. Prompt instructions
+// (geminiService.js's "No JSON Actions" rule / GUIDANCE POLICY, which
+// already documents that Molar AI does NOT have permission to add or update
+// appointments/patients/staff/rooms/treatments/holidays) are not a security
+// boundary — the prior parser would still execute a fenced action block
+// from ANY source that produced one, including an admin-configured keyword
+// response (`aiboard_responses`), completely bypassing that policy with no
+// user confirmation. Current product evidence (the prompt's own explicit
+// "teach the user where to click" guidance policy) supports a read-only
+// Molar AI here, not an AI-assisted-mutation model — so the smallest safe
+// fix is removing the dispatcher entirely, not building new confirmation
+// UI for a capability the product doesn't currently intend to offer.
 //
-// window.__MOLAR_ACTIONS__ IS LIVE IN THIS APP (unlike To-Do's confirmed-dead
-// equivalent) — App.jsx's own effect assigns real handlers
-// (addAppointment/updateAppointment/addStaff/addRoom/addTreatment/
-// addHoliday/addPatient) to it, and this adapter's action parser dispatches
-// to them exactly as MolarAIFloat.jsx used to. That effect and its handlers
-// are OUT OF SCOPE for this phase and are not touched — this file only
-// relocates the CONSUMER side (the parser + `window.__MOLAR_ACTIONS__[...]`
-// calls), never the producer.
-//
-// Reachability note (see isAppointmentMutationRequest.ts's own header): the
-// current Gemini system prompt (geminiService.js) instructs the model never
-// to emit a JSON action block, but that is prompt compliance, not a safety
-// boundary — an admin-configured keyword response (aiboard_responses) could
-// still contain a fenced ```json action block, and the parser below would
-// dispatch it exactly as before. This is why the parser/dispatcher is
-// preserved exactly rather than removed as "unreachable in practice."
-//
-// SharedMolarAI's own AIResponse.hostAction field is NOT wired to anything
-// in the installed 0.5.0 runtime (confirmed by reading dist/ai.js — it never
-// reads `hostAction`) — so action execution must complete entirely INSIDE
-// `sendMessage` before it returns, exactly as it did inline in
-// `handleSendMessage` before this phase.
+// `window.__MOLAR_ACTIONS__` itself (assigned in App.jsx) is left in place —
+// untouched, out of scope — but is now dead: nothing in this file (or
+// anywhere else in the repo) reads it anymore.
 import type { AIAdapter, AIMessage } from '@mrburdeveloperteam/molar-experience/contracts';
 import { chatWithMolarAI, chatWithGroundedAppointmentFacts } from '../services/geminiService';
 import { supabase } from '../lib/supabaseClient';
@@ -194,40 +184,18 @@ export function createAppointmentsMolarAdapter({
           response = await chatWithMolarAI(toGeminiHistory(history), msg, userContext || '');
         }
 
-        // Parse actions from backticks if present
-        let cleanResponse = response;
+        // Strip any stray fenced code block from display only — never
+        // parsed, never executed, never dispatched. The system prompt
+        // (geminiService.js) explicitly forbids the model from emitting
+        // one; this is defensive cosmetic cleanup only, in case a legacy
+        // admin-configured keyword response (`aiboard_responses`) still
+        // contains one, so it doesn't render as a confusing raw code
+        // block in the chat UI.
         const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/) || response.match(/```\s*(\{[\s\S]*?\})\s*```/);
-
-        if (jsonMatch) {
-          try {
-            const actionObj = JSON.parse(jsonMatch[1]);
-            cleanResponse = response.replace(jsonMatch[0], '').trim();
-
-            const molarActions = (window as any).__MOLAR_ACTIONS__;
-            if (actionObj.action && molarActions) {
-              const handlers = molarActions;
-              const { action, data, id } = actionObj;
-
-              console.log('[MolarAI] Executing action:', action, data);
-
-              switch (action) {
-                case 'ADD_APPOINTMENT': handlers.addAppointment?.(data); break;
-                case 'UPDATE_APPOINTMENT': handlers.updateAppointment?.(id, data); break;
-                case 'ADD_STAFF': handlers.addStaff?.(data); break;
-                case 'ADD_ROOM': handlers.addRoom?.(data); break;
-                case 'ADD_TREATMENT': handlers.addTreatment?.(data); break;
-                case 'ADD_HOLIDAY': handlers.addHoliday?.(data); break;
-                case 'ADD_PATIENT': handlers.addPatient?.(data); break;
-                default: console.warn('[MolarAI] Unknown action:', action);
-              }
-            }
-          } catch (e) {
-            console.error('[MolarAI] Action parse failed:', e);
-          }
-        }
+        const cleanResponse = jsonMatch ? response.replace(jsonMatch[0], '').trim() : response;
 
         return {
-          text: cleanResponse || 'SNAI: Action executed.',
+          text: cleanResponse || 'SNAI: Unable to process request.',
           meta: { source: 'general' },
         };
       } catch (error) {

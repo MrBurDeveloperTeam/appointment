@@ -2,19 +2,15 @@
 // already browser-validated in the Inventory and To-Do repos, ported
 // here with appointment-specific vocabulary.
 //
-// REQUIRED (not optional defense-in-depth): unlike To-Do's
-// `window.__MOLAR_ACTIONS__` (confirmed unwired/dead there), THIS repo's
-// `window.__MOLAR_ACTIONS__` is LIVE — App.jsx actually assigns real
-// handlers (`addAppointment`/`updateAppointment`/`addStaff`/`addRoom`/
-// `addTreatment`/`addHoliday`/`addPatient`) to it, and
-// MolarAIFloat.jsx's existing fenced ```json parser will dispatch to
-// them if the model ever emits a matching action block. Today that's
-// prevented only by prompt instruction ("Never output JSON action
-// blocks" — see geminiService.js), which is not a sufficient safety
-// boundary on its own. This guard runs BEFORE any Gemini call for a
-// Data Chat message, so a recognized mutation request never reaches
-// Gemini (or the legacy prompt) at all — it cannot depend on model
-// compliance.
+// Phase APPOINTMENT-MOLAR-AI-P0-SECURITY-HARDENING: the fenced ```json
+// action-block parser/dispatcher in appointmentsMolarAdapter.ts that used
+// to read `window.__MOLAR_ACTIONS__` has been removed entirely — Molar AI
+// in this app has no path to any mutation now, regardless of what any
+// response (Gemini or an admin-configured keyword response) contains.
+// This guard remains as defense-in-depth for the Data Chat path
+// specifically: it runs BEFORE any Gemini call, so a recognized mutation
+// request never reaches Gemini at all and gets a clear, immediate refusal
+// rather than a generic answer.
 
 const INFORMATIONAL_PATTERNS: RegExp[] = [
   /^how (do|does|can|would|could) i?\b/,
