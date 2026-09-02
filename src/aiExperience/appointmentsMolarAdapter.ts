@@ -30,8 +30,10 @@ import {
   buildUnsupportedSensitiveScopeMessage,
 } from './dataChat/utils/unsupportedParameterMessage';
 import { formatGroundedAppointmentFallback } from './dataChat/utils/formatGroundedAppointmentFallback';
+import { resolveAppointmentFollowUp } from './dataChat/router/resolveAppointmentFollowUp';
 import type { AppointmentDataStatus } from './dataChat/contracts/groundedDataResult';
 import type { DateRangeLike } from './utils/appointmentCoverage';
+import type { GroundedConversationContext } from './dataChat/context/groundedConversationContext';
 
 // Maps the shared package's normalized `{role, text}` history entries back
 // to the `{role, parts:[{text}]}` shape `chatWithMolarAI` (and the Gemini
@@ -67,7 +69,17 @@ export function createAppointmentsMolarAdapter({
   staff = [],
   treatments = [],
 }: AppointmentsMolarAdapterDeps): AIAdapter {
+  // Grounded conversation context — lives only inside this closure (one
+  // per authenticated clinic session; see
+  // dataChat/context/groundedConversationContext.ts's header). Only ever
+  // populated by the two patient-identity-bearing intents that already
+  // bypass Gemini entirely — follow-ups on it stay local-only too.
+  let groundedContext: GroundedConversationContext | null = null;
+
   return {
+    reset() {
+      groundedContext = null;
+    },
     async sendMessage({ text, history }) {
       const msg = text.trim();
 
@@ -166,7 +178,46 @@ export function createAppointmentsMolarAdapter({
             }
           }
 
+          if (result.intent === 'appointment_today_list' || result.intent === 'appointment_next_appointment') {
+            groundedContext = {
+              appId: 'appointment',
+              lastIntent: result.intent,
+              todayOnly: dataRoute.todayOnly ?? false,
+              lastUserQuestion: msg,
+              generation: (groundedContext?.generation ?? 0) + 1,
+              createdAt: new Date().toISOString(),
+            };
+          } else {
+            // A new explicit grounded question outside the two
+            // PII-bearing list intents ends any active follow-up context
+            // — it's a clear topic change (Section 5B/D).
+            groundedContext = null;
+          }
+
           return { text: dataChatResponseText, meta: { source: 'data-chat' } };
+        }
+
+        // ── Tier C: Grounded conversational follow-up (local-only) ──────
+        // "Who is that patient?" / "What time?" / "Which room?" / "What
+        // about the second one?" never match classifyAppointmentDataIntent's
+        // own phrase tables, but resolve deterministically from the
+        // active groundedContext -- revalidated against the CURRENT live
+        // `appointments` array, and NEVER sent to Gemini (see
+        // resolveAppointmentFollowUp.ts's header).
+        const followUp = resolveAppointmentFollowUp(
+          msg,
+          groundedContext,
+          appointments,
+          rooms,
+          appointmentDataStatus,
+          loadedAppointmentRange,
+          patients,
+          staff,
+          treatments
+        );
+        if (followUp && groundedContext) {
+          groundedContext = { ...groundedContext, lastUserQuestion: msg, generation: groundedContext.generation + 1 };
+          return { text: followUp, meta: { source: 'data-chat' } };
         }
         // ── End Phase-3 Data-Driven Chat (dataRoute.kind === 'no_match') ─
 
