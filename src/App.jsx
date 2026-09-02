@@ -44,7 +44,6 @@ import {
 import { useGetUserId } from './mutation/useGetUserId';
 import useGetSessionInfo from './hooks/useGetSessionInfo';
 import { useAppointmentPersonalizedInsight } from './aiExperience/hooks/useAppointmentPersonalizedInsight';
-import PersonalizedInsight from './aiExperience/components/PersonalizedInsight';
 import { isTodayCoveredByDateRange } from './aiExperience/utils/appointmentCoverage';
 
 const getLocalDateString = (date = new Date()) => {
@@ -299,16 +298,15 @@ function AppContent() {
   // useDataStore) change or the local minute clock ticks — no new
   // Supabase query, no dedupe, no polling of the database. See
   // ./aiExperience/hooks/useAppointmentPersonalizedInsight.ts.
-  const { candidate: appointmentPersonalizedInsight, candidates: appointmentDialoguePool } =
+  const { candidates: appointmentDialoguePool } =
     useAppointmentPersonalizedInsight(appointments, rooms, dateRange);
-  // Takes the candidate to act on explicitly — never closes over
-  // `appointmentPersonalizedInsight` — so this stays correct even when the
-  // caller is Cat showing a different (dismissal-revealed) Appointment
-  // Soon candidate than the inline banner's current winner. Every current
-  // candidate's action is the same "Today" behavior regardless of which
-  // one is passed, but the binding is implemented explicitly rather than
-  // relying on that coincidence — see personalizedInsightState.onAction's
-  // doc below.
+  // Takes the candidate to act on explicitly — invoked by CatMascot with
+  // whichever candidate it is currently showing (its own dismissal-aware
+  // scan over `appointmentDialoguePool` below). Every current candidate's
+  // action is the same "Today" behavior regardless of which one is
+  // passed, but the binding is implemented explicitly rather than relying
+  // on that coincidence — see personalizedInsightState.onAction's doc
+  // below.
   const handleAppointmentInsightAction = useCallback((candidate) => {
     // Reuses CalendarView.jsx's exact existing "Today" button behavior —
     // never a fabricated navigation.
@@ -334,21 +332,15 @@ function AppContent() {
     appointmentDataStatus === 'ready' && isTodayCoveredByDateRange(loadedAppointmentRange)
       ? {
           status: 'ready',
-          candidate: appointmentPersonalizedInsight,
-          // Additive (starvation fix): ordered pool across Appointment
-          // Soon > Daily Summary > None Today — see
-          // useAppointmentPersonalizedInsight.ts /
-          // buildAppointmentDialoguePool.ts. `candidates[0] ?? null` is
-          // always identical to `candidate` above when no suppression
-          // applies. CatMascot scans this via
-          // selectFirstEligibleDialogueCandidate instead of only ever
-          // seeing the single inline winner.
+          // Ordered pool across Appointment Soon > Daily Summary > None
+          // Today — see useAppointmentPersonalizedInsight.ts /
+          // buildAppointmentDialoguePool.ts. CatMascot scans this via
+          // selectFirstEligibleDialogueCandidate.
           candidates: appointmentDialoguePool,
           // Takes the candidate to act on explicitly (see
           // handleAppointmentInsightAction above) so CatMascot always
           // executes the action belonging to the exact candidate it is
-          // currently showing, even if that differs from the inline
-          // banner's current winner.
+          // currently showing.
           onAction: handleAppointmentInsightAction,
         }
       : { status: 'not_ready' };
@@ -865,12 +857,6 @@ function AppContent() {
         <div className="content">
           {view === 'calendar' && (
             <>
-              {appointmentPersonalizedInsight && (
-                <PersonalizedInsight
-                  candidate={appointmentPersonalizedInsight}
-                  onAction={() => handleAppointmentInsightAction(appointmentPersonalizedInsight)}
-                />
-              )}
               <CalendarView
                 currentDate={currentDate}
                 setCurrentDate={setCurrentDate}
