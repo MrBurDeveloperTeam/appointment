@@ -214,6 +214,19 @@ textarea:focus-visible,
   box-shadow: var(--shadow-focus);
 }
 
+/* The Molar AI chat composer (@mrburdeveloperteam/molar-experience)
+   already renders its own rounded green focus glow on the OUTER shell
+   (.molar-chat-input-shell:focus-within) and resets outline on the
+   inner <input> itself -- but the global input:focus-visible rule
+   above still applies to that same plain <input> and paints its own
+   rectangular box-shadow directly on it, producing a double-focus
+   appearance (outer rounded glow + inner rectangular ring). Reset it
+   here, scoped specifically to the Molar AI input so no other input in
+   the app is affected. */
+.snabbb-molar-experience .molar-chat-input:focus-visible {
+  box-shadow: none;
+}
+
 /* ============================================
    Scrollbars
    ============================================ */
