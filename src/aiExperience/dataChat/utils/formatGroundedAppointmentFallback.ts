@@ -12,6 +12,7 @@ import type { TodayCountDataFacts } from '../providers/todayCountDataProvider';
 import type { RoomUsageDataFacts } from '../providers/roomUsageDataProvider';
 import type { DailySummaryDataFacts } from '../providers/dailySummaryDataProvider';
 import type { TodayScheduleDataFacts } from '../providers/todayScheduleDataProvider';
+import type { NextAppointmentDataFacts, NextAppointmentItemFact } from '../providers/nextAppointmentDataProvider';
 
 function pluralize(n: number, noun: string): string {
   return `${n} ${noun}${n === 1 ? '' : 's'}`;
@@ -24,6 +25,14 @@ function truncationNote(count: number, shownCount: number): string {
 function formatTimeLocal(iso: string): string {
   try {
     return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+function formatDateLocal(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'long' }).format(new Date(iso));
   } catch {
     return iso;
   }
@@ -70,6 +79,45 @@ function formatTodaySchedule(facts: TodayScheduleDataFacts): string {
   return `You have ${pluralize(facts.count, 'appointment')} today.${truncationNote(facts.count, facts.shownCount)}\n\n${lines.join('\n\n')}`;
 }
 
+// Same deliberate exception as `formatTodaySchedule` above (see
+// nextAppointmentDataProvider.ts's own "NOT MODEL-SAFE FACTS" header) —
+// this formatter is the ONLY renderer for `appointment_next_appointment`,
+// called directly by appointmentsMolarAdapter.ts, never via
+// chatWithGroundedAppointmentFacts/Gemini.
+function nextAppointmentDetails(a: NextAppointmentItemFact): string {
+  return [a.treatmentName, a.dentistName, a.roomName].filter((v): v is string => !!v).join(' · ');
+}
+
+function formatNextAppointment(facts: NextAppointmentDataFacts): string {
+  if (facts.appointments.length === 0) {
+    return facts.todayOnly
+      ? "You don't have any more appointments scheduled for today."
+      : "You don't have any upcoming appointments.";
+  }
+
+  const first = facts.appointments[0];
+  const when = facts.isToday
+    ? `${formatTimeLocal(first.startAt)} today`
+    : `${formatDateLocal(first.startAt)} at ${formatTimeLocal(first.startAt)}`;
+
+  if (facts.appointments.length === 1) {
+    const who = first.patientName ?? 'Unnamed patient';
+    const header = `Your next patient is ${who} at ${when}.`;
+    const details = nextAppointmentDetails(first);
+    return details ? `${header}\n\n${details}` : header;
+  }
+
+  // Genuine tie for the earliest upcoming start time — format honestly
+  // instead of arbitrarily picking one (see nextAppointmentDataProvider.ts's
+  // own tie-handling header).
+  const lines = facts.appointments.map((a) => {
+    const who = a.patientName ?? 'Unnamed patient';
+    const details = nextAppointmentDetails(a);
+    return details ? `${who}\n${details}` : who;
+  });
+  return `You have ${facts.appointments.length} appointments starting at ${when}.\n\n${lines.join('\n\n')}`;
+}
+
 function formatDailySummary(facts: DailySummaryDataFacts): string {
   const parts = [
     `${pluralize(facts.appointmentCountToday, 'appointment')} today`,
@@ -95,6 +143,8 @@ export function formatGroundedAppointmentFallback(intent: AppointmentDataIntent,
       return formatDailySummary(facts as DailySummaryDataFacts);
     case 'appointment_today_list':
       return formatTodaySchedule(facts as TodayScheduleDataFacts);
+    case 'appointment_next_appointment':
+      return formatNextAppointment(facts as NextAppointmentDataFacts);
     default:
       return "I couldn't format your appointment answer right now.";
   }

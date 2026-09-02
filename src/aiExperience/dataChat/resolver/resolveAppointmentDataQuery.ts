@@ -27,6 +27,7 @@ import { buildTodayCountDataFacts } from '../providers/todayCountDataProvider';
 import { buildRoomUsageDataFacts } from '../providers/roomUsageDataProvider';
 import { buildDailySummaryDataFacts } from '../providers/dailySummaryDataProvider';
 import { buildTodayScheduleDataFacts } from '../providers/todayScheduleDataProvider';
+import { buildNextAppointmentDataFacts } from '../providers/nextAppointmentDataProvider';
 import type { AppointmentDataIntent, AppointmentDataStatus, GroundedDataResult } from '../contracts/groundedDataResult';
 
 export function resolveAppointmentDataQuery(
@@ -35,14 +36,17 @@ export function resolveAppointmentDataQuery(
   rooms: unknown[],
   appointmentDataStatus: AppointmentDataStatus,
   loadedAppointmentRange: DateRangeLike | null | undefined,
-  // Only `appointment_today_list` reads these — every other intent
-  // continues to run on the PII-stripped `dailyAppointments`/
-  // `roomsProjected` projections below. Defaulted to `[]` so every
-  // existing call site (none of which pass these) keeps compiling and
-  // behaving identically.
+  // Only `appointment_today_list`/`appointment_next_appointment` read
+  // these — every other intent continues to run on the PII-stripped
+  // `dailyAppointments`/`roomsProjected` projections below. Defaulted to
+  // `[]` so every existing call site (none of which pass these) keeps
+  // compiling and behaving identically.
   patients: unknown[] = [],
   staff: unknown[] = [],
-  treatments: unknown[] = []
+  treatments: unknown[] = [],
+  // Only `appointment_next_appointment` reads this — see
+  // classifyAppointmentDataIntent.ts's own `todayOnly` field.
+  todayOnly: boolean = false
 ): GroundedDataResult<unknown> {
   const evaluatedAt = new Date().toISOString();
 
@@ -96,6 +100,23 @@ export function resolveAppointmentDataQuery(
         // `end_time`, so no `hasUnresolvableRoomOccupancy` gate — same
         // exemption as `appointment_today_count`.
         const { facts, sourceRecordIds } = buildTodayScheduleDataFacts(appointments, rooms, patients, staff, treatments, now);
+        return { status: 'ok', intent, facts, evaluatedAt, sourceRecordIds };
+      }
+      case 'appointment_next_appointment': {
+        // Same raw-data + PII-resolution rationale as `appointment_today_list`
+        // directly above — see nextAppointmentDataProvider.ts's own "NOT
+        // MODEL-SAFE FACTS" header. Does not depend on `end_time`, so no
+        // `hasUnresolvableRoomOccupancy` gate — same exemption as
+        // `appointment_today_count`/`appointment_today_list`.
+        const { facts, sourceRecordIds } = buildNextAppointmentDataFacts(
+          appointments,
+          rooms,
+          patients,
+          staff,
+          treatments,
+          todayOnly,
+          now
+        );
         return { status: 'ok', intent, facts, evaluatedAt, sourceRecordIds };
       }
       default: {

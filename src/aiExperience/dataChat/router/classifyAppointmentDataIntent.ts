@@ -8,6 +8,15 @@
 // Priority order (most restrictive first, so a sensitive/unsupported
 // question is never accidentally matched to a supported intent by a
 // looser phrase overlap):
+//   0. NEXT_APPOINTMENT_PHRASES — a narrow, deliberate carve-out checked
+//      BEFORE step 1 below. "Who is my next patient?" / "What's my next
+//      appointment?" would otherwise be caught by PATIENT_IDENTITY_PATTERNS
+//      (`next patient`) or BROAD_NEXT_APPOINTMENT_PATTERNS (`next
+//      appointment`) respectively. This does NOT weaken either guard for
+//      any other phrasing — only this exact narrow question shape is
+//      matched; "who is my next patient's medical history", "when is my
+//      next appointment", arbitrary patient lookups, etc. are untouched
+//      and still fall through to steps 1/3 below unchanged.
 //   1. unsupported_sensitive_scope — recognized PATIENT-specific
 //      questions (name/contact/notes/medical/treatment/staff identity).
 //      REQUIRED because legacy General Chat contains that exact data —
@@ -17,15 +26,24 @@
 //   2. unsupported_parameter — custom Soon time windows other than the
 //      fixed 2-hour rule, and arbitrary date ranges outside "today".
 //   3. unsupported_scope — recognized but out-of-v1-scope factual
-//      questions (broad "next appointment"). Today's full schedule list
-//      is no longer unsupported — see `appointment_today_list` below.
-//   4. matched — one of the five v1 intents.
+//      questions (broad "next appointment" phrasings NOT covered by step
+//      0 above, e.g. "when is my next appointment"). Today's full
+//      schedule list is no longer unsupported — see `appointment_today_list`.
+//   4. matched — one of the six v1 intents.
 //   5. no_match — falls through to existing predefined/legacy chat.
 
 import type { AppointmentDataIntent } from '../contracts/groundedDataResult';
 
 export type AppointmentDataRouteResult =
-  | { kind: 'matched'; intent: AppointmentDataIntent }
+  | {
+      kind: 'matched';
+      intent: AppointmentDataIntent;
+      /** Only meaningful for `appointment_next_appointment` — whether the
+       *  question asked for today's remaining schedule only ("...today?")
+       *  vs the general next upcoming appointment. `undefined`/ignored
+       *  for every other intent. */
+      todayOnly?: boolean;
+    }
   | { kind: 'unsupported_parameter'; reason: 'custom_time_window' | 'date_range' }
   | { kind: 'unsupported_scope'; reason: 'broad_next_appointment' }
   | {
@@ -47,6 +65,22 @@ function normalize(message: string): string {
 function mentionsAny(msg: string, phrases: string[]): boolean {
   return phrases.some((p) => msg.includes(p));
 }
+
+// ── 0. Safe, narrow "next patient / next appointment" carve-out ────────
+// Deliberately narrow: only this exact question shape ("who is next" /
+// "what's my next appointment" and close variants) is allowed through.
+// It must NOT be widened into a general "next"-anything matcher — that
+// would start swallowing genuinely sensitive phrasings this guard is not
+// meant to cover.
+const NEXT_APPOINTMENT_PHRASES = [
+  'who is my next patient',
+  'who am i seeing next',
+  'who do i see next',
+  'whats my next appointment',
+  'what is my next appointment',
+  'next appointment today',
+  'who is next',
+];
 
 // ── 1. Sensitive patient/staff/treatment scope ─────────────────────────
 const PATIENT_IDENTITY_PATTERNS = [
@@ -166,6 +200,14 @@ const TODAY_LIST_PHRASES = [
 export function classifyAppointmentDataIntent(message: string): AppointmentDataRouteResult {
   const msg = normalize(message);
   if (!msg) return { kind: 'no_match' };
+
+  // Checked before ANY sensitive/unsupported-scope guard below — see
+  // this file's own priority-order comment (step 0) for exactly why this
+  // is safe: the phrase list is narrow and specific, not a general "next"
+  // matcher.
+  if (mentionsAny(msg, NEXT_APPOINTMENT_PHRASES)) {
+    return { kind: 'matched', intent: 'appointment_next_appointment', todayOnly: msg.includes('today') };
+  }
 
   if (PATIENT_IDENTITY_PATTERNS.some((p) => p.test(msg))) {
     return { kind: 'unsupported_sensitive_scope', reason: 'patient_identity' };

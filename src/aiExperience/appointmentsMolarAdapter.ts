@@ -131,7 +131,8 @@ export function createAppointmentsMolarAdapter({
             loadedAppointmentRange,
             patients,
             staff,
-            treatments
+            treatments,
+            dataRoute.todayOnly ?? false
           );
 
           let dataChatResponseText;
@@ -141,13 +142,14 @@ export function createAppointmentsMolarAdapter({
             // this request even when its provider is temporarily
             // unavailable — it does not fall through to legacy chat.
             dataChatResponseText = "I couldn't check your appointment data right now.";
-          } else if (result.intent === 'appointment_today_list') {
-            // `appointment_today_list`'s facts resolve real patient/
-            // dentist/treatment names (see todayScheduleDataProvider.ts's
-            // own "NOT MODEL-SAFE FACTS" header) — this intent NEVER
-            // calls chatWithGroundedAppointmentFacts/Gemini. The same
+          } else if (result.intent === 'appointment_today_list' || result.intent === 'appointment_next_appointment') {
+            // Both intents' facts resolve real patient/dentist/treatment
+            // names (see todayScheduleDataProvider.ts's and
+            // nextAppointmentDataProvider.ts's own "NOT MODEL-SAFE FACTS"
+            // headers) — neither ever calls
+            // chatWithGroundedAppointmentFacts/Gemini. The same
             // deterministic formatter every other intent only uses as a
-            // Gemini-failure fallback is this intent's ONLY renderer.
+            // Gemini-failure fallback is these intents' ONLY renderer.
             dataChatResponseText = formatGroundedAppointmentFallback(result.intent, result.facts);
           } else {
             try {

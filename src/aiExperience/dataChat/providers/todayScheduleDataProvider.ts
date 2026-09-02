@@ -28,12 +28,18 @@ import { buildClinicDeviceLocalAppointmentStart, getLocalDateKey, normalizeDateK
 const ELIGIBLE_STATUSES = new Set(['confirmed', 'pending']);
 const MAX_LIST_ITEMS = 10;
 
-function isEligibleStatus(status: unknown): status is string {
+// `isEligibleStatus`/`RawScheduleAppointment`/`projectRawScheduleAppointments`/
+// `resolveName` are exported so nextAppointmentDataProvider.ts can reuse
+// this exact same status/raw-projection/name-resolution logic verbatim
+// instead of a second, potentially-drifting copy — both providers need
+// identical patientId/dentistId/treatmentId/roomId -> name resolution
+// over the same authorized local state.
+export function isEligibleStatus(status: unknown): status is string {
   if (typeof status !== 'string') return false;
   return ELIGIBLE_STATUSES.has(status.trim().toLowerCase());
 }
 
-interface RawScheduleAppointment {
+export interface RawScheduleAppointment {
   id: string;
   date: unknown;
   startTime: unknown;
@@ -44,7 +50,7 @@ interface RawScheduleAppointment {
   treatmentId: unknown;
 }
 
-function projectRawScheduleAppointments(appointments: unknown): RawScheduleAppointment[] {
+export function projectRawScheduleAppointments(appointments: unknown): RawScheduleAppointment[] {
   if (!Array.isArray(appointments)) return [];
   return appointments.map((raw) => {
     const source = (raw ?? {}) as Record<string, unknown>;
@@ -66,7 +72,7 @@ function projectRawScheduleAppointments(appointments: unknown): RawScheduleAppoi
  *  in this app (see App.jsx's own `.find(x => x.id === ...)?.name`
  *  usages this mirrors). Returns `undefined` (never a fabricated
  *  placeholder) when the id is missing or doesn't resolve. */
-function resolveName(id: unknown, list: unknown[]): string | undefined {
+export function resolveName(id: unknown, list: unknown[]): string | undefined {
   if (typeof id !== 'string' || !id) return undefined;
   if (!Array.isArray(list)) return undefined;
   const found = list.find((raw) => {
