@@ -17,7 +17,7 @@
 // another's system prompt (confirmed to have actually happened).
 import { supabase } from '../lib/supabaseClient';
 
-async function invokeMolarChat(payload) {
+async function invokeMolarChatRaw(payload) {
   const { data, error } = await supabase.functions.invoke('molar-chat-appointment', {
     body: payload,
   });
@@ -26,6 +26,11 @@ async function invokeMolarChat(payload) {
     throw new Error(data?.error || error?.message || 'AI service request failed');
   }
 
+  return data;
+}
+
+async function invokeMolarChat(payload) {
+  const data = await invokeMolarChatRaw(payload);
   return data.text;
 }
 
@@ -72,4 +77,34 @@ export async function chatWithMolarAI(history, message, userContext) {
 // mutation.
 export async function chatWithGroundedAppointmentFacts(question, intent, facts) {
   return invokeMolarChat({ mode: 'grounded', question, intent, facts });
+}
+
+// ─────────────────────────────────────────────────────────────
+// SEMANTIC CAPABILITY ROUTING — selection only, never data.
+//
+// Calls the Edge Function's "capability_route" mode. The CALLER (see
+// dataChat/semantic/matchAppointmentCapabilityLLM.ts) must only ever
+// pass the 4 non-PII capabilities here — this transport layer does not
+// itself restrict which capabilities are sent, that boundary lives in
+// the caller and is re-validated both server- and client-side.
+//
+// THROWS on any failure exactly like chatWithGroundedAppointmentFacts.
+export async function routeAppointmentCapability(message, capabilities, recentContext, previousCapability) {
+  const data = await invokeMolarChatRaw({
+    mode: 'capability_route',
+    message,
+    capabilities,
+    recentContext,
+    previousCapability,
+  });
+
+  const { route, capability, confidence, clarification } = data;
+  if (route !== 'grounded' && route !== 'general_chat' && route !== 'clarification') {
+    throw new Error('Capability routing returned an unsupported route');
+  }
+  if (confidence !== 'high' && confidence !== 'low') {
+    throw new Error('Capability routing returned an invalid confidence');
+  }
+
+  return { route, capability: route === 'grounded' ? capability : null, confidence, clarification: clarification ?? null };
 }

@@ -32,6 +32,7 @@ import {
 import { formatGroundedAppointmentFallback } from './dataChat/utils/formatGroundedAppointmentFallback';
 import { resolveAppointmentFollowUp } from './dataChat/router/resolveAppointmentFollowUp';
 import { matchAppointmentCapability } from './dataChat/semantic/matchAppointmentCapability';
+import { matchAppointmentCapabilityLLM } from './dataChat/semantic/matchAppointmentCapabilityLLM';
 import type { AppointmentDataIntent, AppointmentDataStatus } from './dataChat/contracts/groundedDataResult';
 import type { DateRangeLike } from './utils/appointmentCoverage';
 import type { GroundedConversationContext } from './dataChat/context/groundedConversationContext';
@@ -220,19 +221,37 @@ export function createAppointmentsMolarAdapter({
           return { text: followUp, meta: { source: 'data-chat' } };
         }
 
-        // ── Tier D: Semantic capability router ───────────────────────────
-        // Local, network-free matcher scoped to ONLY the 4 non-PII
-        // capabilities (see semantic/capabilityRegistry.ts) — never
-        // touches the two patient-identity intents, which remain
-        // reachable exclusively through the deterministic fast-path
-        // above.
-        const semanticRoute = matchAppointmentCapability(msg);
-        if (semanticRoute.type === 'grounded_capability') {
-          return executeGroundedIntent(semanticRoute.capability, false, msg);
+        // ── Tier D: Server-side LLM semantic capability router ───────────
+        // Scoped to ONLY the 4 non-PII capabilities (see
+        // semantic/capabilityRegistry.ts) — never touches the two
+        // patient-identity intents, which remain reachable exclusively
+        // through the deterministic fast-path above. Sends ONLY the
+        // message, capability descriptions, and a few of the USER's OWN
+        // recent chat messages (never rendered assistant text, which may
+        // contain patient names). Any failure falls back to the local
+        // keyword router below.
+        const recentUserContext = history
+          .filter((m) => m.role === 'user')
+          .slice(-3)
+          .map((m) => m.text);
+        const llmRoute = await matchAppointmentCapabilityLLM(msg, recentUserContext, groundedContext?.lastIntent ?? null);
+
+        if (llmRoute.type === 'grounded_capability') {
+          return executeGroundedIntent(llmRoute.capability, false, msg);
         }
-        if (semanticRoute.type === 'clarification') {
-          const [a, b] = semanticRoute.candidates;
-          return { text: `Do you mean ${CLARIFICATION_LABEL[a]} or ${CLARIFICATION_LABEL[b]}?`, meta: { source: 'data-chat' } };
+        if (llmRoute.type === 'clarification') {
+          return { text: llmRoute.text, meta: { source: 'data-chat' } };
+        }
+        if (llmRoute.type !== 'general_chat') {
+          // ── Tier E: Local keyword capability router (fallback) ────────
+          const semanticRoute = matchAppointmentCapability(msg);
+          if (semanticRoute.type === 'grounded_capability') {
+            return executeGroundedIntent(semanticRoute.capability, false, msg);
+          }
+          if (semanticRoute.type === 'clarification') {
+            const [a, b] = semanticRoute.candidates;
+            return { text: `Do you mean ${CLARIFICATION_LABEL[a]} or ${CLARIFICATION_LABEL[b]}?`, meta: { source: 'data-chat' } };
+          }
         }
         // ── End Phase-3 Data-Driven Chat (dataRoute.kind === 'no_match') ─
 
