@@ -26,6 +26,7 @@ import { buildAppointmentSoonDataFacts } from '../providers/appointmentSoonDataP
 import { buildTodayCountDataFacts } from '../providers/todayCountDataProvider';
 import { buildRoomUsageDataFacts } from '../providers/roomUsageDataProvider';
 import { buildDailySummaryDataFacts } from '../providers/dailySummaryDataProvider';
+import { buildTodayScheduleDataFacts } from '../providers/todayScheduleDataProvider';
 import type { AppointmentDataIntent, AppointmentDataStatus, GroundedDataResult } from '../contracts/groundedDataResult';
 
 export function resolveAppointmentDataQuery(
@@ -33,7 +34,15 @@ export function resolveAppointmentDataQuery(
   appointments: unknown[],
   rooms: unknown[],
   appointmentDataStatus: AppointmentDataStatus,
-  loadedAppointmentRange: DateRangeLike | null | undefined
+  loadedAppointmentRange: DateRangeLike | null | undefined,
+  // Only `appointment_today_list` reads these — every other intent
+  // continues to run on the PII-stripped `dailyAppointments`/
+  // `roomsProjected` projections below. Defaulted to `[]` so every
+  // existing call site (none of which pass these) keeps compiling and
+  // behaving identically.
+  patients: unknown[] = [],
+  staff: unknown[] = [],
+  treatments: unknown[] = []
 ): GroundedDataResult<unknown> {
   const evaluatedAt = new Date().toISOString();
 
@@ -75,6 +84,18 @@ export function resolveAppointmentDataQuery(
           return { status: 'unavailable', intent, reasonCode: 'evaluation_error', evaluatedAt };
         }
         const { facts, sourceRecordIds } = buildDailySummaryDataFacts(dailyAppointments, roomsProjected, now);
+        return { status: 'ok', intent, facts, evaluatedAt, sourceRecordIds };
+      }
+      case 'appointment_today_list': {
+        // Deliberately NOT `dailyAppointments`/`roomsProjected` — this is
+        // the one intent that needs patientId/dentistId/treatmentId to
+        // resolve display names, so it runs on the raw `appointments`/
+        // `rooms` params directly (see todayScheduleDataProvider.ts's own
+        // "NOT MODEL-SAFE FACTS" header for why that's safe here: this
+        // intent's facts are never sent to Gemini). Does not depend on
+        // `end_time`, so no `hasUnresolvableRoomOccupancy` gate — same
+        // exemption as `appointment_today_count`.
+        const { facts, sourceRecordIds } = buildTodayScheduleDataFacts(appointments, rooms, patients, staff, treatments, now);
         return { status: 'ok', intent, facts, evaluatedAt, sourceRecordIds };
       }
       default: {

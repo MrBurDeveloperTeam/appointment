@@ -11,6 +11,7 @@ import type { AppointmentSoonDataFacts } from '../providers/appointmentSoonDataP
 import type { TodayCountDataFacts } from '../providers/todayCountDataProvider';
 import type { RoomUsageDataFacts } from '../providers/roomUsageDataProvider';
 import type { DailySummaryDataFacts } from '../providers/dailySummaryDataProvider';
+import type { TodayScheduleDataFacts } from '../providers/todayScheduleDataProvider';
 
 function pluralize(n: number, noun: string): string {
   return `${n} ${noun}${n === 1 ? '' : 's'}`;
@@ -53,6 +54,22 @@ function formatRoomUsage(facts: RoomUsageDataFacts): string {
   )}\n${lines.join('\n')}`;
 }
 
+// This intent's facts ARE patient identity (see
+// todayScheduleDataProvider.ts's own "NOT MODEL-SAFE FACTS" header) — this
+// formatter is the ONLY renderer for `appointment_today_list`, called
+// directly by appointmentsMolarAdapter.ts, never via
+// chatWithGroundedAppointmentFacts/Gemini.
+function formatTodaySchedule(facts: TodayScheduleDataFacts): string {
+  if (facts.count === 0) return "You don't have any appointments scheduled for today.";
+  const lines = facts.appointments.map((a) => {
+    const who = a.patientName ?? 'Unnamed patient';
+    const header = `${formatTimeLocal(a.startAt)} — ${who}`;
+    const details = [a.treatmentName, a.dentistName, a.roomName].filter((v): v is string => !!v).join(' · ');
+    return details ? `${header}\n${details}` : header;
+  });
+  return `You have ${pluralize(facts.count, 'appointment')} today.${truncationNote(facts.count, facts.shownCount)}\n\n${lines.join('\n\n')}`;
+}
+
 function formatDailySummary(facts: DailySummaryDataFacts): string {
   const parts = [
     `${pluralize(facts.appointmentCountToday, 'appointment')} today`,
@@ -76,6 +93,8 @@ export function formatGroundedAppointmentFallback(intent: AppointmentDataIntent,
       return formatRoomUsage(facts as RoomUsageDataFacts);
     case 'appointment_daily_summary':
       return formatDailySummary(facts as DailySummaryDataFacts);
+    case 'appointment_today_list':
+      return formatTodaySchedule(facts as TodayScheduleDataFacts);
     default:
       return "I couldn't format your appointment answer right now.";
   }

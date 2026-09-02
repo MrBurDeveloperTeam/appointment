@@ -17,8 +17,9 @@
 //   2. unsupported_parameter — custom Soon time windows other than the
 //      fixed 2-hour rule, and arbitrary date ranges outside "today".
 //   3. unsupported_scope — recognized but out-of-v1-scope factual
-//      questions (broad "next appointment", full today schedule list).
-//   4. matched — one of the four v1 intents.
+//      questions (broad "next appointment"). Today's full schedule list
+//      is no longer unsupported — see `appointment_today_list` below.
+//   4. matched — one of the five v1 intents.
 //   5. no_match — falls through to existing predefined/legacy chat.
 
 import type { AppointmentDataIntent } from '../contracts/groundedDataResult';
@@ -26,7 +27,7 @@ import type { AppointmentDataIntent } from '../contracts/groundedDataResult';
 export type AppointmentDataRouteResult =
   | { kind: 'matched'; intent: AppointmentDataIntent }
   | { kind: 'unsupported_parameter'; reason: 'custom_time_window' | 'date_range' }
-  | { kind: 'unsupported_scope'; reason: 'broad_next_appointment' | 'today_schedule_list' }
+  | { kind: 'unsupported_scope'; reason: 'broad_next_appointment' }
   | {
       kind: 'unsupported_sensitive_scope';
       reason: 'patient_identity' | 'patient_contact' | 'patient_clinical' | 'treatment_reason' | 'staff_identity';
@@ -92,16 +93,6 @@ const DATE_RANGE_PATTERNS = [
 
 // ── 3. Unsupported scope ────────────────────────────────────────────────
 const BROAD_NEXT_APPOINTMENT_PATTERNS = [/\bnext\s+appointment\b/, /\bwhen\s+is\s+my\s+appointment\b/];
-const TODAY_LIST_PHRASES = [
-  'what appointments do i have',
-  'show todays appointments',
-  'show my appointments today',
-  'list my appointments',
-  'list appointments today',
-  'todays appointments',
-  'whats on the schedule',
-  'schedule for today',
-];
 
 // ── 4. Matched intents ──────────────────────────────────────────────────
 const TODAY_COUNT_PHRASES = [
@@ -151,6 +142,26 @@ const SOON_PHRASES = [
   '2 hours',
   '120 minutes',
 ];
+// Checked AFTER the other four matched-intent phrase tables above, so a
+// question that also happens to overlap one of them (e.g. "how is todays
+// schedule looking" -> DAILY_SUMMARY_PHRASES) keeps matching the more
+// specific existing intent first — same priority-order guarantee this
+// list previously had as `unsupported_scope: 'today_schedule_list'`.
+const TODAY_LIST_PHRASES = [
+  'what appointments do i have',
+  'show todays appointments',
+  'show my appointments today',
+  'list my appointments',
+  'list appointments today',
+  'todays appointments',
+  'whats on the schedule',
+  'schedule for today',
+  'todays schedule',
+  'my schedule today',
+  'who am i seeing today',
+  'whats booked today',
+  'appointments for today',
+];
 
 export function classifyAppointmentDataIntent(message: string): AppointmentDataRouteResult {
   const msg = normalize(message);
@@ -187,10 +198,7 @@ export function classifyAppointmentDataIntent(message: string): AppointmentDataR
   if (mentionsAny(msg, DAILY_SUMMARY_PHRASES)) return { kind: 'matched', intent: 'appointment_daily_summary' };
   if (mentionsAny(msg, ROOM_USAGE_PHRASES)) return { kind: 'matched', intent: 'appointment_room_usage' };
   if (mentionsAny(msg, SOON_PHRASES)) return { kind: 'matched', intent: 'appointment_soon' };
-
-  if (mentionsAny(msg, TODAY_LIST_PHRASES)) {
-    return { kind: 'unsupported_scope', reason: 'today_schedule_list' };
-  }
+  if (mentionsAny(msg, TODAY_LIST_PHRASES)) return { kind: 'matched', intent: 'appointment_today_list' };
 
   return { kind: 'no_match' };
 }

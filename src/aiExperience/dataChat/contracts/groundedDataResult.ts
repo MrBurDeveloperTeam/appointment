@@ -8,7 +8,8 @@ export type AppointmentDataIntent =
   | 'appointment_soon'
   | 'appointment_today_count'
   | 'appointment_room_usage'
-  | 'appointment_daily_summary';
+  | 'appointment_daily_summary'
+  | 'appointment_today_list';
 
 export type GroundedDataResult<TFacts> =
   | {

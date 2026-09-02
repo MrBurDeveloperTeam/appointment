@@ -48,6 +48,13 @@ interface AppointmentsMolarAdapterDeps {
   rooms: unknown[];
   appointmentDataStatus: AppointmentDataStatus;
   loadedAppointmentRange: DateRangeLike | null | undefined;
+  // Only read by `appointment_today_list` (see
+  // dataChat/providers/todayScheduleDataProvider.ts) to resolve
+  // patient/dentist/treatment display names for that one intent's
+  // response. Defaulted so every other call site is unaffected.
+  patients?: unknown[];
+  staff?: unknown[];
+  treatments?: unknown[];
 }
 
 export function createAppointmentsMolarAdapter({
@@ -56,6 +63,9 @@ export function createAppointmentsMolarAdapter({
   rooms,
   appointmentDataStatus,
   loadedAppointmentRange,
+  patients = [],
+  staff = [],
+  treatments = [],
 }: AppointmentsMolarAdapterDeps): AIAdapter {
   return {
     async sendMessage({ text, history }) {
@@ -118,7 +128,10 @@ export function createAppointmentsMolarAdapter({
             appointments,
             rooms,
             appointmentDataStatus,
-            loadedAppointmentRange
+            loadedAppointmentRange,
+            patients,
+            staff,
+            treatments
           );
 
           let dataChatResponseText;
@@ -128,6 +141,14 @@ export function createAppointmentsMolarAdapter({
             // this request even when its provider is temporarily
             // unavailable — it does not fall through to legacy chat.
             dataChatResponseText = "I couldn't check your appointment data right now.";
+          } else if (result.intent === 'appointment_today_list') {
+            // `appointment_today_list`'s facts resolve real patient/
+            // dentist/treatment names (see todayScheduleDataProvider.ts's
+            // own "NOT MODEL-SAFE FACTS" header) — this intent NEVER
+            // calls chatWithGroundedAppointmentFacts/Gemini. The same
+            // deterministic formatter every other intent only uses as a
+            // Gemini-failure fallback is this intent's ONLY renderer.
+            dataChatResponseText = formatGroundedAppointmentFallback(result.intent, result.facts);
           } else {
             try {
               // 3. Grounded Gemini phrasing — receives ONLY the question,

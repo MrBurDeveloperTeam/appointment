@@ -25,6 +25,13 @@ export default function MolarAIFloat({
   rooms = [],
   appointmentDataStatus = 'loading',
   loadedAppointmentRange = null,
+  // Only read by the `appointment_today_list` Data Chat intent (see
+  // ../aiExperience/dataChat/providers/todayScheduleDataProvider.ts) to
+  // resolve patient/dentist/treatment display names for that one
+  // intent's own response — never sent to Gemini.
+  patients = [],
+  staff = [],
+  treatments = [],
 }) {
   // Empty-state content (title/subtitle/prompts) — KNOWN, ACCEPTED TIMING
   // SEAM (same pattern established across every prior app's Molar AI
@@ -87,8 +94,11 @@ export default function MolarAIFloat({
         rooms,
         appointmentDataStatus,
         loadedAppointmentRange,
+        patients,
+        staff,
+        treatments,
       }),
-    [userContext, appointments, rooms, appointmentDataStatus, loadedAppointmentRange]
+    [userContext, appointments, rooms, appointmentDataStatus, loadedAppointmentRange, patients, staff, treatments]
   );
 
   return (

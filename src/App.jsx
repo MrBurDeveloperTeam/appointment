@@ -1065,6 +1065,9 @@ function AppContent() {
           rooms={rooms}
           appointmentDataStatus={appointmentDataStatus}
           loadedAppointmentRange={loadedAppointmentRange}
+          patients={patients}
+          staff={staff}
+          treatments={treatments}
         />
       </div>
       {/* APPOINTMENTS-2: `key` forces a fresh Pet runtime mount on every

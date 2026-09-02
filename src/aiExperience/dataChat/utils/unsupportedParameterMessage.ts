@@ -5,11 +5,8 @@ export function buildUnsupportedParameterMessage(reason: 'custom_time_window' | 
   return "I can't check custom date ranges in data chat yet. I can check appointments coming up soon, today's appointment count, room usage, or a daily summary.";
 }
 
-export function buildUnsupportedScopeMessage(reason: 'broad_next_appointment' | 'today_schedule_list'): string {
-  if (reason === 'broad_next_appointment') {
-    return 'I can currently check appointments within the next 2 hours, but not the general next appointment yet.';
-  }
-  return "I can currently give today's appointment count and summary, but not a full schedule list yet.";
+export function buildUnsupportedScopeMessage(reason: 'broad_next_appointment'): string {
+  return 'I can currently check appointments within the next 2 hours, but not the general next appointment yet.';
 }
 
 /** Deliberately one generic message for every sensitive reason — the
