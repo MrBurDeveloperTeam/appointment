@@ -80,6 +80,8 @@ const NEXT_APPOINTMENT_PHRASES = [
   'what is my next appointment',
   'next appointment today',
   'who is next',
+  'whos next',
+  'next up',
 ];
 
 // ── 1. Sensitive patient/staff/treatment scope ─────────────────────────
@@ -195,6 +197,15 @@ const TODAY_LIST_PHRASES = [
   'who am i seeing today',
   'whats booked today',
   'appointments for today',
+  // Broader natural variants of the same "today's schedule" question
+  // (Section 12 flexibility pass) -- all resolve from the exact same
+  // authoritative dataset todayScheduleDataProvider.ts already builds;
+  // no new capability, only recognizing more phrasings of it.
+  'remaining appointments today',
+  'appointments left today',
+  'what do i have left today',
+  'pending appointments',
+  'confirmed appointments',
 ];
 
 export function classifyAppointmentDataIntent(message: string): AppointmentDataRouteResult {
