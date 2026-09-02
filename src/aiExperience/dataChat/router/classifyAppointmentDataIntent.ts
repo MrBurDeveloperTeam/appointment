@@ -82,6 +82,7 @@ const NEXT_APPOINTMENT_PHRASES = [
   'who is next',
   'whos next',
   'next up',
+  'who do i see next',
 ];
 
 // ── 1. Sensitive patient/staff/treatment scope ─────────────────────────
@@ -204,6 +205,7 @@ const TODAY_LIST_PHRASES = [
   'remaining appointments today',
   'appointments left today',
   'what do i have left today',
+  'whats left today',
   'pending appointments',
   'confirmed appointments',
 ];

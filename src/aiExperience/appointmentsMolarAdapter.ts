@@ -31,9 +31,17 @@ import {
 } from './dataChat/utils/unsupportedParameterMessage';
 import { formatGroundedAppointmentFallback } from './dataChat/utils/formatGroundedAppointmentFallback';
 import { resolveAppointmentFollowUp } from './dataChat/router/resolveAppointmentFollowUp';
-import type { AppointmentDataStatus } from './dataChat/contracts/groundedDataResult';
+import { matchAppointmentCapability } from './dataChat/semantic/matchAppointmentCapability';
+import type { AppointmentDataIntent, AppointmentDataStatus } from './dataChat/contracts/groundedDataResult';
 import type { DateRangeLike } from './utils/appointmentCoverage';
 import type { GroundedConversationContext } from './dataChat/context/groundedConversationContext';
+
+const CLARIFICATION_LABEL: Record<string, string> = {
+  appointment_today_count: "today's appointment count",
+  appointment_soon: 'appointments coming up soon',
+  appointment_room_usage: 'which rooms are in use',
+  appointment_daily_summary: "a summary of today's schedule",
+};
 
 // Maps the shared package's normalized `{role, text}` history entries back
 // to the `{role, parts:[{text}]}` shape `chatWithMolarAI` (and the Gemini
@@ -75,6 +83,57 @@ export function createAppointmentsMolarAdapter({
   // populated by the two patient-identity-bearing intents that already
   // bypass Gemini entirely — follow-ups on it stay local-only too.
   let groundedContext: GroundedConversationContext | null = null;
+
+  // Shared by the fast-path classifier match AND the semantic capability
+  // matcher below — semantic routing only ever selects the 4 non-PII
+  // intents (see semantic/capabilityRegistry.ts), so this helper never
+  // needs the `todayOnly` parameter those callers always pass `false`.
+  async function executeGroundedIntent(
+    intent: AppointmentDataIntent,
+    todayOnly: boolean,
+    msg: string
+  ) {
+    const result = resolveAppointmentDataQuery(
+      intent,
+      appointments,
+      rooms,
+      appointmentDataStatus,
+      loadedAppointmentRange,
+      patients,
+      staff,
+      treatments,
+      todayOnly
+    );
+
+    let dataChatResponseText: string;
+    if (result.status === 'unavailable') {
+      dataChatResponseText = "I couldn't check your appointment data right now.";
+    } else if (result.intent === 'appointment_today_list' || result.intent === 'appointment_next_appointment') {
+      dataChatResponseText = formatGroundedAppointmentFallback(result.intent, result.facts);
+    } else {
+      try {
+        dataChatResponseText = await chatWithGroundedAppointmentFacts(msg, result.intent, result.facts);
+      } catch (groundedErr) {
+        console.error('Grounded appointment response failed:', groundedErr);
+        dataChatResponseText = formatGroundedAppointmentFallback(result.intent, result.facts);
+      }
+    }
+
+    if (result.status === 'ok' && (result.intent === 'appointment_today_list' || result.intent === 'appointment_next_appointment')) {
+      groundedContext = {
+        appId: 'appointment',
+        lastIntent: result.intent,
+        todayOnly,
+        lastUserQuestion: msg,
+        generation: (groundedContext?.generation ?? 0) + 1,
+        createdAt: new Date().toISOString(),
+      };
+    } else {
+      groundedContext = null;
+    }
+
+    return { text: dataChatResponseText, meta: { source: 'data-chat' as const } };
+  }
 
   return {
     reset() {
@@ -135,66 +194,7 @@ export function createAppointmentsMolarAdapter({
         }
 
         if (dataRoute.kind === 'matched') {
-          const result = resolveAppointmentDataQuery(
-            dataRoute.intent,
-            appointments,
-            rooms,
-            appointmentDataStatus,
-            loadedAppointmentRange,
-            patients,
-            staff,
-            treatments,
-            dataRoute.todayOnly ?? false
-          );
-
-          let dataChatResponseText;
-          if (result.status === 'unavailable') {
-            // Unknown/unavailable appointment state is never reinterpreted
-            // as a zero-result answer, and a matched grounded intent owns
-            // this request even when its provider is temporarily
-            // unavailable — it does not fall through to legacy chat.
-            dataChatResponseText = "I couldn't check your appointment data right now.";
-          } else if (result.intent === 'appointment_today_list' || result.intent === 'appointment_next_appointment') {
-            // Both intents' facts resolve real patient/dentist/treatment
-            // names (see todayScheduleDataProvider.ts's and
-            // nextAppointmentDataProvider.ts's own "NOT MODEL-SAFE FACTS"
-            // headers) — neither ever calls
-            // chatWithGroundedAppointmentFacts/Gemini. The same
-            // deterministic formatter every other intent only uses as a
-            // Gemini-failure fallback is these intents' ONLY renderer.
-            dataChatResponseText = formatGroundedAppointmentFallback(result.intent, result.facts);
-          } else {
-            try {
-              // 3. Grounded Gemini phrasing — receives ONLY the question,
-              // the approved intent, and the already-minimized, patient-
-              // free facts. Plain text only; never scanned for action
-              // blocks.
-              dataChatResponseText = await chatWithGroundedAppointmentFacts(msg, result.intent, result.facts);
-            } catch (groundedErr) {
-              // Mandatory deterministic fallback — never falls through to
-              // legacy General Chat on a Gemini failure at this stage.
-              console.error('Grounded appointment response failed:', groundedErr);
-              dataChatResponseText = formatGroundedAppointmentFallback(result.intent, result.facts);
-            }
-          }
-
-          if (result.intent === 'appointment_today_list' || result.intent === 'appointment_next_appointment') {
-            groundedContext = {
-              appId: 'appointment',
-              lastIntent: result.intent,
-              todayOnly: dataRoute.todayOnly ?? false,
-              lastUserQuestion: msg,
-              generation: (groundedContext?.generation ?? 0) + 1,
-              createdAt: new Date().toISOString(),
-            };
-          } else {
-            // A new explicit grounded question outside the two
-            // PII-bearing list intents ends any active follow-up context
-            // — it's a clear topic change (Section 5B/D).
-            groundedContext = null;
-          }
-
-          return { text: dataChatResponseText, meta: { source: 'data-chat' } };
+          return executeGroundedIntent(dataRoute.intent, dataRoute.todayOnly ?? false, msg);
         }
 
         // ── Tier C: Grounded conversational follow-up (local-only) ──────
@@ -218,6 +218,21 @@ export function createAppointmentsMolarAdapter({
         if (followUp && groundedContext) {
           groundedContext = { ...groundedContext, lastUserQuestion: msg, generation: groundedContext.generation + 1 };
           return { text: followUp, meta: { source: 'data-chat' } };
+        }
+
+        // ── Tier D: Semantic capability router ───────────────────────────
+        // Local, network-free matcher scoped to ONLY the 4 non-PII
+        // capabilities (see semantic/capabilityRegistry.ts) — never
+        // touches the two patient-identity intents, which remain
+        // reachable exclusively through the deterministic fast-path
+        // above.
+        const semanticRoute = matchAppointmentCapability(msg);
+        if (semanticRoute.type === 'grounded_capability') {
+          return executeGroundedIntent(semanticRoute.capability, false, msg);
+        }
+        if (semanticRoute.type === 'clarification') {
+          const [a, b] = semanticRoute.candidates;
+          return { text: `Do you mean ${CLARIFICATION_LABEL[a]} or ${CLARIFICATION_LABEL[b]}?`, meta: { source: 'data-chat' } };
         }
         // ── End Phase-3 Data-Driven Chat (dataRoute.kind === 'no_match') ─
 
