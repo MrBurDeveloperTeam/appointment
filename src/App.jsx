@@ -44,6 +44,7 @@ import {
 import { useGetUserId } from './mutation/useGetUserId';
 import useGetSessionInfo from './hooks/useGetSessionInfo';
 import usePageDurationTracker from './hooks/usePageDurationTracker';
+import {APPOINTMENT_PERMISSIONS,getAppointmentAccess,hasAppointmentPermission,} from "./services/appointmentAccess";
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -111,9 +112,12 @@ function AppContent() {
 
   const [exchangeDone, setExchangeDone] = useState(false);
 
-  useEffect(() => {
-    setExchangeDone(true);
-  }, []);
+  const [
+    appointmentAccess,setAppointmentAccess,] = useState(null);
+
+  const [appointmentAccessLoading,setAppointmentAccessLoading,] = useState(true);
+
+  const [appointmentAccessError,setAppointmentAccessError,] = useState("");
 
   const {
     session,
@@ -125,6 +129,57 @@ function AppContent() {
     error: authError,
     signOut
   } = useAuth();
+   useEffect(() => {
+    let cancelled = false;
+
+  async function loadAppointmentAccess() {
+    if (!user) {
+      setAppointmentAccess(null);
+      setAppointmentAccessError("");
+      setAppointmentAccessLoading(false);
+      return;
+    }
+
+    setAppointmentAccessLoading(true);
+    setAppointmentAccessError("");
+
+    try {
+      const result =
+        await getAppointmentAccess();
+
+      if (!cancelled) {
+        setAppointmentAccess(result);
+      }
+    } catch (error) {
+      console.error(
+        "Unable to load Appointment access:",
+        error
+      );
+
+      if (!cancelled) {
+        setAppointmentAccess(null);
+        setAppointmentAccessError(
+          error?.message ||
+          "Unable to load Appointment access"
+        );
+      }
+    } finally {
+      if (!cancelled) {
+        setAppointmentAccessLoading(false);
+      }
+    }
+  }
+
+  loadAppointmentAccess();
+
+  return () => {
+    cancelled = true;
+  };
+}, [user]);
+
+useEffect(() => {
+  setExchangeDone(true);
+}, []);
 
   // ─── Theme — hybrid: cookie (instant) + Odoo (cross-device) ─────────────────
   // Initial value comes from cookie/localStorage synchronously (no flash).
@@ -287,9 +342,84 @@ function AppContent() {
     creditHistory,
     addCredits,
   } = useDataStore(activeClinicId, dataEnabled);
-
+  
   const [view, setView] = useState('calendar');
+
+  /*
+ * Appointment access-control permissions
+ */
+  const canAccessSchedule =
+    hasAppointmentPermission(
+      appointmentAccess,
+      APPOINTMENT_PERMISSIONS.SCHEDULE
+    );
+
+  const canManageAppointments =
+    hasAppointmentPermission(
+      appointmentAccess,
+      APPOINTMENT_PERMISSIONS.MANAGE
+    );
+
+  const canAccessPatients =
+    hasAppointmentPermission(
+      appointmentAccess,
+      APPOINTMENT_PERMISSIONS.PATIENTS
+    );
+
+  const canManageRequests =
+    hasAppointmentPermission(
+      appointmentAccess,
+      APPOINTMENT_PERMISSIONS.REQUESTS
+    );
+
+  const canViewReports =
+    hasAppointmentPermission(
+      appointmentAccess,
+      APPOINTMENT_PERMISSIONS.REPORTS
+    );
+
+  const canManageSettings =
+    hasAppointmentPermission(
+      appointmentAccess,
+      APPOINTMENT_PERMISSIONS.SETTINGS
+    );
+
   const [currentDate, setCurrentDate] = useState(new Date());
+  
+  useEffect(() => {
+    if (!appointmentAccess) return;
+
+    const allowedViews = {
+      calendar: canAccessSchedule,
+      today: canAccessSchedule,
+      patients: canAccessPatients,
+      requests: canManageRequests,
+      settings: canManageSettings,
+      reports: canViewReports,
+      activity: canViewReports,
+    };
+
+    if (allowedViews[view] !== false) {
+      return;
+    }
+
+    if (canAccessSchedule) {
+      setView("calendar");
+      return;
+    }
+
+    if (canAccessPatients) {
+      setView("patients");
+    }
+  }, [
+    appointmentAccess,
+    view,
+    canAccessSchedule,
+    canAccessPatients,
+    canManageRequests,
+    canManageSettings,
+    canViewReports,
+  ]);
 
   // Sync date range for appointments
   useEffect(() => {
@@ -363,8 +493,8 @@ function AppContent() {
     let timeoutId;
     // Ensure data is ready, the user is active, we are not already on the settings view,
     // and they have an active clinic assigned.
-    if (isReady && user && activeClinicId && view !== 'settings') {
-      if (isUnconfigured) {
+  if (isReady &&user &&activeClinicId &&canManageSettings &&view !== "settings") {      
+    if (isUnconfigured) {
         setView('settings');
         
         // Build dynamic warning message
@@ -393,7 +523,8 @@ function AppContent() {
     user, 
     activeClinicId, 
     view, 
-    addToast
+    addToast,
+    canManageSettings,
   ]);
 
   // Build real-time context for Molar AI
@@ -724,6 +855,54 @@ function AppContent() {
     );
   }
 
+  if (
+  user &&
+  authRole !== "admin" &&
+  appointmentAccessLoading
+) {
+  return (
+    <div className="login-page">
+      <div className="login-card">
+        <h1 className="login-title">
+          Loading Appointment…
+        </h1>
+
+        <p className="login-subtitle">
+          Checking your clinic permissions.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+  if (
+    user &&
+    authRole !== "admin" &&
+    appointmentAccessError
+  ) {
+    return (
+      <div className="login-page">
+        <div className="login-card">
+          <h1 className="login-title">
+            Appointment access unavailable
+          </h1>
+
+          <p className="login-subtitle">
+            {appointmentAccessError}
+          </p>
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={signOut}
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (user && !isReady && authRole !== 'admin' && activeClinicId) {
     return (
       <div className="login-page">
@@ -764,9 +943,15 @@ function AppContent() {
   return (
     <div className="app-container">
       <Sidebar
-        view={view}
+         view={view}
+          permissions={
+            appointmentAccess?.permissions || {}
+          }
+          enforceConfiguration={
+            isUnconfigured && canManageSettings
+          }
         onChange={(newView) => {
-          if (isUnconfigured && newView !== 'settings') {
+          if (isUnconfigured &&  canManageSettings && newView !== 'settings') {
             const missing = [];
             if (missingSettings) missing.push("working hours");
             if (missingStaff) missing.push("1 staff");
@@ -798,7 +983,14 @@ function AppContent() {
         <Header
           createAppLink={createAppLink}
           title={viewTitle}
-          onNewAppointment={() => { setAppointmentDefaults(null); setShowAppointmentModal(true); }}
+          onNewAppointment={
+            canManageAppointments
+              ? () => {
+                  setAppointmentDefaults(null);
+                  setShowAppointmentModal(true);
+                }
+              : null
+          }
           onToggleSidebar={toggleSidebar}
           isSidebarOpen={sidebarOpen}
           credits={credits}
@@ -819,9 +1011,24 @@ function AppContent() {
               staff={staff}
               holidays={holidays}
               settings={settings}
-              onSlotSelect={(date, time) => openNewAppointment(date, time)}
-              onAppointmentSelect={handleAppointmentClick}
-              onAppointmentReschedule={handleRescheduleAppointment}
+              onSlotSelect={
+                canManageAppointments
+                  ? (date, time) =>
+                      openNewAppointment(date, time)
+                  : undefined
+              }
+
+              onAppointmentSelect={
+                canManageAppointments
+                  ? handleAppointmentClick
+                  : undefined
+              }
+
+              onAppointmentReschedule={
+                canManageAppointments
+                  ? handleRescheduleAppointment
+                  : undefined
+              }
             />
           )}
           {view === 'today' && (
@@ -830,9 +1037,20 @@ function AppContent() {
               patients={patients}
               rooms={rooms}
               treatments={treatments}
-              onAppointmentSelect={handleAppointmentClick}
-              onNewAppointment={() => { setAppointmentDefaults(null); setShowAppointmentModal(true); }}
-            />
+              onAppointmentSelect={
+                canManageAppointments
+                  ? handleAppointmentClick
+                  : undefined
+              }
+
+              onNewAppointment={
+                canManageAppointments
+                  ? () => {
+                      setAppointmentDefaults(null);
+                      setShowAppointmentModal(true);
+                    }
+                  : undefined
+              }/>
           )}
           {view === 'patients' && (
             <PatientsView
