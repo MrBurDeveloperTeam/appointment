@@ -1,16 +1,75 @@
 import { useToast } from '../context/ToastProvider';
 
-export default function Sidebar({ view, onChange, theme, setTheme, onLogout, bookingLink, isOpen, onClose, isUnconfigured, pendingRequestsCount }) {
+export default function Sidebar({
+  view,
+  onChange,
+  theme,
+  setTheme,
+  onLogout,
+  bookingLink,
+  isOpen,
+  onClose,
+  isUnconfigured,
+  enforceConfiguration = false,
+  pendingRequestsCount,
+  permissions = {},
+}) {
   const { addToast } = useToast();
   const items = [
-    { id: 'calendar', label: 'Calendar', icon: 'calendar' },
-    { id: 'today', label: 'Today', icon: 'clock' },
-    { id: 'patients', label: 'Patients', icon: 'users' },
-    { id: 'requests', label: 'Requests', icon: 'inbox' },
-    { id: 'settings', label: 'Settings', icon: 'gear' },
-    { id: 'reports', label: 'Reports', icon: 'bar' },
-    { id: 'activity', label: 'Activity', icon: 'pulse' },
-  ];
+    {
+      id: "calendar",
+      label: "Calendar",
+      icon: "calendar",
+      permission:
+        "appointment.schedule.access",
+    },
+    {
+      id: "today",
+      label: "Today",
+      icon: "clock",
+      permission:
+        "appointment.schedule.access",
+    },
+    {
+      id: "patients",
+      label: "Patients",
+      icon: "users",
+      permission:
+        "appointment.patients.access",
+    },
+    {
+      id: "requests",
+      label: "Requests",
+      icon: "inbox",
+      permission:
+        "appointment.requests.manage",
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      icon: "gear",
+      permission:
+        "appointment.settings.manage",
+    },
+    {
+      id: "reports",
+      label: "Reports",
+      icon: "bar",
+      permission:
+        "appointment.reports.view",
+    },
+    {
+      id: "activity",
+      label: "Activity",
+      icon: "pulse",
+      permission:
+        "appointment.reports.view",
+    },
+  ].filter(
+    (item) =>
+      permissions[item.permission] === true
+  );
+
 
   const renderIcon = (icon) => {
     switch (icon) {
@@ -99,8 +158,8 @@ export default function Sidebar({ view, onChange, theme, setTheme, onLogout, boo
       </div>
       <nav className="sidebar-nav" aria-label="Primary">
         {items.map((item) => {
-          const isDisabled = isUnconfigured && item.id !== 'settings';
-          return (
+        const isDisabled =enforceConfiguration &&item.id !== "settings";
+            return (
             <button
               key={item.id}
               type="button"
