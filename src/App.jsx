@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import React from 'react';
 import useDataStore from './hooks/useDataStore';
 import { useAuth } from './context/AuthProvider';
@@ -27,8 +27,11 @@ import { supabase } from './lib/supabaseClient';
 import DataStore from "./data";
 import { api } from './services/api';
 import CatMascot from './components/CatMascot';
-import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
+import AppointmentsVirtualPet from './petExperience/AppointmentsVirtualPet';
 import MolarAIFloat from './components/MolarAIFloat';
+import MeowdokuLauncher from './games/MeowdokuLauncher';
+import { useAppointmentPersonalizedInsight } from './aiExperience/hooks/useAppointmentPersonalizedInsight';
+import { isTodayCoveredByDateRange } from './aiExperience/utils/appointmentCoverage';
 import {
   normalizeTheme,
   readStoredTheme,
@@ -336,11 +339,14 @@ useEffect(() => {
     updateAppointmentRequest,
     refreshRequests,
     refreshActivity,
+    dateRange,
     setDateRange,
     searchPatients,
     credits,
     creditHistory,
     addCredits,
+    appointmentDataStatus,
+    loadedAppointmentRange,
   } = useDataStore(activeClinicId, dataEnabled);
   
   const [view, setView] = useState('calendar');
@@ -442,8 +448,58 @@ useEffect(() => {
   const [confirmDialog, setConfirmDialog] = useState({ open: false, type: '', payload: null });
   const [isRedeeming, setIsRedeeming] = useState(false);
   const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false);
+  // molar-experience 0.9.5 integration: Meowdoku predates the shared
+  // Games catalog (only Flappy/Pac-Cat/Tetris) — wired in via
+  // SharedVirtualPet's `extraGames` as a 4th card; the host owns opening
+  // it via MeowdokuLauncher, stacked above the Pet overlay.
+  const [isMeowdokuOpen, setIsMeowdokuOpen] = useState(false);
   const bookingSlug = getBookingSlugFromPath();
   const [authInitializing, setAuthInitializing] = useState(true);
+
+  // Phase-2A: Appointment Within 2 Hours, Daily Summary (today's count +
+  // room-in-use), No Appointments Today. Pure, synchronous, reevaluates
+  // whenever appointments/rooms/dateRange (already owned above via
+  // useDataStore) change or the local minute clock ticks — no new
+  // Supabase query, no dedupe, no polling of the database. See
+  // ./aiExperience/hooks/useAppointmentPersonalizedInsight.ts.
+  const { candidates: appointmentDialoguePool } =
+    useAppointmentPersonalizedInsight(appointments, rooms, dateRange);
+  // Takes the candidate to act on explicitly — invoked by CatMascot with
+  // whichever candidate it is currently showing (its own dismissal-aware
+  // scan over appointmentDialoguePool below).
+  const handleAppointmentInsightAction = useCallback((candidate) => {
+    // Reuses CalendarView.jsx's exact existing "Today" button behavior —
+    // never a fabricated navigation.
+    if (candidate?.action) setCurrentDate(new Date());
+  }, []);
+  // Proactive Cat reminder readiness: reuses the SAME authoritative
+  // signals already piped to MolarAIFloat for Appointment Data Chat's own
+  // readiness gate. `loadedAppointmentRange` is the SUCCESSFULLY LOADED
+  // range (not the currently-requested `dateRange`), so a calendar-range
+  // change in flight never authorizes a Personalized reminder against
+  // stale prior data before the new fetch actually completes.
+  const personalizedInsightState =
+    appointmentDataStatus === 'ready' && isTodayCoveredByDateRange(loadedAppointmentRange)
+      ? {
+          status: 'ready',
+          candidates: appointmentDialoguePool,
+          onAction: handleAppointmentInsightAction,
+        }
+      : { status: 'not_ready' };
+
+  // Meowdoku predates the shared Games catalog (only Flappy/Pac-Cat/
+  // Tetris) — wired in via SharedVirtualPet's `extraGames` as a 4th card.
+  const extraGames = useMemo(
+    () => [
+      {
+        id: 'meowdoku',
+        title: 'Meowdoku',
+        iconUrl: '/games/meowdoku/cover-148.png',
+        onSelect: () => setIsMeowdokuOpen(true),
+      },
+    ],
+    []
+  );
 
   // Check what is missing
   const missingSettings = !settings?.workingHours?.start;
@@ -1190,17 +1246,51 @@ useEffect(() => {
       />
 
       {/* 🐱 MOLAR ECOSYSTEM */}
+      {/* `key` on CatMascot/AppointmentsVirtualPet/MeowdokuLauncher forces
+          a fresh mount on every distinct authenticated identity boundary
+          — this JSX only ever renders once `user` is confirmed non-null
+          (see the `!user` -> LoginView early-return above), so `user.id`
+          is always the real canonical Supabase Auth uuid here, never
+          "still resolving". The permanent-mount `hidden`/`contents`
+          wrapper below is unchanged — Cat still never unmounts merely
+          because Virtual Pet opens/closes. */}
       <div className={isVirtualPetOpen ? 'hidden' : 'contents'}>
-        <CatMascot onCatClick={() => setIsVirtualPetOpen(true)} />
-        <MolarAIFloat 
-          userContext={aiContext} 
-          disabled={!isReady || !user || !activeClinicId} 
+        <CatMascot
+          key={user.id}
+          onCatClick={() => setIsVirtualPetOpen(true)}
+          personalizedInsightState={personalizedInsightState}
+          catCacheOwnerId={user.id}
+        />
+        <MolarAIFloat
+          key={`${user.id}::${activeClinicId ?? 'no-clinic'}`}
+          userContext={aiContext}
+          disabled={!isReady || !user || !activeClinicId}
           onPetToggle={() => setIsVirtualPetOpen(true)}
+          appointments={appointments}
+          rooms={rooms}
+          appointmentDataStatus={appointmentDataStatus}
+          loadedAppointmentRange={loadedAppointmentRange}
+          patients={patients}
+          staff={staff}
+          treatments={treatments}
         />
       </div>
-      <VirtualPetContainer 
-        isOpen={isVirtualPetOpen} 
-        onClose={() => setIsVirtualPetOpen(false)} 
+      <AppointmentsVirtualPet
+        key={user.id}
+        isOpen={isVirtualPetOpen}
+        onClose={() => setIsVirtualPetOpen(false)}
+        userId={user.id}
+        extraGames={extraGames}
+      />
+
+      {/* Rendered as a sibling, outside SharedVirtualPet's own overlay, so
+          it stacks above it (higher z-index) rather than being clipped by
+          or nested inside the Pet's own DOM subtree. */}
+      <MeowdokuLauncher
+        key={`meowdoku-${user.id}`}
+        isOpen={isMeowdokuOpen}
+        onClose={() => setIsMeowdokuOpen(false)}
+        userId={user.id}
       />
 
     </div>

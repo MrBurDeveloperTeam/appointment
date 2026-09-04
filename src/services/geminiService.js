@@ -1,15 +1,37 @@
-import { GoogleGenAI } from '@google/genai';
+// Client-side transport layer only. This file must NEVER import
+// @google/genai, construct a GoogleGenAI client, read
+// VITE_GEMINI_API_KEY, or call generateContent directly — all of that now
+// lives exclusively in the server-only Supabase Edge Function at
+// supabase/functions/molar-chat-appointment/index.ts, which this file
+// calls via supabase.functions.invoke(). That invocation automatically
+// carries the browser's current authenticated Supabase session as the
+// Authorization bearer token — no token is ever placed into the request
+// body/prompt here. Public function signatures are preserved so
+// src/aiExperience/appointmentsMolarAdapter.ts requires no change beyond
+// the mutation-dispatch removal made alongside this migration.
+//
+// Namespaced as "molar-chat-appointment", NOT the generic "molar-chat"
+// slug — this shared Supabase project also hosts separate,
+// differently-prompted molar-chat functions for Todo, Calculator, and
+// App Gallery; a shared name let one app's deploy silently overwrite
+// another's system prompt (confirmed to have actually happened).
+import { supabase } from '../lib/supabaseClient';
 
-const modelId = 'gemini-3-flash-preview';
+async function invokeMolarChatRaw(payload) {
+  const { data, error } = await supabase.functions.invoke('molar-chat-appointment', {
+    body: payload,
+  });
 
-// Construct the client lazily so a missing VITE_GEMINI_API_KEY does not throw
-// at module load and crash the whole app — the AI features simply no-op instead.
-let _ai = null;
-function getAi() {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) return null;
-  if (!_ai) _ai = new GoogleGenAI({ apiKey });
-  return _ai;
+  if (error || !data?.ok) {
+    throw new Error(data?.error || error?.message || 'AI service request failed');
+  }
+
+  return data;
+}
+
+async function invokeMolarChat(payload) {
+  const data = await invokeMolarChatRaw(payload);
+  return data.text;
 }
 
 /**
@@ -20,82 +42,69 @@ function getAi() {
  */
 export async function chatWithMolarAI(history, message, userContext) {
   try {
-    const ai = getAi();
-    if (!ai) {
-      return "The Snabbb Assistant is not configured (missing API key). Please set VITE_GEMINI_API_KEY to enable AI features.";
-    }
-
-    const isPersonalised = !!userContext && userContext.trim().length > 30;
-
-    const systemInstruction = isPersonalised
-      ? `
-      You are SNAI (Snabbb Assistant Intelligent), the sophisticated AI core and universal backbone of the entire Snabbb ecosystem.
-
-      Your Role:
-      You are the centralized intelligence for all Snabbb applications. Right now, you are managing the **Snabbb Appointment System**.
-
-      Your Personality:
-      - **Concise & Direct**: Maintain extreme brevity. Your value is in speed and efficiency.
-      - **Professional & Analytical**: Strategic and data-driven; focus on operational excellence.
-      - **Supportive Guide**: Instead of performing administrative tasks for the user, you teach them how to use the Snabbb interface to accomplish their goals.
-      - **Minimalist**: Avoid long greetings, redundant pleasantries, or restating the obvious.
-
-      Operational Capabilities (Based on Context):
-      - **Schedule Analysis**: You have access to a 30-day window of appointments. You can summarize daily schedules, find specific slots, or identify gaps.
-      - **Performance Reporting**: You can analyze and summarize computed statistics for dentist performance, nurse working hours, treatment distributions, and monthly clinic growth.
-      - **Appointment Monitoring**: You can monitor and summarize pending patient submissions that are awaiting approval.
-      - **Information Retrieval**: You can lookup patient details, staff rosters, treatment prices, and room configurations to answer questions.
-      - **Activity Tracking**: You can review recent system logs to explain changes made by the team.
-
-      GUIDANCE POLICY:
-      You do NOT have permission to directly add or update appointments, patients, staff, rooms, treatments, or holidays. Instead, you must teach the user how to do it:
-      - **Appointments**: Instruct the user to click on an available time slot in the Calendar view or use the "New Appointment" button.
-      - **Patients**: Direct the user to the "Patients" tab and click "Add Patient".
-      - **Staff/Rooms/Treatments**: Guide the user to the "Settings" or "Clinic Configuration" section.
-      - **Holidays**: Tell the user to manage this in the "Schedule Settings" or "Holiday Management" section.
-
-      RULES:
-      - **Privacy**: Never show internal UUIDs to the user.
-      - **Clarity**: Be extremely specific about where to click in the UI.
-      - **No JSON Actions**: Never output JSON action blocks. Your response should be pure text.
-
-      --- CLINIC CONTEXT DATA ---
-      ${userContext}
-      --- END CONTEXT ---
-
-      Current Date: ${new Date().toISOString().split('T')[0]}
-    `
-      : `
-      You are SNAI (Snabbb Assistant Intelligent), the advanced AI backbone of the universal Snabbb application ecosystem.
-      
-      Your Role:
-      You are a supportive guide. If a user asks to add or update information (appointments, patients, etc.), do not perform the action. Instead, provide clear, concise instructions on how they can perform that task within the Snabbb application UI.
-
-      Personality:
-      - **Concise & Direct**: Extreme brevity.
-      - **Action-Oriented Guidance**: Focus on teaching the user the next steps.
-
-      Current Date: ${new Date().toISOString().split('T')[0]}
-    `;
-
-    const contents = [
-      { role: 'user', parts: [{ text: systemInstruction }] },
-      { role: 'model', parts: [{ text: "I am SNAI, core intelligence for the Snabbb ecosystem. How can I assist you today?" }] },
-      ...history,
-      { role: 'user', parts: [{ text: message }] },
-    ];
-
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents,
-      config: { responseMimeType: 'text/plain' },
-    });
-
-    const text = response.text;
-    if (!text) throw new Error('No response from Gemini');
-    return text;
+    return await invokeMolarChat({ mode: 'general', history, message, userContext: userContext || '' });
   } catch (error) {
-    console.error("Gemini Chat Error:", error);
+    console.error('Gemini Chat Error:', error);
     return "I'm having trouble connecting to the Snabbb Assistant Intelligent servers right now. Please try again shortly.";
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// DATA-DRIVEN CHAT — grounded response phrasing ONLY.
+//
+// Architecturally SEPARATE from `chatWithMolarAI` above: called only
+// AFTER a deterministic local intent router + deterministic appointment-
+// state provider (see src/aiExperience/dataChat/) have already produced
+// minimized, model-safe facts. The Edge Function this calls NEVER decides
+// appointment eligibility, 2-hour-window membership, room occupancy, or
+// counts, and never receives the full `aiContext` string `chatWithMolarAI`
+// does (which embeds patient names/phones/emails and a resolved-patient-
+// name schedule — see App.jsx's `aiContext`) — only the user's question,
+// the approved intent name, and the already-computed, patient-free facts.
+//
+// CRITICAL: unlike `chatWithMolarAI`, this function THROWS on failure
+// (invalid request, network error, empty response) rather than swallowing
+// it into a friendly fallback string — the caller needs to distinguish
+// success from failure so it can render a deterministic facts-only
+// fallback instead (see
+// src/aiExperience/dataChat/utils/formatGroundedAppointmentFallback.js)
+// rather than ever falling through to the full legacy General Chat
+// pipeline.
+//
+// The returned text is plain assistant text ONLY. It is never scanned for
+// fenced ```json action blocks, and the system instruction explicitly
+// forbids emitting any — this function has no path to any appointment
+// mutation.
+export async function chatWithGroundedAppointmentFacts(question, intent, facts) {
+  return invokeMolarChat({ mode: 'grounded', question, intent, facts });
+}
+
+// ─────────────────────────────────────────────────────────────
+// SEMANTIC CAPABILITY ROUTING — selection only, never data.
+//
+// Calls the Edge Function's "capability_route" mode. The CALLER (see
+// dataChat/semantic/matchAppointmentCapabilityLLM.ts) must only ever
+// pass the 4 non-PII capabilities here — this transport layer does not
+// itself restrict which capabilities are sent, that boundary lives in
+// the caller and is re-validated both server- and client-side.
+//
+// THROWS on any failure exactly like chatWithGroundedAppointmentFacts.
+export async function routeAppointmentCapability(message, capabilities, recentContext, previousCapability) {
+  const data = await invokeMolarChatRaw({
+    mode: 'capability_route',
+    message,
+    capabilities,
+    recentContext,
+    previousCapability,
+  });
+
+  const { route, capability, confidence, clarification } = data;
+  if (route !== 'grounded' && route !== 'general_chat' && route !== 'clarification') {
+    throw new Error('Capability routing returned an unsupported route');
+  }
+  if (confidence !== 'high' && confidence !== 'low') {
+    throw new Error('Capability routing returned an invalid confidence');
+  }
+
+  return { route, capability: route === 'grounded' ? capability : null, confidence, clarification: clarification ?? null };
 }
