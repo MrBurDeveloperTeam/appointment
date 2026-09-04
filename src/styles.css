@@ -8803,3 +8803,70 @@ tbody tr:hover {
 :root[data-theme="dark"] .appointment-support-title { color: #e2e8f0; }
 :root[data-theme="dark"] .appointment-support-meta { color: #94a3b8; }
 :root[data-theme="dark"] .appointment-support-link:hover .appointment-support-title { color: #b8e5df; }
+
+/* ==========================================================================
+   APPOINTMENT-VIRTUAL-PET-GRADIENT-COMPAT-HOTFIX-1
+   Shared Virtual Pet (molar-experience 0.9.5) room-theme gradient
+   compatibility restore.
+
+   Root cause: legacy src/VirtualPet/constants.ts's ROOM_THEMES literal
+   strings (e.g. 'bg-gradient-to-br from-[#FFF5E6] via-[#FFE0B2]
+   to-[#FFCC80]') are still scanned by tailwind.config.js's own "all
+   src files" content glob, even though that file itself is runtime-dead
+   — CatMascot.jsx still actively imports a DIFFERENT file in the same
+   directory (VirtualPet/petOptions.ts), so the whole VirtualPet
+   directory under src cannot be excluded from the Tailwind content
+   scan.
+
+   This app's own Tailwind v3 output is entirely UNLAYERED plain CSS.
+   The shared package's own Pet gradient utilities are compiled by
+   Tailwind v4 and wrapped in `@layer utilities` (see the installed
+   node_modules/@mrburdeveloperteam/molar-experience/dist/styles.css).
+   Per the CSS Cascade Layers spec, ANY unlayered declaration always
+   wins over ANY layered declaration for the same property on the same
+   element, regardless of DOM/stylesheet injection order — so this
+   host's own JIT-generated (unlayered) `.bg-gradient-to-br` /
+   `.from-[...]` / `.via-[...]` / `.to-[...]` rules unconditionally beat
+   the shared package's correct (but layered) versions of the exact
+   same selectors, producing an invalid/incomplete gradient that exposes
+   SharedVirtualPet's intentional `bg-black` outer overlay underneath.
+   Same mechanism already fixed once for Inventory (see that app's own
+   "Shared 0.6.7 gradient compatibility" section).
+
+   Fix: a compound 4-class selector per room (matching the shared
+   package's own real class combination) restores an explicit, fully
+   opaque `background-image` for exactly these six selectors. Being both
+   unlayered (page-authored, no @layer wrapper) and unlayered-last in
+   source order, and of higher specificity (4 chained classes) than any
+   single-class rule in either stylesheet, this reliably wins the
+   `background-image` property outright — without depending on any
+   `--tw-gradient-*` custom-property chain at all. Scoped strictly under
+   `.snabbb-molar-experience` and to these six exact selectors only — no
+   other Appointment page gradient, Molar, Cat, or Meowdoku surface is
+   touched. No !important: normal unlayered cascade + specificity is
+   already sufficient, confirmed by generated-CSS inspection.
+   ========================================================================== */
+
+.snabbb-molar-experience .bg-gradient-to-br.from-\[\#FFFCEB\].via-\[\#FFF9C4\].to-\[\#FDE68A\] {
+  background-image: linear-gradient(to bottom right, #FFFCEB, #FFF9C4, #FDE68A);
+}
+
+.snabbb-molar-experience .bg-gradient-to-br.from-\[\#FFF5E6\].via-\[\#FFE0B2\].to-\[\#FFCC80\] {
+  background-image: linear-gradient(to bottom right, #FFF5E6, #FFE0B2, #FFCC80);
+}
+
+.snabbb-molar-experience .bg-gradient-to-br.from-\[\#E0F7FA\].via-\[\#B2EBF2\].to-\[\#80DEEA\] {
+  background-image: linear-gradient(to bottom right, #E0F7FA, #B2EBF2, #80DEEA);
+}
+
+.snabbb-molar-experience .bg-gradient-to-br.from-\[\#FDF2F8\].via-\[\#FCE7F3\].to-\[\#F9A8D4\] {
+  background-image: linear-gradient(to bottom right, #FDF2F8, #FCE7F3, #F9A8D4);
+}
+
+.snabbb-molar-experience .bg-gradient-to-br.from-\[\#F0FDF4\].via-\[\#DCFCE7\].to-\[\#86EFAC\] {
+  background-image: linear-gradient(to bottom right, #F0FDF4, #DCFCE7, #86EFAC);
+}
+
+.snabbb-molar-experience .bg-gradient-to-br.from-\[\#EEF2FF\].via-\[\#E0E7FF\].to-\[\#C7D2FE\] {
+  background-image: linear-gradient(to bottom right, #EEF2FF, #E0E7FF, #C7D2FE);
+}
