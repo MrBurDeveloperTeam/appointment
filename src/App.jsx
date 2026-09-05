@@ -110,13 +110,18 @@ export default function App() {
 
 // APPOINTMENT-POST-0.9.6-FOLLOWUP-FIX-1 (Issue 2): a sessionStorage-backed
 // cache for the last successfully-resolved Appointment access context, keyed
-// per user+clinic. sessionStorage (not localStorage) is deliberate — it is
-// already cleared when the browser tab/window closes, so a stale context can
-// never outlive this login session's own tab. This is purely a UI-paint
-// optimization: the real /api/company/access-context call is still made on
-// every mount (see loadAppointmentAccess below), and every actual data
-// mutation is independently enforced server-side via Supabase RLS, never by
-// this cached flag.
+// per user+clinic. sessionStorage (not localStorage) is deliberate — its
+// lifetime is scoped to this browser tab (cleared when the tab/window
+// closes), which is NOT the same thing as the authenticated login session:
+// a token expiring or the user signing out mid-tab does not clear it on its
+// own, which is exactly why loadAppointmentAccess's own identity-change
+// invalidation (see the cache-key ref below) and its always-on background
+// revalidation exist — this cache is never treated as proof of a still-valid
+// login. It is purely a UI-paint optimization: the real
+// /api/company/access-context call is still made on every mount (see
+// loadAppointmentAccess below), and every actual data mutation is
+// independently enforced server-side via Supabase RLS, never by this cached
+// flag.
 const APPOINTMENT_ACCESS_CACHE_KEY_PREFIX = 'appointment_access_cache:';
 
 function readCachedAppointmentAccess(cacheKey) {
@@ -188,8 +193,11 @@ function AppContent() {
     // APPOINTMENT-POST-0.9.6-FOLLOWUP-FIX-1 (Issue 2): a full-screen
     // "Checking your clinic permissions" loader on every return from
     // another Snabbb page is unnecessary when this exact user+clinic
-    // already successfully resolved an access context earlier in the
-    // SAME browser session. This does NOT weaken enforcement: every real
+    // already successfully resolved an access context earlier in this
+    // SAME browser tab (sessionStorage's own scope — not a claim about
+    // the authenticated login session itself still being valid, which
+    // the unconditional revalidation below still verifies independently
+    // on every mount). This does NOT weaken enforcement: every real
     // data mutation (see src/data/datastore.supabase.appointments.js and
     // sibling files) goes straight through Supabase's own RLS-protected
     // tables, independent of this client-side flag, which only gates
