@@ -108,6 +108,52 @@ export default function App() {
   );
 }
 
+// APPOINTMENT-POST-0.9.6-FOLLOWUP-FIX-1 (Issue 2): a sessionStorage-backed
+// cache for the last successfully-resolved Appointment access context, keyed
+// per user+clinic. sessionStorage (not localStorage) is deliberate — its
+// lifetime is scoped to this browser tab (cleared when the tab/window
+// closes), which is NOT the same thing as the authenticated login session:
+// a token expiring or the user signing out mid-tab does not clear it on its
+// own, which is exactly why loadAppointmentAccess's own identity-change
+// invalidation (see the cache-key ref below) and its always-on background
+// revalidation exist — this cache is never treated as proof of a still-valid
+// login. It is purely a UI-paint optimization: the real
+// /api/company/access-context call is still made on every mount (see
+// loadAppointmentAccess below), and every actual data mutation is
+// independently enforced server-side via Supabase RLS, never by this cached
+// flag.
+const APPOINTMENT_ACCESS_CACHE_KEY_PREFIX = 'appointment_access_cache:';
+
+function readCachedAppointmentAccess(cacheKey) {
+  if (!cacheKey) return null;
+  try {
+    const raw = sessionStorage.getItem(cacheKey);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedAppointmentAccess(cacheKey, access) {
+  if (!cacheKey) return;
+  try {
+    sessionStorage.setItem(cacheKey, JSON.stringify(access));
+  } catch {
+    // sessionStorage unavailable (private mode, quota) — the cache is a
+    // pure optimization, so silently falling back to the normal blocking
+    // load next time is safe and expected.
+  }
+}
+
+function clearCachedAppointmentAccess(cacheKey) {
+  if (!cacheKey) return;
+  try {
+    sessionStorage.removeItem(cacheKey);
+  } catch {
+    // Best-effort only — see writeCachedAppointmentAccess.
+  }
+}
+
 function AppContent() {
   const { mutateAsync: createAppLink, isPending } = useGetUserId();
   const { addToast } = useToast();
@@ -121,6 +167,14 @@ function AppContent() {
   const [appointmentAccessLoading,setAppointmentAccessLoading,] = useState(true);
 
   const [appointmentAccessError,setAppointmentAccessError,] = useState("");
+
+  // APPOINTMENT-POST-0.9.6-FOLLOWUP-FIX-1 (Issue 2): tracks the sessionStorage
+  // key of the most recently resolved access context so a genuine identity
+  // change (different user, different clinic, or signing out — see the
+  // effect below) can explicitly invalidate the PREVIOUS cache entry, not
+  // just stop reading it. sessionStorage itself already bounds the cache's
+  // lifetime to this browser tab's session (cleared on tab/window close).
+  const appointmentAccessCacheKeyRef = useRef(null);
 
   const {
     session,
@@ -136,6 +190,35 @@ function AppContent() {
     let cancelled = false;
 
   async function loadAppointmentAccess() {
+    // APPOINTMENT-POST-0.9.6-FOLLOWUP-FIX-1 (Issue 2): a full-screen
+    // "Checking your clinic permissions" loader on every return from
+    // another Snabbb page is unnecessary when this exact user+clinic
+    // already successfully resolved an access context earlier in this
+    // SAME browser tab (sessionStorage's own scope — not a claim about
+    // the authenticated login session itself still being valid, which
+    // the unconditional revalidation below still verifies independently
+    // on every mount). This does NOT weaken enforcement: every real
+    // data mutation (see src/data/datastore.supabase.appointments.js and
+    // sibling files) goes straight through Supabase's own RLS-protected
+    // tables, independent of this client-side flag, which only gates
+    // which UI panels/buttons render. getAppointmentAccess() — the same
+    // authenticated /api/company/access-context call as before — still
+    // runs unconditionally below on every mount; a cache hit only lets
+    // the UI paint immediately with the last-known-good context while
+    // that revalidation happens in the background, and any diff or
+    // failure from the fresh result immediately overwrites/clears it.
+    const cacheKey = user
+      ? `${APPOINTMENT_ACCESS_CACHE_KEY_PREFIX}${user.id}:${activeClinicId ?? 'none'}`
+      : null;
+
+    // Invalidate the PREVIOUS cache entry whenever the effective identity
+    // actually changes (different user, different clinic, or signing
+    // out) — never left around for a different account/clinic to reuse.
+    if (appointmentAccessCacheKeyRef.current && appointmentAccessCacheKeyRef.current !== cacheKey) {
+      clearCachedAppointmentAccess(appointmentAccessCacheKeyRef.current);
+    }
+    appointmentAccessCacheKeyRef.current = cacheKey;
+
     if (!user) {
       setAppointmentAccess(null);
       setAppointmentAccessError("");
@@ -143,7 +226,13 @@ function AppContent() {
       return;
     }
 
-    setAppointmentAccessLoading(true);
+    const cached = readCachedAppointmentAccess(cacheKey);
+    if (cached) {
+      setAppointmentAccess(cached);
+      setAppointmentAccessLoading(false);
+    } else {
+      setAppointmentAccessLoading(true);
+    }
     setAppointmentAccessError("");
 
     try {
@@ -152,6 +241,7 @@ function AppContent() {
 
       if (!cancelled) {
         setAppointmentAccess(result);
+        writeCachedAppointmentAccess(cacheKey, result);
       }
     } catch (error) {
       console.error(
@@ -160,6 +250,9 @@ function AppContent() {
       );
 
       if (!cancelled) {
+        // A background revalidation failure must never leave a stale
+        // optimistic context on screen or cached for next time.
+        clearCachedAppointmentAccess(cacheKey);
         setAppointmentAccess(null);
         setAppointmentAccessError(
           error?.message ||
@@ -178,7 +271,7 @@ function AppContent() {
   return () => {
     cancelled = true;
   };
-}, [user]);
+}, [user, activeClinicId]);
 
 useEffect(() => {
   setExchangeDone(true);

@@ -9,7 +9,7 @@ html,
 body {
     min-height: 100%;
     margin: 0;
-    font-family: 'Fredoka', system-ui, sans-serif;
+    font-family: Inter, system-ui, Arial;
     background: linear-gradient(180deg, #0f172a, #071024);
     color: #e6eef8;
     overflow-x: hidden;
@@ -35,7 +35,7 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    font-family: 'Fredoka', system-ui, sans-serif;
+    font-family: 'Press Start 2P', cursive;
     font-size: 34px;
     pointer-events: none;
     z-index: 1001;
@@ -117,7 +117,7 @@ canvas#tetris {
 .overlay h2 {
     margin: 0;
     margin-bottom: 10px;
-    font-family: 'Fredoka', system-ui, sans-serif;
+    font-family: 'Press Start 2P', cursive;
     font-size: 26px;
     color: #00f0f0;
     text-shadow: 0 0 15px rgba(0, 240, 240, 0.5);
@@ -193,7 +193,7 @@ canvas#tetris {
     color: #fff;
     font-size: 20px;
     font-weight: 700;
-    font-family: 'Fredoka', system-ui, sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 
 .control-list {
@@ -261,7 +261,7 @@ canvas#tetris {
 #overlay-help {
     border: none;
     padding: 14px 32px;
-    font-family: 'Fredoka', system-ui, sans-serif;
+    font-family: 'Press Start 2P', cursive;
     font-size: 11px;
     color: #fff;
     border-radius: 12px;
@@ -488,7 +488,7 @@ canvas#tetris {
 }
 
 h1 {
-    font-family: 'Fredoka', system-ui, sans-serif;
+    font-family: 'Press Start 2P', cursive;
     font-size: 46px;
     margin: 30px 0 30px 0;
     text-align: center;
@@ -523,7 +523,7 @@ h1 {
 }
 
 .panel-title {
-    font-family: 'Fredoka', system-ui, sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 700;
     font-size: 14px;
     color: #94a3b8;
@@ -557,7 +557,7 @@ h1 {
 }
 
 .stat-value {
-    font-family: 'Fredoka', system-ui, sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 700;
     font-size: 20px;
     color: #f8fafc;
@@ -607,7 +607,7 @@ h1 {
 }
 
 .preview-label {
-    font-family: 'Fredoka', system-ui, sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 700;
     font-size: 18px;
     color: #f8fafc;

@@ -283,7 +283,13 @@ export default function MeowdokuLauncher({ isOpen, onClose, userId }: MeowdokuLa
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] overflow-hidden bg-[#f3f6ff]" style={{ fontFamily: "'Fredoka', sans-serif" }}>
+    // z-[1100]: rendered as a sibling of AppointmentsVirtualPet (not nested
+    // inside its DOM subtree), so it must outrank SharedVirtualPet's own
+    // outer overlay (`z-[1000]`, see the installed
+    // @mrburdeveloperteam/molar-experience/dist/pet.js) to actually appear
+    // above the Pet room when opened from the Games menu — z-[70] left it
+    // rendered but stacked invisibly behind the Pet overlay.
+    <div className="fixed inset-0 z-[1100] overflow-hidden bg-[#f3f6ff]" style={{ fontFamily: "'Fredoka', sans-serif" }}>
       <div className="relative h-full w-full">
         <button
           type="button"
