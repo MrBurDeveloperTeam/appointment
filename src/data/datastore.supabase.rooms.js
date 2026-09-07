@@ -62,5 +62,15 @@ export async function updateRoom(id, updates) {
 export async function deleteRoom(id) {
   const { error } = await supabase.from("apt_rooms").delete().eq("id", id);
   if (error) throw error;
+
+  // Sync deletion to inventory_rooms (same UUID — no-op if no matching row)
+  supabase
+    .from("inventory_rooms")
+    .delete()
+    .eq("id", id)
+    .then(({ error: invErr }) => {
+      if (invErr) console.warn("[RoomSync] Could not sync delete to inventory:", invErr.message);
+    });
+
   return true;
 }
