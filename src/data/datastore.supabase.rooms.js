@@ -51,8 +51,8 @@ export async function addRoom(clinicId, room) {
           id: roomId,
           user_id: profile.user_id,
           name: room.name,
-          pos_x: Math.floor(Math.random() * 400) + 50,
-          pos_y: Math.floor(Math.random() * 300) + 50,
+          pos_x: Math.floor(Math.random() * 60) + 20,
+          pos_y: Math.floor(Math.random() * 60) + 20,
         })
         .then(({ error: invErr }) => {
           if (invErr && invErr.code !== "23505") {
