@@ -43,6 +43,19 @@ export async function updateRoom(id, updates) {
     .select("*")
     .single();
   if (error) throw error;
+
+  // Sync name rename back to inventory_rooms (same UUID is used for both tables
+  // when a room is created from the inventory app — no-op if no matching row).
+  if (updates.name !== undefined) {
+    supabase
+      .from("inventory_rooms")
+      .update({ name: updates.name })
+      .eq("id", id)
+      .then(({ error: invErr }) => {
+        if (invErr) console.warn("[RoomSync] Could not sync rename to inventory:", invErr.message);
+      });
+  }
+
   return mapRoom(data);
 }
 
