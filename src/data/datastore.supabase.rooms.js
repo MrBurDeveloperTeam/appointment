@@ -17,7 +17,11 @@ export async function getRooms(clinicId) {
 }
 
 export async function addRoom(clinicId, room) {
+  // Generate a shared UUID so the same id can be used in inventory_rooms.
+  const roomId = crypto.randomUUID();
+
   const payload = {
+    id: roomId,
     clinic_id: clinicId,
     name: room.name,
     color: room.color || null,
@@ -28,6 +32,35 @@ export async function addRoom(clinicId, room) {
     .select("*")
     .single();
   if (error) throw error;
+
+  // Sync to inventory_rooms using the same UUID.
+  // Look up the user_id that owns this clinic so we can set inventory_rooms.user_id.
+  supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("clinic_id", clinicId)
+    .maybeSingle()
+    .then(({ data: profile, error: profErr }) => {
+      if (profErr || !profile?.user_id) {
+        console.warn("[RoomSync] Could not resolve user_id for clinic", clinicId, profErr?.message);
+        return;
+      }
+      supabase
+        .from("inventory_rooms")
+        .insert({
+          id: roomId,
+          user_id: profile.user_id,
+          name: room.name,
+          pos_x: Math.floor(Math.random() * 400) + 50,
+          pos_y: Math.floor(Math.random() * 300) + 50,
+        })
+        .then(({ error: invErr }) => {
+          if (invErr && invErr.code !== "23505") {
+            console.warn("[RoomSync] Could not sync new room to inventory:", invErr.message);
+          }
+        });
+    });
+
   return mapRoom(data);
 }
 
