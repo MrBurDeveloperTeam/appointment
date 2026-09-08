@@ -1,4 +1,14 @@
 import { supabase } from "../lib/supabaseClient";
+import { hasAppointmentPassed, PAST_APPOINTMENT_MESSAGE } from '../utils/appointmentReadOnly';
+
+async function assertAppointmentEditable(id) {
+  const { data, error } = await supabase.from('appointments')
+    .select('date, start_time').eq('id', id).single();
+  if (error) throw error;
+  if (hasAppointmentPassed({ date: data.date, startTime: data.start_time })) {
+    throw new Error(PAST_APPOINTMENT_MESSAGE);
+  }
+}
 
 const mapAppointment = (row) => ({
   id: row.id,
@@ -61,6 +71,7 @@ export async function addAppointment(clinicId, appointment) {
 }
 
 export async function updateAppointment(id, updates) {
+  await assertAppointmentEditable(id);
   const payload = {
     ...(updates.patientId !== undefined ? { patient_id: updates.patientId || null } : {}),
     ...(updates.dentistId !== undefined ? { dentist_id: updates.dentistId || null } : {}),
@@ -84,6 +95,7 @@ export async function updateAppointment(id, updates) {
 }
 
 export async function deleteAppointment(id) {
+  await assertAppointmentEditable(id);
   const { error } = await supabase.from("appointments").delete().eq("id", id);
   if (error) throw error;
   return true;

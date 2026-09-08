@@ -6,6 +6,7 @@ import { getInitials } from '../utils/people';
 import { getColorBg } from '../utils/colors';
 import { useToast } from '../context/ToastProvider';
 import { findAppointmentConflicts } from '../utils/availability';
+import { hasAppointmentPassed, PAST_APPOINTMENT_MESSAGE } from '../utils/appointmentReadOnly';
 
 const APPOINTMENT_DURATION_OPTIONS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
 
@@ -45,6 +46,13 @@ export default function AppointmentForm({
   const treatmentInitRef = useRef(false);
   const hydratedInitialRef = useRef(null);
   const isEditing = Boolean(initialData && initialData.id);
+  const [clock, setClock] = useState(() => new Date());
+  const isReadOnly = isEditing && hasAppointmentPassed(initialData, clock);
+  useEffect(() => {
+    if (!isEditing) return;
+    const timer = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, [isEditing]);
   const [showPatientPicker, setShowPatientPicker] = useState(false);
   const [patientQuery, setPatientQuery] = useState('');
   const now = new Date();
@@ -176,6 +184,11 @@ export default function AppointmentForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isEditing && hasAppointmentPassed(initialData)) {
+      setClock(new Date());
+      addToast(PAST_APPOINTMENT_MESSAGE, 'warning');
+      return;
+    }
     if (!isEditing && credits < 1) {
       addToast("Insufficient credits to create a new appointment.", 'error');
       return;
@@ -277,9 +290,11 @@ export default function AppointmentForm({
 
 
   return (
-    <Modal title={isEditing ? 'Edit Appointment' : 'New Appointment'} onClose={onClose}>
+    <Modal title={isReadOnly ? 'Appointment Details' : isEditing ? 'Edit Appointment' : 'New Appointment'} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <div className="modal-body">
+          {isReadOnly && <p role="status">{PAST_APPOINTMENT_MESSAGE}</p>}
+          <fieldset disabled={isReadOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <div className="form-group">
             <label className="form-label">Patient</label>
             <div className="patient-item selected" style={{ cursor: 'default', justifyContent: 'space-between' }}>
@@ -300,7 +315,7 @@ export default function AppointmentForm({
                 Change
               </button>
             </div>
-            {showPatientPicker && (
+            {showPatientPicker && !isReadOnly && (
               <div className="patient-picker">
                 <input
                   className="search-input"
@@ -526,6 +541,7 @@ export default function AppointmentForm({
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
           </div>
+          </fieldset>
         </div>
 
         <div className="modal-footer">
@@ -535,27 +551,34 @@ export default function AppointmentForm({
             </div>
           )}
           <div className="flex-1"></div>
-          {isEditing && (
+          {isEditing && !isReadOnly && (
             <button
               type="button"
               className="btn btn-danger"
               disabled={isSubmitting}
-              onClick={() => onDelete && onDelete(form)}
+              onClick={() => {
+                if (hasAppointmentPassed(initialData)) {
+                  setClock(new Date());
+                  addToast(PAST_APPOINTMENT_MESSAGE, 'warning');
+                  return;
+                }
+                onDelete && onDelete(form);
+              }}
             >
               Delete
             </button>
           )}
           <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>
-            Cancel
+            {isReadOnly ? 'Close' : 'Cancel'}
           </button>
-          <button type="submit" className="btn btn-primary" disabled={showCreditWarning || isSubmitting}>
+          {!isReadOnly && <button type="submit" className="btn btn-primary" disabled={showCreditWarning || isSubmitting}>
             {isSubmitting
               ? (isEditing ? 'Saving...' : 'Creating...')
               : pendingConflicts
                 ? 'Book anyway'
                 : (isEditing ? 'Save Appointment' : 'Create Appointment')
             }
-          </button>
+          </button>}
         </div>
       </form>
     </Modal>
