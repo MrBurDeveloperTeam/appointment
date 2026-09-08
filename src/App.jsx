@@ -20,6 +20,7 @@ import RegisterPage from './components/auth/RegisterPage';
 import AdminDashboard from './components/AdminDashboard';
 import PublicBookingView from './components/PublicBookingView';
 import ConfirmDialog from './components/ConfirmDialog';
+import TutorialVideoModal from './components/TutorialVideoModal';
 import CreditModal from './components/CreditModal';
 import { todayISO } from './utils/date';
 import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
@@ -123,6 +124,29 @@ export default function App() {
 // independently enforced server-side via Supabase RLS, never by this cached
 // flag.
 const APPOINTMENT_ACCESS_CACHE_KEY_PREFIX = 'appointment_access_cache:';
+const TUTORIAL_VIDEO_SEEN_KEY_PREFIX = 'appointment_tutorial_video_seen_v1_';
+
+function hasSeenTutorialVideo(userId) {
+  try {
+    return localStorage.getItem(
+      `${TUTORIAL_VIDEO_SEEN_KEY_PREFIX}${userId}`
+    ) === 'true';
+  } catch (error) {
+    console.error('Failed to read tutorial video flag', error);
+    return false;
+  }
+}
+
+function markTutorialVideoSeen(userId) {
+  try {
+    localStorage.setItem(
+      `${TUTORIAL_VIDEO_SEEN_KEY_PREFIX}${userId}`,
+      'true'
+    );
+  } catch (error) {
+    console.error('Failed to persist tutorial video flag', error);
+  }
+}
 
 function readCachedAppointmentAccess(cacheKey) {
   if (!cacheKey) return null;
@@ -160,6 +184,7 @@ function AppContent() {
   const { mutateAsync: getSessionInfo } = useGetSessionInfo();
 
   const [exchangeDone, setExchangeDone] = useState(false);
+  const [showTutorialVideo, setShowTutorialVideo] = useState(false);
 
   const [
     appointmentAccess,setAppointmentAccess,] = useState(null);
@@ -186,6 +211,33 @@ function AppContent() {
     error: authError,
     signOut
   } = useAuth();
+
+  useEffect(() => {
+    if (
+      !user?.id ||
+      authRole === 'admin' ||
+      !activeClinicId ||
+      authLoading ||
+      appointmentAccessLoading
+    ) {
+      return;
+    }
+
+    if (!hasSeenTutorialVideo(user.id)) {
+      setShowTutorialVideo(true);
+    }
+  }, [
+    user?.id,
+    authRole,
+    activeClinicId,
+    authLoading,
+    appointmentAccessLoading,
+  ]);
+
+  const closeTutorialVideo = useCallback(() => {
+    if (user?.id) markTutorialVideoSeen(user.id);
+    setShowTutorialVideo(false);
+  }, [user?.id]);
    useEffect(() => {
     let cancelled = false;
 
@@ -1336,6 +1388,11 @@ useEffect(() => {
         confirmVariant="danger"
         onClose={() => setConfirmDialog({ open: false, type: '', payload: null })}
         onConfirm={handleConfirmDelete}
+      />
+
+      <TutorialVideoModal
+        isOpen={showTutorialVideo}
+        onClose={closeTutorialVideo}
       />
 
       {/* 🐱 MOLAR ECOSYSTEM */}
