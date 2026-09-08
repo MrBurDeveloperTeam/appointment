@@ -59,7 +59,7 @@ const TutorialVideoModal: React.FC<TutorialVideoModalProps> = ({ isOpen, onClose
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-[#004aad] text-white text-sm font-bold hover:bg-[#003a8a] transition-colors"
+            className="btn btn-primary"
           >
             Got it, let's go
           </button>
