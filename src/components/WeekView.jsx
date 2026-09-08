@@ -1,3 +1,4 @@
+import { hasAppointmentPassed } from '../utils/appointmentReadOnly';
 import { useMemo, useRef, useState } from 'react';
 import { buildHolidayMap } from '../utils/calendar';
 import { toISODate, todayISO, sameDate, startOfWeek, endOfWeek, eachDayOfInterval } from '../utils/date';
@@ -260,7 +261,7 @@ export default function WeekView({
                   <div
                     key={apt.id}
                     className="week-appointment"
-                    draggable
+                    draggable={!hasAppointmentPassed(apt)}
                     style={{
                       top,
                       minHeight: height,
@@ -270,6 +271,10 @@ export default function WeekView({
                       position: 'absolute',
                     }}
                     onDragStart={(e) => {
+                      if (hasAppointmentPassed(apt)) {
+                        e.preventDefault();
+                        return;
+                      }
                       dragRef.current = apt;
                       e.dataTransfer.effectAllowed = 'move';
                       e.dataTransfer.setData('text/plain', apt.id);
@@ -342,4 +347,3 @@ export default function WeekView({
     </div>
   );
 }
-

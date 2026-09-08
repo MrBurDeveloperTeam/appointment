@@ -1,3 +1,4 @@
+import { hasAppointmentPassed } from '../utils/appointmentReadOnly';
 import { useRef, useState } from 'react';
 import { toISODate, todayISO, sameDate } from '../utils/date';
 import { addMinutes, minutesToTime, formatTime } from '../utils/time';
@@ -178,6 +179,10 @@ export default function DayView({
   };
 
   const handleDragStart = (apt) => (e) => {
+    if (hasAppointmentPassed(apt)) {
+      e.preventDefault();
+      return;
+    }
     dragRef.current = apt;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', apt.id);
@@ -362,7 +367,7 @@ export default function DayView({
                       <div
                         key={apt.id}
                         className="day-appointment-card"
-                        draggable
+                        draggable={!hasAppointmentPassed(apt)}
                         style={{
                           top,
                           height: height,
@@ -453,7 +458,7 @@ export default function DayView({
                     <div
                       key={apt.id}
                       className="day-appointment-card"
-                      draggable
+                      draggable={!hasAppointmentPassed(apt)}
                       style={{
                         top,
                         height: height,
@@ -524,5 +529,3 @@ export default function DayView({
     </div>
   );
 }
-
-
