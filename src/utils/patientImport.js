@@ -110,12 +110,38 @@ async function xlsxRows(file) {
   const xml = decoder.decode(files.get(sheetName)); const rows = [];
   for (const rowMatch of xml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)) {
     const row = []; let fallbackColumn = 0;
-    for (const cellMatch of rowMatch[1].matchAll(/<c([^>]*)>([\s\S]*?)<\/c>/g)) {
-      const ref = /\br="([A-Z]+)\d+"/.exec(cellMatch[1]);
-      const column = ref ? [...ref[1]].reduce((total, letter) => total * 26 + letter.charCodeAt(0) - 64, 0) - 1 : fallbackColumn;
-      const type = /\bt="([^"]+)"/.exec(cellMatch[1])?.[1]; const raw = /<v[^>]*>([\s\S]*?)<\/v>/.exec(cellMatch[2])?.[1] ?? '';
-      const inline = /<t[^>]*>([\s\S]*?)<\/t>/.exec(cellMatch[2])?.[1];
-      row[column] = type === 's' ? shared[Number(raw)] ?? '' : type === 'inlineStr' ? decodeXml(inline ?? '') : decodeXml(raw);
+    for (const cellMatch of rowMatch[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+      const attributes = cellMatch[1] || '';
+      const content = cellMatch[2] || '';
+
+      const ref = /\br="([A-Z]+)\d+"/.exec(attributes);
+      const column = ref
+        ? [...ref[1]].reduce(
+            (total, letter) =>
+              total * 26 +
+              letter.charCodeAt(0) - 64,
+            0
+          ) - 1
+        : fallbackColumn;
+
+      const type =
+        /\bt="([^"]+)"/.exec(attributes)?.[1];
+
+      const raw =
+        /<v[^>]*>([\s\S]*?)<\/v>/
+          .exec(content)?.[1] ?? '';
+
+      const inline =
+        /<t[^>]*>([\s\S]*?)<\/t>/
+          .exec(content)?.[1];
+
+      row[column] =
+        type === 's'
+          ? shared[Number(raw)] ?? ''
+          : type === 'inlineStr'
+            ? decodeXml(inline ?? '')
+            : decodeXml(raw);
+
       fallbackColumn = column + 1;
     }
     if (row.some((cell) => String(cell ?? '').trim())) rows.push(row);
