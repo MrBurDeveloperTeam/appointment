@@ -85,5 +85,15 @@ describe('patient import mapping', () => {
       'Invalid email value ignored',
       'Preferred dentist not found; imported as blank',
     ]));
+    expect(row.canImport).toBe(false);
+  });
+
+  it('counts a patient with non-blocking field warnings as importable', () => {
+    const [row] = mapPatientRows(
+      [{ Name: 'Aisha Tan', Phone: '0123456789', Dentist: 'Dr Missing' }],
+      { name: 'Name', phone: ['Phone'], preferredDentist: ['Dentist'] },
+    );
+    expect(row.warnings).toContain('Preferred dentist not found; imported as blank');
+    expect(row.canImport).toBe(true);
   });
 });

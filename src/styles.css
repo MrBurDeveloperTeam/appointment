@@ -4602,6 +4602,7 @@ tbody tr:hover {
 .patient-import-table th { position: sticky; top: 0; z-index: 1; text-align: left; color: var(--text-secondary); background: var(--bg-secondary); }
 .patient-import-table th, .patient-import-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-light); }
 .patient-import-table tr.warning td:last-child { color: var(--warning-dark); }
+.patient-import-table tr.ready-with-notes td:last-child { color: var(--text-secondary); }
 .patient-import-note { margin-top: var(--space-sm); font-size: var(--font-size-xs); }
 @media (max-width: 720px) {
   .patient-import-modal-overlay { align-items: stretch; padding: 10px; }

@@ -28,15 +28,17 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
   const [nameOrder, setNameOrder] = useState('given-family');
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [result, setResult] = useState(null);
   const mappedRows = useMemo(() => mapPatientRows(rows, mapping, dentists, nameOrder), [rows, mapping, dentists, nameOrder]);
-  const warningRows =
+  const importableRows =
     mappedRows.filter(
       (row) =>
-        row.warnings.length > 0
+        row.canImport
     );
 
-  const readyRows =
-    mappedRows.length -
-    warningRows.length;
+  const blockedRows =
+    mappedRows.filter(
+      (row) =>
+        !row.canImport
+    );
 
   const chooseFile = async (file) => {
     if (!file) return; setError(''); setBusy(true);
@@ -52,7 +54,7 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
     try {
       const imported =
         await onImport(
-          mappedRows.map(
+          importableRows.map(
             (row) => row.patient
           )
         );
@@ -118,11 +120,7 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
         </>}
         {step === 'review' && <>
           <div className="patient-import-heading"><div><h4>Review before importing</h4><p>
-            All rows can be imported. Invalid or
-            unrecognized values are imported as
-            blank and shown as warnings below.
-            Existing matching patients are
-            skipped safely.
+            Ready shows every row that can be imported. Invalid or unrecognized individual values are left blank without blocking the patient. Warnings only counts rows with no usable patient information, which cannot be imported. Existing matching patients are skipped safely.
           </p></div></div>
           <div className="patient-import-summary">
             <span>
@@ -133,20 +131,20 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
 
             <span className="success">
               <CheckCircle2 size={19} />
-              <strong>{readyRows}</strong>
+              <strong>{importableRows.length}</strong>
               Ready
             </span>
 
             <span
               className={
-                warningRows.length
+                blockedRows.length
                   ? 'warning'
                   : ''
               }
             >
               <AlertCircle size={19} />
               <strong>
-                {warningRows.length}
+                {blockedRows.length}
               </strong>
               Warnings
             </span>
@@ -154,12 +152,14 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
           <div className="patient-import-table-wrap"><table className="patient-import-table"><thead><tr><th>Row</th><th>Name</th><th>Phone</th><th>IC / ID</th><th>Status</th></tr></thead><tbody>{mappedRows.slice(0, 200).map((item) => <tr
             key={item.sourceRow}
             className={
-              item.warnings.length
+              !item.canImport
                 ? 'warning'
-                : ''
+                : item.warnings.length
+                  ? 'ready-with-notes'
+                  : ''
             }
-          ><td>{item.sourceRow}</td><td>{item.patient.name || '—'}</td><td>{item.patient.phone || '—'}</td><td>{item.patient.idNumber || '—'}</td><td>{item.warnings.length ? item.warnings.join('; ') : 'Ready'}</td></tr>)}</tbody></table></div>
-          {mappedRows.length > 200 && <p className="text-muted patient-import-note">Showing the first 200 rows. All rows will still be imported.</p>}
+          ><td>{item.sourceRow}</td><td>{item.patient.name || '—'}</td><td>{item.patient.phone || '—'}</td><td>{item.patient.idNumber || '—'}</td><td>{!item.canImport ? item.warnings.join('; ') : item.warnings.length ? `Ready — ${item.warnings.join('; ')}` : 'Ready'}</td></tr>)}</tbody></table></div>
+          {mappedRows.length > 200 && <p className="text-muted patient-import-note">Showing the first 200 rows. All Ready rows will still be imported.</p>}
         </>}
         {step === 'done' && <div className="patient-import-upload"><div className="patient-import-icon success"><CheckCircle2 size={32} /></div><h4>Import complete</h4><p>{result?.created?.length || 0} patients added. {result?.skipped?.length || 0} duplicates skipped.</p></div>}
       </div>
@@ -169,7 +169,7 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
         <div className="flex-1" />
         {step !== 'done' && <button type="button" className="btn btn-secondary" disabled={busy} onClick={onClose}>Cancel</button>}
         {step === 'map' && <button type="button" className="btn btn-primary" disabled={!Object.values(mapping).some(hasMapping)} onClick={() => setStep('review')}>Review patients</button>}
-        {step === 'review' && <button type="button" className="btn btn-primary" disabled={busy || mappedRows.length === 0} onClick={startImport}>{busy ? 'Importing…' : `Import ${mappedRows.length} patients`}</button>}
+        {step === 'review' && <button type="button" className="btn btn-primary" disabled={busy || importableRows.length === 0} onClick={startImport}>{busy ? 'Importing…' : `Import ${importableRows.length} patients`}</button>}
         {step === 'done' && <button type="button" className="btn btn-primary" onClick={onClose}>Done</button>}
       </div>
     </Modal>

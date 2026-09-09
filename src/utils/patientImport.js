@@ -661,10 +661,37 @@ export function mapPatientRows(
       ...new Set(noteParts)
     ].join('\n');
 
+    const canImport = [
+      'name',
+      'idNumber',
+      'dob',
+      'gender',
+      'taxNumber',
+      'phone',
+      'email',
+      'address',
+      'emergencyContactName',
+      'emergencyContactPhone',
+      'allergies',
+      'medicalConditions',
+      'medications',
+      'source',
+      'preferredDentist',
+      'insurance',
+      'notes'
+    ].some((key) => Boolean(String(patient[key] ?? '').trim()));
+
+    if (!canImport) {
+      warnings.push(
+        'No usable patient information; row will not be imported'
+      );
+    }
+
     return {
       sourceRow: index + 2,
       patient,
-      warnings
+      warnings,
+      canImport
     };
   });
 }
