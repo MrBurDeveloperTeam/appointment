@@ -65,7 +65,7 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
   };
 
   return (
-    <Modal title="Import patients" onClose={onClose} disableClose={busy}>
+    <Modal title="Import patients" onClose={onClose} disableClose={busy} className="patient-import-modal">
       <div className="patient-import-steps" aria-label="Import progress">
         {['Upload', 'Map columns', 'Review'].map((label, index) => <span key={label} className={(step === 'done' || ['upload', 'map', 'review'].indexOf(step) >= index) ? 'active' : ''}>{index + 1}<em>{label}</em></span>)}
       </div>
@@ -81,6 +81,21 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
         </div>}
         {step === 'map' && <>
           <div className="patient-import-heading"><div><h4>Match your columns</h4><p>{fileName} · {rows.length} data rows</p></div><button type="button" className="btn btn-secondary btn-sm" onClick={() => setStep('upload')}>Change file</button></div>
+          <div className="patient-import-map-guide" role="note" aria-label="How column matching works">
+            <div className="patient-import-map-guide-icon"><FileSpreadsheet size={20} /></div>
+            <div>
+              <h5>What does “Map columns” mean?</h5>
+              <p>
+                Match each patient detail used by Snabbb with the column that contains the same information in your uploaded file.
+                For example, match <strong>Phone numbers</strong> with a column named <strong>Mobile No.</strong> or <strong>Contact</strong>.
+              </p>
+              <ul>
+                <li>Select <strong>Not provided</strong> or <strong>Do not import</strong> when your file does not contain that information.</li>
+                <li>Use <strong>Add another column</strong> when the information is split across several columns, such as home and work phone numbers or separate address lines.</li>
+                <li>No patient is saved during this step. You can review the interpreted records and any warnings before importing.</li>
+              </ul>
+            </div>
+          </div>
           <section className="patient-import-name-builder">
             <div className="patient-import-section-heading">
               <div>
