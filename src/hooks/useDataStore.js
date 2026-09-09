@@ -193,6 +193,15 @@ export default function useDataStore(activeClinicId, enabled = true) {
       refreshActivity();
     });
 
+  // Bulk import must propagate database/RLS errors to the review dialog so it
+  // never reports success when the write was rejected.
+  const importPatients = (patients) =>
+    toPromise(DataStore.importPatients(patients)).then((result) => {
+      refreshPatients();
+      refreshActivity();
+      return result;
+    });
+
   const updatePatient = (id, updates) =>
     handleAsync(DataStore.updatePatient(id, updates), () => {
       refreshPatients();
@@ -373,6 +382,7 @@ export default function useDataStore(activeClinicId, enabled = true) {
     appointmentDataStatus,
     loadedAppointmentRange,
     addPatient,
+    importPatients,
     updatePatient,
     deletePatient,
     addAppointment: handleAddAppointment,

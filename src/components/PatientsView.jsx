@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Upload } from 'lucide-react';
+import PatientImportModal from './PatientImportModal';
 import { formatTime } from '../utils/time';
 import { getInitials } from '../utils/people';
 import { dentalChartingUrl } from '../utils/dentalCharting';
@@ -13,6 +15,7 @@ export default function PatientsView({
   onNew,
   onEdit,
   searchPatients,
+  importPatients,
 }) {
   const [query, setQuery] = useState('');
   const [expandedId, setExpandedId] = useState(null);
@@ -20,6 +23,7 @@ export default function PatientsView({
 
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   // Debounced search
   useEffect(() => {
@@ -102,8 +106,11 @@ export default function PatientsView({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div style={{ marginLeft: 'auto' }}>
+        <div className="patient-toolbar-actions" style={{ marginLeft: 'auto' }}>
           {isSearching && <span className="text-muted" style={{ marginRight: 10 }}>Searching...</span>}
+          <button className="btn btn-secondary" type="button" onClick={() => setShowImport(true)}>
+            <Upload size={17} /> Import patients
+          </button>
           <button className="btn btn-primary" onClick={() => onNew()}>
             + New Patient
           </button>
@@ -297,6 +304,7 @@ export default function PatientsView({
           </button>
         </div>
       )}
+      {showImport && <PatientImportModal dentists={dentists} onImport={importPatients} onClose={() => setShowImport(false)} />}
     </div>
   );
 }

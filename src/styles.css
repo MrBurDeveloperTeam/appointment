@@ -4518,6 +4518,40 @@ tbody tr:hover {
 }
 
 /* Patient Card with Expandable Details */
+.patient-toolbar-actions { display: flex; align-items: center; gap: var(--space-sm); }
+.patient-toolbar-actions .btn { white-space: nowrap; }
+.patient-import-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); padding: var(--space-md) var(--space-lg); border-bottom: 1px solid var(--border); background: var(--bg-secondary); }
+.patient-import-steps span { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text-muted); font-size: var(--font-size-xs); font-weight: 700; }
+.patient-import-steps span::first-letter { border-radius: 50%; }
+.patient-import-steps span.active { color: var(--primary); }
+.patient-import-steps em { font-style: normal; }
+.patient-import-body { min-height: 360px; max-height: min(64vh, 620px); }
+.patient-import-upload { min-height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--space-md); padding: var(--space-xl); border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); background: var(--primary-bg); }
+.patient-import-upload h4, .patient-import-heading h4 { font-size: var(--font-size-lg); color: var(--text-primary); }
+.patient-import-upload p { max-width: 520px; color: var(--text-secondary); }
+.patient-import-upload small { color: var(--text-muted); }
+.patient-import-icon { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 18px; color: var(--primary); background: var(--bg-card); box-shadow: var(--shadow-md); }
+.patient-import-icon.success { color: var(--success-dark); background: var(--success-bg); }
+.patient-import-alert { display: flex; gap: var(--space-sm); align-items: center; margin-bottom: var(--space-md); padding: 12px 14px; border-radius: var(--radius-md); font-size: var(--font-size-sm); }
+.patient-import-alert.error { color: var(--danger-dark); background: var(--danger-bg); border: 1px solid var(--danger-light); }
+.patient-import-heading { display: flex; justify-content: space-between; gap: var(--space-md); align-items: flex-start; margin-bottom: var(--space-lg); }
+.patient-import-heading p { margin-top: 4px; color: var(--text-secondary); font-size: var(--font-size-sm); }
+.patient-import-mapping { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); }
+.patient-import-mapping label > span { display: flex; justify-content: space-between; margin-bottom: 6px; color: var(--text-primary); font-size: var(--font-size-sm); font-weight: 600; }
+.patient-import-mapping b { color: var(--primary-dark); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+.patient-import-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); margin-bottom: var(--space-md); }
+.patient-import-summary span { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-secondary); background: var(--bg-card); }
+.patient-import-summary strong { color: var(--text-primary); font-size: var(--font-size-lg); }
+.patient-import-summary span.success { color: var(--success-dark); border-color: var(--success-light); background: var(--success-bg); }
+.patient-import-summary span.danger { color: var(--danger-dark); border-color: var(--danger-light); background: var(--danger-bg); }
+.patient-import-table-wrap { overflow: auto; max-height: 340px; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.patient-import-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-xs); }
+.patient-import-table th { position: sticky; top: 0; z-index: 1; text-align: left; color: var(--text-secondary); background: var(--bg-secondary); }
+.patient-import-table th, .patient-import-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-light); }
+.patient-import-table tr.invalid td:last-child { color: var(--danger-dark); }
+.patient-import-note { margin-top: var(--space-sm); font-size: var(--font-size-xs); }
+@media (max-width: 720px) { .patient-toolbar-actions { flex-wrap: wrap; justify-content: flex-end; } .patient-import-mapping { grid-template-columns: 1fr; } .patient-import-summary { grid-template-columns: 1fr; } .patient-import-steps em { display: none; } }
+
 .patient-card {
   border-radius: var(--radius-md);
   overflow: hidden;

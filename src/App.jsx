@@ -461,6 +461,7 @@ useEffect(() => {
     activeClinicData,
     isReady,
     addPatient,
+    importPatients,
     updatePatient,
     deletePatient,
     addAppointment,
@@ -1267,6 +1268,7 @@ useEffect(() => {
                 setEditingPatient(p);
                 setShowPatientModal(true);
               }}
+              importPatients={importPatients}
             />
           )}
           {view === 'settings' && (
