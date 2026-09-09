@@ -1268,6 +1268,7 @@ useEffect(() => {
                 setEditingPatient(p);
                 setShowPatientModal(true);
               }}
+              searchPatients={searchPatients}
               importPatients={importPatients}
             />
           )}
