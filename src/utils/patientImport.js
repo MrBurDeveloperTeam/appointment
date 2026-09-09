@@ -16,7 +16,7 @@ export const PATIENT_IMPORT_FIELDS = [
   { key: 'dobYear', label: 'Birth year', aliases: ['birth year', 'dob year', 'year of birth', 'birth yyyy'] },
   { key: 'gender', label: 'Gender', aliases: ['gender', 'sex', 'sex code', 'jantina', '性别'] },
   { key: 'taxNumber', label: 'Tax number', aliases: ['tax', 'tax no', 'tax number', 'tax id', 'tax reference', 'revenue id', 'tin', '税号'] },
-  { key: 'phone', label: 'Phone numbers', required: true, aliases: ['phone', 'phone no', 'phone number', 'primary phone', 'home phone', 'work phone', 'office phone', 'mobile', 'mobile no', 'mobile number', 'primary mobile', 'mobile 1', 'mobile 2', 'cell', 'cell phone', 'contact', 'contact no', 'contact number', 'tel', 'telephone', 'whatsapp', 'no telefon', 'telefon', '联系电话', '手机号码'] },
+  { key: 'phone', label: 'Phone numbers', aliases: ['phone', 'phone no', 'phone number', 'primary phone', 'home phone', 'work phone', 'office phone', 'mobile', 'mobile no', 'mobile number', 'primary mobile', 'mobile 1', 'mobile 2', 'cell', 'cell phone', 'contact', 'contact no', 'contact number', 'tel', 'telephone', 'whatsapp', 'no telefon', 'telefon', '联系电话', '手机号码'] },
   { key: 'email', label: 'Email addresses', aliases: ['email', 'email address', 'e-mail', 'electronic mail', 'primary email', 'secondary email', 'personal email', 'work email', 'email 1', 'email 2', 'emel', '电子邮件', '邮箱'] },
   { key: 'emailIsGuardian', label: 'Email belongs to guardian', aliases: ['guardian email', 'parent email', 'email is guardian', 'email belongs to guardian', 'adult email owner', 'minor email', 'guardian email flag'] },
   { key: 'guardianName', label: 'Parent / guardian name', aliases: ['guardian name', 'parent name', 'parent guardian name', 'responsible person', 'responsible adult', 'legal guardian'] },
@@ -79,7 +79,14 @@ function csvRows(text) {
   return rows;
 }
 
-const decodeXml = (value) => new DOMParser().parseFromString(`<x>${value}</x>`, 'application/xml').documentElement.textContent || '';
+const decodeXml = (value) => String(value ?? '')
+  .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)))
+  .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+  .replace(/&lt;/g, '<')
+  .replace(/&gt;/g, '>')
+  .replace(/&quot;/g, '"')
+  .replace(/&apos;/g, "'")
+  .replace(/&amp;/g, '&');
 
 async function unzipXlsx(buffer) {
   const bytes = new Uint8Array(buffer); const view = new DataView(buffer); const files = new Map();
@@ -107,12 +114,17 @@ async function xlsxRows(file) {
   const shared = sharedXml ? [...decoder.decode(sharedXml).matchAll(/<si[^>]*>([\s\S]*?)<\/si>/g)].map((match) => decodeXml([...match[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((part) => part[1]).join(''))) : [];
   const sheetName = [...files.keys()].filter((name) => /^xl\/worksheets\/sheet\d+\.xml$/.test(name)).sort()[0];
   if (!sheetName) throw new Error('No worksheet was found in this Excel file.');
-  const xml = decoder.decode(files.get(sheetName)); const rows = [];
+  const xml = decoder.decode(files.get(sheetName));
+  return parseWorksheetRows(xml, shared);
+}
+
+export function parseWorksheetRows(xml, shared = []) {
+  const rows = [];
   for (const rowMatch of xml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)) {
     const row = []; let fallbackColumn = 0;
-    for (const cellMatch of rowMatch[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
-      const attributes = cellMatch[1] || '';
-      const content = cellMatch[2] || '';
+    for (const cellMatch of rowMatch[1].matchAll(/<c\b([^>]*)\/>|<c\b([^>]*)>([\s\S]*?)<\/c>/g)) {
+      const attributes = cellMatch[1] || cellMatch[2] || '';
+      const content = cellMatch[3] || '';
 
       const ref = /\br="([A-Z]+)\d+"/.exec(attributes);
       const column = ref
@@ -166,68 +178,493 @@ export async function readPatientFile(file) {
   return { headers, rows: rows.slice(headerIndex + 1).map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? '']))) };
 }
 
-const truthy = (value) => ['1', 'true', 'yes', 'y', '是'].includes(String(value ?? '').trim().toLowerCase());
-const normalizeGender = (value) => ({ m: 'male', man: 'male', male: 'male', f: 'female', woman: 'female', female: 'female' }[String(value ?? '').trim().toLowerCase()] || String(value ?? '').trim().toLowerCase());
-const normalizeRelationship = (value) => ({ parent: 'parent', mother: 'parent', father: 'parent', guardian: 'legal-guardian', 'legal guardian': 'legal-guardian' }[String(value ?? '').trim().toLowerCase()] || '');
+const truthy = (value) => [
+  '1',
+  'true',
+  'yes',
+  'y',
+  '是'
+].includes(
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+);
 
-export function normalizeDate(value) {
-  if (value === '' || value == null) return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value).trim())) return String(value).trim();
-  if (/^\d+(\.\d+)?$/.test(String(value).trim())) {
-    const excelEpoch = new Date(Date.UTC(1899, 11, 30)); excelEpoch.setUTCDate(excelEpoch.getUTCDate() + Number(value));
-    return excelEpoch.toISOString().slice(0, 10);
+const normalizeGender = (value) => ({
+  m: 'male',
+  man: 'male',
+  male: 'male',
+  f: 'female',
+  woman: 'female',
+  female: 'female',
+  o: 'other',
+  other: 'other'
+}[
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+] || '');
+
+const isValidEmail = (value) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+    String(value ?? '').trim()
+  );
+
+function buildValidDate(year, month, day) {
+  const y = Number(year);
+  const m = Number(month);
+  const d = Number(day);
+
+  if (!y || !m || !d) return '';
+
+  const date = new Date(
+    Date.UTC(y, m - 1, d)
+  );
+
+  if (
+    date.getUTCFullYear() !== y ||
+    date.getUTCMonth() !== m - 1 ||
+    date.getUTCDate() !== d
+  ) {
+    return '';
   }
-  const match = String(value).trim().match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
-  if (match) { const year = match[3].length === 2 ? `19${match[3]}` : match[3]; return `${year}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`; }
-  const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 10);
+
+  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
-export function mapPatientRows(rows, mapping, dentists = [], nameOrder = 'given-family') {
+export function normalizeDate(value) {
+  if (value === '' || value == null) {
+    return '';
+  }
+
+  const text = String(value).trim();
+
+  const iso = text.match(
+    /^(\d{4})-(\d{2})-(\d{2})$/
+  );
+
+  if (iso) {
+    return buildValidDate(
+      iso[1],
+      iso[2],
+      iso[3]
+    );
+  }
+
+  if (/^\d+(\.\d+)?$/.test(text)) {
+    const excelEpoch = new Date(
+      Date.UTC(1899, 11, 30)
+    );
+
+    excelEpoch.setUTCDate(
+      excelEpoch.getUTCDate() +
+      Number(text)
+    );
+
+    return excelEpoch
+      .toISOString()
+      .slice(0, 10);
+  }
+
+  const match = text.match(
+    /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/
+  );
+
+  if (match) {
+    const year =
+      match[3].length === 2
+        ? `19${match[3]}`
+        : match[3];
+
+    return buildValidDate(
+      year,
+      match[2],
+      match[1]
+    );
+  }
+
+  const parsed = new Date(text);
+
+  return Number.isNaN(parsed.getTime())
+    ? ''
+    : buildValidDate(parsed.getFullYear(), parsed.getMonth() + 1, parsed.getDate());
+}
+
+export function mapPatientRows(
+  rows,
+  mapping,
+  dentists = [],
+  nameOrder = 'given-family'
+) {
   return rows.map((row, index) => {
-    const columns = (key) => (Array.isArray(mapping[key]) ? mapping[key] : [mapping[key]]).filter(Boolean);
-    const values = (key) => columns(key).map((column) => String(row[column] ?? '').trim()).filter(Boolean);
-    const get = (key) => values(key)[0] || '';
-    const join = (key, separator = '; ') => [...new Set(values(key))].join(separator);
-    const patient = Object.fromEntries(PATIENT_IMPORT_FIELDS.map((field) => [field.key, get(field.key)]));
-    const legalParts = nameOrder === 'family-given'
-      ? [get('title'), get('lastName'), get('firstName'), get('middleName'), get('suffix')]
-      : [get('title'), get('firstName'), get('middleName'), get('lastName'), get('suffix')];
-    patient.name = get('name') || legalParts.filter(Boolean).join(' ') || get('nickname');
-    const noteParts = values('notes');
-    const preserveAdditional = (label, entries) => {
-      const uniqueEntries = [...new Set(entries)];
-      if (uniqueEntries.length > 1) noteParts.push(`${label}: ${uniqueEntries.slice(1).join(' / ')}`);
+    const columns = (key) =>
+      (
+        Array.isArray(mapping[key])
+          ? mapping[key]
+          : [mapping[key]]
+      ).filter(Boolean);
+
+    const values = (key) =>
+      columns(key)
+        .map((column) =>
+          String(row[column] ?? '').trim()
+        )
+        .filter(Boolean);
+
+    const get = (key) =>
+      values(key)[0] || '';
+
+    const join = (
+      key,
+      separator = '; '
+    ) =>
+      [...new Set(values(key))]
+        .join(separator);
+
+    const patient =
+      Object.fromEntries(
+        PATIENT_IMPORT_FIELDS.map(
+          (field) => [
+            field.key,
+            get(field.key)
+          ]
+        )
+      );
+
+    const warnings = [];
+    const noteParts = [
+      ...new Set(values('notes'))
+    ];
+
+    const addNote = (value) => {
+      if (
+        value &&
+        !noteParts.includes(value)
+      ) {
+        noteParts.push(value);
+      }
     };
-    preserveAdditional('Additional phone', values('phone'));
-    preserveAdditional('Additional email', values('email'));
-    preserveAdditional('Additional ID', values('idNumber'));
-    preserveAdditional('Additional tax number', values('taxNumber'));
-    patient.notes = [...new Set(noteParts)].join('\n');
+
+    const preserveAdditional = (
+      label,
+      entries
+    ) => {
+      const uniqueEntries = [
+        ...new Set(entries)
+      ];
+
+      if (uniqueEntries.length > 1) {
+        addNote(
+          `${label}: ${uniqueEntries
+            .slice(1)
+            .join(' / ')}`
+        );
+      }
+    };
+
+    // Name
+    const legalParts =
+      nameOrder === 'family-given'
+        ? [
+            get('title'),
+            get('lastName'),
+            get('firstName'),
+            get('middleName'),
+            get('suffix')
+          ]
+        : [
+            get('title'),
+            get('firstName'),
+            get('middleName'),
+            get('lastName'),
+            get('suffix')
+          ];
+
+    patient.name =
+      get('name') ||
+      legalParts
+        .filter(Boolean)
+        .join(' ') ||
+      get('nickname');
+
     const nickname = get('nickname');
-    if (nickname && normalizeHeader(nickname) !== normalizeHeader(patient.name)) {
-      const nicknameNote = `Preferred name: ${nickname}`;
-      patient.notes = patient.notes ? `${patient.notes}\n${nicknameNote}` : nicknameNote;
+
+    if (
+      nickname &&
+      normalizeHeader(nickname) !==
+        normalizeHeader(patient.name)
+    ) {
+      addNote(
+        `Preferred name: ${nickname}`
+      );
     }
-    const dobParts = [get('dobDay'), get('dobMonth'), get('dobYear')];
-    const combinedDob = dobParts.every(Boolean) ? `${dobParts[0]}/${dobParts[1]}/${dobParts[2]}` : '';
-    patient.dob = normalizeDate(get('dob') || combinedDob); patient.gender = normalizeGender(patient.gender);
-    patient.address = join('address', ', ');
-    patient.emergencyContactName = join('emergencyContactName', ' / ');
-    patient.emergencyContactPhone = join('emergencyContactPhone', ' / ');
-    patient.allergies = join('allergies'); patient.medicalConditions = join('medicalConditions');
-    patient.medications = join('medications'); patient.source = join('source'); patient.insurance = join('insurance');
-    patient.guardianName = join('guardianName', ' / ');
-    patient.email = patient.email.toLowerCase(); patient.emailIsGuardian = truthy(patient.emailIsGuardian);
-    patient.guardianRelationship = normalizeRelationship(patient.guardianRelationship);
-    const dentistValues = values('preferredDentist').map((value) => value.toLowerCase());
-    patient.preferredDentist = dentists.find((dentist) => dentistValues.includes(dentist.name?.trim().toLowerCase()))?.id || '';
-    const errors = [];
-    if (!patient.name) errors.push('Name is required');
-    if (!patient.phone) errors.push('Phone is required');
-    if ((get('dob') || dobParts.some(Boolean)) && !patient.dob) errors.push('Invalid date of birth');
-    if (patient.gender && !['male', 'female', 'other'].includes(patient.gender)) errors.push('Gender must be male, female, or other');
-    if (patient.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patient.email)) errors.push('Invalid email');
-    if (patient.emailIsGuardian && (!patient.email || !patient.guardianName || !patient.guardianRelationship)) errors.push('Guardian email, name, and relationship are required');
-    return { sourceRow: index + 2, patient, errors };
+
+    // Phone
+    const phoneValues =
+      values('phone');
+
+    patient.phone =
+      phoneValues[0] || '';
+
+    preserveAdditional(
+      'Additional phone',
+      phoneValues
+    );
+
+    // Email
+    const emailValues = [
+      ...new Set(
+        values('email').map(
+          (value) =>
+            value.toLowerCase()
+        )
+      )
+    ];
+
+    const validEmails =
+      emailValues.filter(
+        isValidEmail
+      );
+
+    const invalidEmails =
+      emailValues.filter(
+        (value) =>
+          !isValidEmail(value)
+      );
+
+    patient.email =
+      validEmails[0] || '';
+
+    if (validEmails.length > 1) {
+      addNote(
+        `Additional email: ${validEmails
+          .slice(1)
+          .join(' / ')}`
+      );
+    }
+
+    if (invalidEmails.length) {
+      warnings.push(
+        'Invalid email value ignored'
+      );
+    }
+
+    // IC / Passport
+    const idValues =
+      values('idNumber');
+
+    patient.idNumber =
+      idValues[0] || '';
+
+    preserveAdditional(
+      'Additional ID',
+      idValues
+    );
+
+    // Tax
+    const taxValues =
+      values('taxNumber');
+
+    patient.taxNumber =
+      taxValues[0] || '';
+
+    preserveAdditional(
+      'Additional tax number',
+      taxValues
+    );
+
+    // DOB
+    const dobParts = [
+      get('dobDay'),
+      get('dobMonth'),
+      get('dobYear')
+    ];
+
+    const hasDobInput = Boolean(
+      get('dob') ||
+      dobParts.some(Boolean)
+    );
+
+    const combinedDob =
+      dobParts.every(Boolean)
+        ? `${dobParts[0]}/${dobParts[1]}/${dobParts[2]}`
+        : '';
+
+    const rawDob =
+      get('dob') ||
+      combinedDob;
+
+    patient.dob =
+      normalizeDate(rawDob);
+
+    if (
+      hasDobInput &&
+      !patient.dob
+    ) {
+      warnings.push(
+        'Invalid date of birth; imported as blank'
+      );
+    }
+
+    // Gender
+    const rawGender =
+      get('gender');
+
+    patient.gender =
+      normalizeGender(rawGender);
+
+    if (
+      rawGender &&
+      !patient.gender
+    ) {
+      warnings.push(
+        'Invalid gender; imported as blank'
+      );
+    }
+
+    // Combined fields
+    patient.address =
+      join('address', ', ');
+
+    patient.emergencyContactName =
+      join(
+        'emergencyContactName',
+        ' / '
+      );
+
+    patient.emergencyContactPhone =
+      join(
+        'emergencyContactPhone',
+        ' / '
+      );
+
+    patient.allergies =
+      join('allergies');
+
+    patient.medicalConditions =
+      join('medicalConditions');
+
+    patient.medications =
+      join('medications');
+
+    patient.source =
+      join('source');
+
+    patient.insurance =
+      join('insurance');
+
+    // Guardian data stays available
+    // in Map Columns, but is preserved
+    // inside Notes for this import.
+    patient.emailIsGuardian =
+      truthy(
+        get('emailIsGuardian')
+      );
+
+    patient.guardianName =
+      join(
+        'guardianName',
+        ' / '
+      );
+
+    patient.guardianRelationship =
+      join(
+        'guardianRelationship',
+        ' / '
+      );
+
+    if (patient.emailIsGuardian) {
+      addNote(
+        'Email belongs to guardian: Yes'
+      );
+    }
+
+    if (patient.guardianName) {
+      addNote(
+        `Guardian name: ${patient.guardianName}`
+      );
+    }
+
+    if (
+      patient.guardianRelationship
+    ) {
+      addNote(
+        `Guardian relationship: ${patient.guardianRelationship}`
+      );
+    }
+
+    if (
+      patient.emailIsGuardian &&
+      patient.email
+    ) {
+      addNote(
+        `Guardian email: ${patient.email}`
+      );
+    }
+
+    if (
+      patient.emailIsGuardian &&
+      (
+        !patient.email ||
+        !patient.guardianName ||
+        !patient.guardianRelationship
+      )
+    ) {
+      warnings.push(
+        'Guardian information is incomplete; available values preserved in Notes'
+      );
+    }
+
+    // Preferred dentist
+    const dentistValues =
+      values('preferredDentist');
+
+    const matchedDentist =
+      dentists.find(
+        (dentist) =>
+          dentistValues.some(
+            (value) =>
+              value.toLowerCase() ===
+              dentist.name
+                ?.trim()
+                .toLowerCase()
+          )
+      );
+
+    patient.preferredDentist =
+      matchedDentist?.id || '';
+
+    if (
+      dentistValues.length &&
+      !matchedDentist
+    ) {
+      warnings.push(
+        'Preferred dentist not found; imported as blank'
+      );
+    }
+
+    // Missing important values are only
+    // warnings, never blocking errors.
+    if (!patient.name) {
+      warnings.push(
+        'Name is missing'
+      );
+    }
+
+    if (!patient.phone) {
+      warnings.push(
+        'Phone is missing'
+      );
+    }
+
+    patient.notes = [
+      ...new Set(noteParts)
+    ].join('\n');
+
+    return {
+      sourceRow: index + 2,
+      patient,
+      warnings
+    };
   });
 }

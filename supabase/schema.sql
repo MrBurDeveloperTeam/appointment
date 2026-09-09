@@ -112,7 +112,7 @@ CREATE TABLE public.apt_patients (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   legacy_id text UNIQUE,
   clinic_id uuid NOT NULL,
-  name text NOT NULL,
+  name text,
   phone text,
   email text,
   id_number text,

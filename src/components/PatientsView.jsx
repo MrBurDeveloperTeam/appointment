@@ -136,7 +136,7 @@ export default function PatientsView({
                 <div className="patient-avatar">{getInitials(p.name)}</div>
                 <div className="patient-info">
                   <div className="patient-name">
-                    {p.name}
+                    {p.name || 'Unnamed patient'}
                     {hasAllergies ? <span className="patient-alert-badge allergy" title="Has allergies">!</span> : null}
                     {hasMedical ? <span className="patient-alert-badge medical" title="Has medical conditions">!</span> : null}
                   </div>

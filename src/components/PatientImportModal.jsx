@@ -28,7 +28,15 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
   const [nameOrder, setNameOrder] = useState('given-family');
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [result, setResult] = useState(null);
   const mappedRows = useMemo(() => mapPatientRows(rows, mapping, dentists, nameOrder), [rows, mapping, dentists, nameOrder]);
-  const validRows = mappedRows.filter((row) => row.errors.length === 0); const invalidRows = mappedRows.length - validRows.length;
+  const warningRows =
+    mappedRows.filter(
+      (row) =>
+        row.warnings.length > 0
+    );
+
+  const readyRows =
+    mappedRows.length -
+    warningRows.length;
 
   const chooseFile = async (file) => {
     if (!file) return; setError(''); setBusy(true);
@@ -41,7 +49,17 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
 
   const startImport = async () => {
     setBusy(true); setError('');
-    try { const imported = await onImport(validRows.map((row) => row.patient)); setResult(imported); setStep('done'); }
+    try {
+      const imported =
+        await onImport(
+          mappedRows.map(
+            (row) => row.patient
+          )
+        );
+
+      setResult(imported);
+      setStep('done');
+    }
     catch (caught) { setError(caught.message || 'Patient import stopped. Please check the file and try again.'); }
     finally { setBusy(false); }
   };
@@ -64,7 +82,15 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
         {step === 'map' && <>
           <div className="patient-import-heading"><div><h4>Match your columns</h4><p>{fileName} · {rows.length} data rows</p></div><button type="button" className="btn btn-secondary btn-sm" onClick={() => setStep('upload')}>Change file</button></div>
           <section className="patient-import-name-builder">
-            <div className="patient-import-section-heading"><div><h5>Patient name</h5><p>Use one full-name column, or combine separate name columns.</p></div><span>Required</span></div>
+            <div className="patient-import-section-heading">
+              <div>
+                <h5>Patient name</h5>
+                <p>
+                  Use one full-name column,
+                  or combine separate name columns.
+                </p>
+              </div>
+            </div>
             <div className="patient-import-mapping patient-import-name-grid">
               {PATIENT_IMPORT_NAME_FIELDS.map((field) => <label key={field.key}><span>{field.label}</span><select className="form-select" value={mapping[field.key] || ''} onChange={(event) => setMapping((current) => ({ ...current, [field.key]: event.target.value }))}><option value="">Not provided</option>{headers.map((header) => <option key={header} value={header}>{header}</option>)}</select></label>)}
               <label><span>Name order</span><select className="form-select" value={nameOrder} onChange={(event) => setNameOrder(event.target.value)}><option value="given-family">Given → Middle → Family</option><option value="family-given">Family → Given → Middle</option></select></label>
@@ -76,10 +102,49 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
           </div>
         </>}
         {step === 'review' && <>
-          <div className="patient-import-heading"><div><h4>Review before importing</h4><p>Only valid rows will be imported. Existing matching patients are skipped safely.</p></div></div>
-          <div className="patient-import-summary"><span><Users size={19} /><strong>{mappedRows.length}</strong>Total rows</span><span className="success"><CheckCircle2 size={19} /><strong>{validRows.length}</strong>Ready</span><span className={invalidRows ? 'danger' : ''}><AlertCircle size={19} /><strong>{invalidRows}</strong>Need attention</span></div>
-          <div className="patient-import-table-wrap"><table className="patient-import-table"><thead><tr><th>Row</th><th>Name</th><th>Phone</th><th>IC / ID</th><th>Status</th></tr></thead><tbody>{mappedRows.slice(0, 200).map((item) => <tr key={item.sourceRow} className={item.errors.length ? 'invalid' : ''}><td>{item.sourceRow}</td><td>{item.patient.name || '—'}</td><td>{item.patient.phone || '—'}</td><td>{item.patient.idNumber || '—'}</td><td>{item.errors.length ? item.errors.join('; ') : 'Ready'}</td></tr>)}</tbody></table></div>
-          {mappedRows.length > 200 && <p className="text-muted patient-import-note">Showing the first 200 rows. All valid rows will still be imported.</p>}
+          <div className="patient-import-heading"><div><h4>Review before importing</h4><p>
+            All rows can be imported. Invalid or
+            unrecognized values are imported as
+            blank and shown as warnings below.
+            Existing matching patients are
+            skipped safely.
+          </p></div></div>
+          <div className="patient-import-summary">
+            <span>
+              <Users size={19} />
+              <strong>{mappedRows.length}</strong>
+              Total rows
+            </span>
+
+            <span className="success">
+              <CheckCircle2 size={19} />
+              <strong>{readyRows}</strong>
+              Ready
+            </span>
+
+            <span
+              className={
+                warningRows.length
+                  ? 'warning'
+                  : ''
+              }
+            >
+              <AlertCircle size={19} />
+              <strong>
+                {warningRows.length}
+              </strong>
+              Warnings
+            </span>
+          </div>
+          <div className="patient-import-table-wrap"><table className="patient-import-table"><thead><tr><th>Row</th><th>Name</th><th>Phone</th><th>IC / ID</th><th>Status</th></tr></thead><tbody>{mappedRows.slice(0, 200).map((item) => <tr
+            key={item.sourceRow}
+            className={
+              item.warnings.length
+                ? 'warning'
+                : ''
+            }
+          ><td>{item.sourceRow}</td><td>{item.patient.name || '—'}</td><td>{item.patient.phone || '—'}</td><td>{item.patient.idNumber || '—'}</td><td>{item.warnings.length ? item.warnings.join('; ') : 'Ready'}</td></tr>)}</tbody></table></div>
+          {mappedRows.length > 200 && <p className="text-muted patient-import-note">Showing the first 200 rows. All rows will still be imported.</p>}
         </>}
         {step === 'done' && <div className="patient-import-upload"><div className="patient-import-icon success"><CheckCircle2 size={32} /></div><h4>Import complete</h4><p>{result?.created?.length || 0} patients added. {result?.skipped?.length || 0} duplicates skipped.</p></div>}
       </div>
@@ -88,8 +153,8 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
         {step === 'review' && <button type="button" className="btn btn-secondary" onClick={() => setStep('map')}><ArrowLeft size={16} />Back</button>}
         <div className="flex-1" />
         {step !== 'done' && <button type="button" className="btn btn-secondary" disabled={busy} onClick={onClose}>Cancel</button>}
-        {step === 'map' && <button type="button" className="btn btn-primary" disabled={!hasMapping(mapping.phone) || ![mapping.name, mapping.firstName, mapping.lastName, mapping.nickname].some(hasMapping)} onClick={() => setStep('review')}>Review patients</button>}
-        {step === 'review' && <button type="button" className="btn btn-primary" disabled={busy || validRows.length === 0} onClick={startImport}>{busy ? 'Importing…' : `Import ${validRows.length} patients`}</button>}
+        {step === 'map' && <button type="button" className="btn btn-primary" disabled={!Object.values(mapping).some(hasMapping)} onClick={() => setStep('review')}>Review patients</button>}
+        {step === 'review' && <button type="button" className="btn btn-primary" disabled={busy || mappedRows.length === 0} onClick={startImport}>{busy ? 'Importing…' : `Import ${mappedRows.length} patients`}</button>}
         {step === 'done' && <button type="button" className="btn btn-primary" onClick={onClose}>Done</button>}
       </div>
     </Modal>

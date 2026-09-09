@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapPatientRows, normalizeDate, readPatientFile, suggestNameOrder, suggestPatientMapping } from './patientImport';
+import { mapPatientRows, normalizeDate, parseWorksheetRows, readPatientFile, suggestNameOrder, suggestPatientMapping } from './patientImport';
 
 describe('patient import mapping', () => {
   it('recognizes common clinic column names', () => {
@@ -56,13 +56,34 @@ describe('patient import mapping', () => {
     expect(normalizeDate('2')).toBe('1900-01-01');
   });
 
-  it('validates required data and resolves dentist names', () => {
+  it('returns no warnings for valid data and resolves dentist names', () => {
     const rows = mapPatientRows(
       [{ Patient: 'Aisha Lee', Mobile: '0123456789', Dentist: 'Dr Tan', Sex: 'F' }],
       { name: 'Patient', phone: 'Mobile', preferredDentist: 'Dentist', gender: 'Sex' },
       [{ id: 'dentist-1', name: 'Dr Tan' }],
     );
-    expect(rows[0].errors).toEqual([]);
+    expect(rows[0].warnings).toEqual([]);
     expect(rows[0].patient).toMatchObject({ name: 'Aisha Lee', phone: '0123456789', preferredDentist: 'dentist-1', gender: 'female' });
+  });
+
+  it('keeps Excel columns aligned when blank cells are self-closing', () => {
+    const xml = '<worksheet><sheetData><row r="1"><c r="A1" t="str"><v>Name</v></c><c r="B1" t="str"><v>DOB</v></c><c r="C1" t="str"><v>Email</v></c></row><row r="2"><c r="A2" t="str"><v>Aisha</v></c><c r="B2" t="str" /><c r="C2" t="str"><v>a@example.test</v></c></row></sheetData></worksheet>';
+    expect(parseWorksheetRows(xml)).toEqual([['Name', 'DOB', 'Email'], ['Aisha', '', 'a@example.test']]);
+  });
+
+  it('imports invalid optional values as blanks and reports warnings', () => {
+    const [row] = mapPatientRows(
+      [{ Name: '', Phone: '', DOB: '31/02/2020', Gender: 'unknown', Email: 'bad-email', Dentist: 'Dr Missing' }],
+      { name: 'Name', phone: ['Phone'], dob: ['DOB'], gender: ['Gender'], email: ['Email'], preferredDentist: ['Dentist'] },
+    );
+    expect(row.patient).toMatchObject({ name: '', phone: '', dob: '', gender: '', email: '', preferredDentist: '' });
+    expect(row.warnings).toEqual(expect.arrayContaining([
+      'Name is missing',
+      'Phone is missing',
+      'Invalid date of birth; imported as blank',
+      'Invalid gender; imported as blank',
+      'Invalid email value ignored',
+      'Preferred dentist not found; imported as blank',
+    ]));
   });
 });

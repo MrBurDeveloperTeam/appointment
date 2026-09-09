@@ -101,14 +101,25 @@ export async function importPatients(clinicId, patients) {
   const userId = (await supabase.auth.getUser()).data.user?.id || null; const created = [];
   for (let start = 0; start < accepted.length; start += 100) {
     const payload = accepted.slice(start, start + 100).map((patient) => ({
-      clinic_id: clinicId, name: patient.name, phone: patient.phone || null, email: patient.email || null,
-      email_is_guardian: Boolean(patient.emailIsGuardian), guardian_name: patient.emailIsGuardian ? patient.guardianName || null : null,
-      guardian_relationship: patient.emailIsGuardian ? patient.guardianRelationship || null : null,
-      id_number: patient.idNumber || null, address: patient.address || null, dob: patient.dob || null, gender: patient.gender || null,
-      tax_number: patient.taxNumber || null, emergency_contact_name: patient.emergencyContactName || null,
-      emergency_contact_phone: patient.emergencyContactPhone || null, allergies: patient.allergies || null,
-      medical_conditions: patient.medicalConditions || null, medications: patient.medications || null, source: patient.source || null,
-      preferred_dentist_id: patient.preferredDentist || null, insurance: patient.insurance || null, notes: patient.notes || null, created_by: userId,
+      clinic_id: clinicId,
+      name: patient.name || null,
+      id_number: patient.idNumber || null,
+      dob: patient.dob || null,
+      gender: patient.gender || null,
+      tax_number: patient.taxNumber || null,
+      phone: patient.phone || null,
+      email: patient.email ? patient.email.trim().toLowerCase() : null,
+      address: patient.address || null,
+      emergency_contact_name: patient.emergencyContactName || null,
+      emergency_contact_phone: patient.emergencyContactPhone || null,
+      allergies: patient.allergies || null,
+      medical_conditions: patient.medicalConditions || null,
+      medications: patient.medications || null,
+      source: patient.source || null,
+      preferred_dentist_id: patient.preferredDentist || null,
+      insurance: patient.insurance || null,
+      notes: patient.notes || null,
+      created_by: userId,
     }));
     const { data, error } = await supabase.from('apt_patients').insert(payload).select('*');
     if (error) throw error; created.push(...(data || []).map(mapPatient));

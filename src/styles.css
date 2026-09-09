@@ -4585,12 +4585,12 @@ tbody tr:hover {
 .patient-import-summary span { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-secondary); background: var(--bg-card); }
 .patient-import-summary strong { color: var(--text-primary); font-size: var(--font-size-lg); }
 .patient-import-summary span.success { color: var(--success-dark); border-color: var(--success-light); background: var(--success-bg); }
-.patient-import-summary span.danger { color: var(--danger-dark); border-color: var(--danger-light); background: var(--danger-bg); }
+.patient-import-summary span.warning { color: var(--warning-dark); border-color: var(--warning-light); background: var(--warning-bg); }
 .patient-import-table-wrap { overflow: auto; max-height: 340px; border: 1px solid var(--border); border-radius: var(--radius-md); }
 .patient-import-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-xs); }
 .patient-import-table th { position: sticky; top: 0; z-index: 1; text-align: left; color: var(--text-secondary); background: var(--bg-secondary); }
 .patient-import-table th, .patient-import-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-light); }
-.patient-import-table tr.invalid td:last-child { color: var(--danger-dark); }
+.patient-import-table tr.warning td:last-child { color: var(--warning-dark); }
 .patient-import-note { margin-top: var(--space-sm); font-size: var(--font-size-xs); }
 @media (max-width: 720px) {
   .patient-toolbar {

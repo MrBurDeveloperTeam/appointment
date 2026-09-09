@@ -301,7 +301,7 @@ export default function AppointmentForm({
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div className="patient-avatar">{selectedPatient ? getInitials(selectedPatient.name) : 'P'}</div>
                 <div className="patient-info">
-                  <div className="patient-name">{selectedPatient ? selectedPatient.name : 'Select patient'}</div>
+                  <div className="patient-name">{selectedPatient ? selectedPatient.name || 'Unnamed patient' : 'Select patient'}</div>
                   <div className="patient-contact">
                     {selectedPatient ? selectedPatient.phone || selectedPatient.email || 'No contact info' : 'No patient selected'}
                   </div>
@@ -333,7 +333,7 @@ export default function AppointmentForm({
                     >
                       <div className="patient-avatar">{getInitials(p.name)}</div>
                       <div className="patient-info">
-                        <div className="patient-name">{p.name}</div>
+                        <div className="patient-name">{p.name || 'Unnamed patient'}</div>
                         <div className="patient-contact">{p.phone || p.email || 'No contact info'}</div>
                       </div>
                     </div>
