@@ -99,14 +99,14 @@ export default function PatientsView({
 
   return (
     <div className="card" style={{ padding: 16 }}>
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
+      <div className="patient-toolbar">
         <input
           className="search-input"
           placeholder="Search patients..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div className="patient-toolbar-actions" style={{ marginLeft: 'auto' }}>
+        <div className="patient-toolbar-actions">
           {isSearching && <span className="text-muted" style={{ marginRight: 10 }}>Searching...</span>}
           <button className="btn btn-secondary" type="button" onClick={() => setShowImport(true)}>
             <Upload size={17} /> Import patients

@@ -4518,8 +4518,33 @@ tbody tr:hover {
 }
 
 /* Patient Card with Expandable Details */
-.patient-toolbar-actions { display: flex; align-items: center; gap: var(--space-sm); }
-.patient-toolbar-actions .btn { white-space: nowrap; }
+.patient-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: var(--space-md);
+}
+
+.patient-toolbar .search-input {
+  min-width: 0;
+}
+
+.patient-toolbar-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.patient-toolbar-actions .btn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
 .patient-import-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); padding: var(--space-md) var(--space-lg); border-bottom: 1px solid var(--border); background: var(--bg-secondary); }
 .patient-import-steps span { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text-muted); font-size: var(--font-size-xs); font-weight: 700; }
 .patient-import-steps span::first-letter { border-radius: 50%; }
@@ -4550,7 +4575,43 @@ tbody tr:hover {
 .patient-import-table th, .patient-import-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-light); }
 .patient-import-table tr.invalid td:last-child { color: var(--danger-dark); }
 .patient-import-note { margin-top: var(--space-sm); font-size: var(--font-size-xs); }
-@media (max-width: 720px) { .patient-toolbar-actions { flex-wrap: wrap; justify-content: flex-end; } .patient-import-mapping { grid-template-columns: 1fr; } .patient-import-summary { grid-template-columns: 1fr; } .patient-import-steps em { display: none; } }
+@media (max-width: 720px) {
+  .patient-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .patient-toolbar-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .patient-toolbar-actions .btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .patient-import-mapping { grid-template-columns: 1fr; }
+  .patient-import-summary { grid-template-columns: 1fr; }
+  .patient-import-steps em { display: none; }
+}
+
+@media (max-width: 420px) {
+  .patient-toolbar-actions { gap: 6px; }
+  .patient-toolbar-actions .btn {
+    gap: 5px;
+    padding-inline: 8px;
+    font-size: 0.72rem;
+  }
+
+  .patient-toolbar-actions .btn svg {
+    width: 14px;
+    height: 14px;
+  }
+}
 
 .patient-card {
   border-radius: var(--radius-md);
