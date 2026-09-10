@@ -276,8 +276,8 @@ const DataStore = {
     return Patients.getPatientById(id);
   },
 
-  async searchPatients(query) {
-    const activeClinic = getClinicId();
+  async searchPatients(query, clinicId) {
+    const activeClinic = getClinicId(clinicId);
     if (!activeClinic) return [];
     return Patients.searchPatients(activeClinic, query);
   },

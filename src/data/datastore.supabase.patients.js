@@ -187,14 +187,17 @@ export async function searchPatients(clinicId, query) {
   const q = (query || "").trim();
   if (!q) return getPatients(clinicId, 20, 0);
 
-  // Note: 'or' syntax in Supabase is strictly filtered by the other chained methods.
-  // We need to ensure logic is: clinic_id=ID AND (name ilike q OR ...)
-  const term = `%${q}%`;
+  // `.or()` receives raw PostgREST filter syntax. `*` is the safe URL
+  // wildcard for ILIKE; filter-control characters are not valid search text.
+  const safeQuery = q.replace(/[,%()*]/g, " ").replace(/\s+/g, " ").trim();
+  if (!safeQuery) return [];
+  const term = `*${safeQuery}*`;
   const { data, error } = await supabase
     .from("apt_patients")
     .select("*")
     .eq("clinic_id", clinicId)
     .or(`name.ilike.${term},phone.ilike.${term},email.ilike.${term},id_number.ilike.${term},address.ilike.${term}`)
+    .order("created_at", { ascending: false })
     .limit(20);
 
   if (error) throw error;

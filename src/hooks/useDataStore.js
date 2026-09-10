@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import DataStore from '../data';
 
 // Data hook wrapping DataStore (localStorage/Supabase)
@@ -15,6 +15,10 @@ export default function useDataStore(activeClinicId, enabled = true) {
   const [activeClinicData, setActiveClinicData] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const [dateRange, setDateRange] = useState({ start: null, end: null });
+  const searchPatients = useCallback(
+    (query) => DataStore.searchPatients(query, activeClinicId),
+    [activeClinicId]
+  );
   // Appointment Data Chat readiness (molar-experience 0.9.5 integration):
   // the existing appointment fetch below has no loading/error distinction
   // — `[]` cannot tell "still loading"/"query failed" apart from
@@ -405,7 +409,7 @@ export default function useDataStore(activeClinicId, enabled = true) {
     clearAll,
     refreshRequests,
     refreshActivity,
-    searchPatients: (query) => DataStore.searchPatients(query),
+    searchPatients,
     // Mock Credits
     credits,
     creditHistory,

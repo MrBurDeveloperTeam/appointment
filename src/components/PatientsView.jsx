@@ -23,29 +23,42 @@ export default function PatientsView({
 
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const [showImport, setShowImport] = useState(false);
 
   // Debounced search
   useEffect(() => {
     if (!query) {
       setSearchResults(null);
+      setSearchError('');
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(async () => {
       if (searchPatients) {
         setIsSearching(true);
+        setSearchError('');
         try {
           const results = await searchPatients(query);
-          setSearchResults(results);
-          setPage(1); // Reset to first page of results
+          if (!cancelled) {
+            setSearchResults(results || []);
+            setPage(1); // Reset to first page of results
+          }
         } catch (e) {
           console.error(e);
+          if (!cancelled) {
+            setSearchResults([]);
+            setSearchError(e?.message || 'Patient search failed. Please try again.');
+          }
         } finally {
-          setIsSearching(false);
+          if (!cancelled) setIsSearching(false);
         }
       }
     }, 400);
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [query, searchPatients]);
 
   const displayPatients = useMemo(() => {
@@ -116,6 +129,11 @@ export default function PatientsView({
           </button>
         </div>
       </div>
+      {searchError && (
+        <div className="form-error" role="alert" style={{ margin: '10px 0' }}>
+          Search failed: {searchError}
+        </div>
+      )}
       <div className="patient-list">
         {pagedPatients.map((p) => {
           const appointmentCount = appointments.filter((a) => String(a.patientId) === String(p.id)).length;
@@ -271,13 +289,15 @@ export default function PatientsView({
             </div>
           );
         })}
-        {filtered.length === 0 && (
+        {!isSearching && filtered.length === 0 && (
           <div className="empty-state">
-            <h3>No patients</h3>
-            <p>Add a patient to get started.</p>
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => onNew()}>
-              Add Patient
-            </button>
+            <h3>{query ? 'No matching patients' : 'No patients'}</h3>
+            <p>{query ? 'Try a different name, email, phone number, IC/ID, or address.' : 'Add a patient to get started.'}</p>
+            {!query && (
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => onNew()}>
+                Add Patient
+              </button>
+            )}
           </div>
         )}
       </div>
