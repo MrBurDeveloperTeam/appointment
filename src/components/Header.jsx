@@ -20,6 +20,9 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
         setCreditError
     ] = useState(null);
     const [isOpeningSupportTickets, setIsOpeningSupportTickets] = useState(false);
+    // Temporarily hide the Support Tickets entry until the feature is complete.
+    // Change this flag to true when the entry is ready to be shown again.
+    const showSupportTickets = false;
     const menuRef = useRef(null);
 
     async function openSupportTickets() {
@@ -377,22 +380,24 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                         <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors"></i>
                       </button>
 
-                      {/* Support Tickets */}
-                      <button
-                        type="button"
-                        disabled={isOpeningSupportTickets}
-                        onClick={openSupportTickets}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <div className="w-7 h-7 rounded-xl bg-[var(--info-bg-subtle)] flex items-center justify-center shrink-0">
-                          <i className="fa-solid fa-life-ring text-[11px] text-[var(--primary)]" aria-hidden="true"></i>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">Support Tickets</p>
-                          <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">Create and track your support tickets</p>
-                        </div>
-                        <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors" aria-hidden="true"></i>
-                      </button>
+                      {/* Support Tickets: retained but hidden until the feature is complete. */}
+                      {showSupportTickets && (
+                        <button
+                          type="button"
+                          disabled={isOpeningSupportTickets}
+                          onClick={openSupportTickets}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <div className="w-7 h-7 rounded-xl bg-[var(--info-bg-subtle)] flex items-center justify-center shrink-0">
+                            <i className="fa-solid fa-life-ring text-[11px] text-[var(--primary)]" aria-hidden="true"></i>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">Support Tickets</p>
+                            <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">Create and track your support tickets</p>
+                          </div>
+                          <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors" aria-hidden="true"></i>
+                        </button>
+                      )}
                         
                       {/* Settings */}
                       <button
