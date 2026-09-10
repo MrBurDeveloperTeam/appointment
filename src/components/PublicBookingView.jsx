@@ -8,7 +8,7 @@ import {
   sanitizeName,
   validateNewPatient,
 } from '../utils/bookingValidation';
-import { filterAvailableSlotsByDentist } from '../utils/availability';
+import { filterAvailableSlotsByDentist, isDateHoliday } from '../utils/availability';
 
 const emptyPatient = {
   name: '',
@@ -47,6 +47,7 @@ export default function PublicBookingView({ clinicSlug }) {
   const [dentists, setDentists] = useState([]);
   const [treatments, setTreatments] = useState([]);
   const [settings, setSettings] = useState(null);
+  const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -149,7 +150,10 @@ export default function PublicBookingView({ clinicSlug }) {
     let isActive = true;
 
     const loadClinicData = async () => {
-      const [{ data: dentistData }, { data: treatmentData }, { data: settingsData }] = await Promise.all([
+      // Booking rules (hours, rest days, holidays) come from a security-definer
+      // RPC because anon patients cannot read apt_settings / apt_holidays directly
+      // (member-only RLS). Staff and treatments have public SELECT policies.
+      const [{ data: dentistData }, { data: treatmentData }, { data: availabilityData }] = await Promise.all([
         supabase
           .from('apt_staff')
           .select('id, name, role')
@@ -161,18 +165,17 @@ export default function PublicBookingView({ clinicSlug }) {
           .select('id, name, duration')
           .eq('clinic_id', clinic.id)
           .order('name', { ascending: true }),
-        supabase
-          .from('apt_settings')
-          .select('working_hours_start, working_hours_end, slot_duration, rest_days')
-          .eq('clinic_id', clinic.id)
-          .maybeSingle(),
+        supabase.rpc('booking_clinic_availability_text', {
+          p_clinic_id: clinic.id,
+        }),
       ]);
 
       if (!isActive) return;
 
       setDentists(dentistData || []);
       setTreatments(treatmentData || []);
-      setSettings(settingsData || null);
+      setSettings(availabilityData || null);
+      setHolidays(Array.isArray(availabilityData?.holidays) ? availabilityData.holidays : []);
     };
 
     loadClinicData();
@@ -401,6 +404,7 @@ export default function PublicBookingView({ clinicSlug }) {
     compare.setHours(0, 0, 0, 0);
     if (compare < today) return true;
     if (Array.isArray(restDays) && restDays.includes(compare.getDay())) return true;
+    if (isDateHoliday(compare, holidays)) return true;
     return false;
   };
 
