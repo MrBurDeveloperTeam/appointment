@@ -242,6 +242,13 @@ const DataStore = {
     return created;
   },
 
+  async importPatients(patients) {
+    const activeClinic = requireActiveClinic(getClinicId());
+    const result = await Patients.importPatients(activeClinic, patients);
+    await Activity.addActivityLog(activeClinic, { type: 'patients_imported', description: `Imported ${result.created.length} patients` });
+    return result;
+  },
+
   async updatePatient(id, updates) {
     const activeClinic = requireActiveClinic(getClinicId());
     const updated = await Patients.updatePatient(id, updates);
@@ -269,8 +276,8 @@ const DataStore = {
     return Patients.getPatientById(id);
   },
 
-  async searchPatients(query) {
-    const activeClinic = getClinicId();
+  async searchPatients(query, clinicId) {
+    const activeClinic = getClinicId(clinicId);
     if (!activeClinic) return [];
     return Patients.searchPatients(activeClinic, query);
   },

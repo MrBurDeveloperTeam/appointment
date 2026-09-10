@@ -76,6 +76,57 @@ export async function addPatient(clinicId, patient) {
   return mapPatient(data);
 }
 
+const duplicateKey = (patient) => {
+  const idNumber = String(patient.idNumber || patient.id_number || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+  if (idNumber) return `id:${idNumber}`;
+  const name = String(patient.name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const dob = String(patient.dob || '');
+  return name && dob ? `name-dob:${name}:${dob}` : '';
+};
+
+export async function importPatients(clinicId, patients) {
+  const existing = [];
+  for (let start = 0; ; start += 1000) {
+    const { data, error } = await supabase.from('apt_patients').select('name,dob,id_number').eq('clinic_id', clinicId).range(start, start + 999);
+    if (error) throw error;
+    existing.push(...(data || []));
+    if (!data || data.length < 1000) break;
+  }
+  const keys = new Set((existing || []).map(duplicateKey).filter(Boolean)); const accepted = []; const skipped = [];
+  for (const patient of patients) {
+    const key = duplicateKey(patient);
+    if (key && keys.has(key)) { skipped.push({ patient, reason: 'duplicate' }); continue; }
+    if (key) keys.add(key); accepted.push(patient);
+  }
+  const userId = (await supabase.auth.getUser()).data.user?.id || null; const created = [];
+  for (let start = 0; start < accepted.length; start += 100) {
+    const payload = accepted.slice(start, start + 100).map((patient) => ({
+      clinic_id: clinicId,
+      name: patient.name || null,
+      id_number: patient.idNumber || null,
+      dob: patient.dob || null,
+      gender: patient.gender || null,
+      tax_number: patient.taxNumber || null,
+      phone: patient.phone || null,
+      email: patient.email ? patient.email.trim().toLowerCase() : null,
+      address: patient.address || null,
+      emergency_contact_name: patient.emergencyContactName || null,
+      emergency_contact_phone: patient.emergencyContactPhone || null,
+      allergies: patient.allergies || null,
+      medical_conditions: patient.medicalConditions || null,
+      medications: patient.medications || null,
+      source: patient.source || null,
+      preferred_dentist_id: patient.preferredDentist || null,
+      insurance: patient.insurance || null,
+      notes: patient.notes || null,
+      created_by: userId,
+    }));
+    const { data, error } = await supabase.from('apt_patients').insert(payload).select('*');
+    if (error) throw error; created.push(...(data || []).map(mapPatient));
+  }
+  return { created, skipped };
+}
+
 export async function updatePatient(patientUuid, updates) {
   const payload = {};
   if (updates.name !== undefined) payload.name = updates.name;
@@ -136,14 +187,17 @@ export async function searchPatients(clinicId, query) {
   const q = (query || "").trim();
   if (!q) return getPatients(clinicId, 20, 0);
 
-  // Note: 'or' syntax in Supabase is strictly filtered by the other chained methods.
-  // We need to ensure logic is: clinic_id=ID AND (name ilike q OR ...)
-  const term = `%${q}%`;
+  // `.or()` receives raw PostgREST filter syntax. `*` is the safe URL
+  // wildcard for ILIKE; filter-control characters are not valid search text.
+  const safeQuery = q.replace(/[,%()*]/g, " ").replace(/\s+/g, " ").trim();
+  if (!safeQuery) return [];
+  const term = `*${safeQuery}*`;
   const { data, error } = await supabase
     .from("apt_patients")
     .select("*")
     .eq("clinic_id", clinicId)
     .or(`name.ilike.${term},phone.ilike.${term},email.ilike.${term},id_number.ilike.${term},address.ilike.${term}`)
+    .order("created_at", { ascending: false })
     .limit(20);
 
   if (error) throw error;

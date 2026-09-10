@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Upload } from 'lucide-react';
+import PatientImportModal from './PatientImportModal';
 import { formatTime } from '../utils/time';
 import { getInitials } from '../utils/people';
 import { dentalChartingUrl } from '../utils/dentalCharting';
@@ -13,6 +15,7 @@ export default function PatientsView({
   onNew,
   onEdit,
   searchPatients,
+  importPatients,
 }) {
   const [query, setQuery] = useState('');
   const [expandedId, setExpandedId] = useState(null);
@@ -20,28 +23,42 @@ export default function PatientsView({
 
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [showImport, setShowImport] = useState(false);
 
   // Debounced search
   useEffect(() => {
     if (!query) {
       setSearchResults(null);
+      setSearchError('');
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(async () => {
       if (searchPatients) {
         setIsSearching(true);
+        setSearchError('');
         try {
           const results = await searchPatients(query);
-          setSearchResults(results);
-          setPage(1); // Reset to first page of results
+          if (!cancelled) {
+            setSearchResults(results || []);
+            setPage(1); // Reset to first page of results
+          }
         } catch (e) {
           console.error(e);
+          if (!cancelled) {
+            setSearchResults([]);
+            setSearchError(e?.message || 'Patient search failed. Please try again.');
+          }
         } finally {
-          setIsSearching(false);
+          if (!cancelled) setIsSearching(false);
         }
       }
     }, 400);
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [query, searchPatients]);
 
   const displayPatients = useMemo(() => {
@@ -95,20 +112,28 @@ export default function PatientsView({
 
   return (
     <div className="card" style={{ padding: 16 }}>
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
+      <div className="patient-toolbar">
         <input
           className="search-input"
           placeholder="Search patients..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div style={{ marginLeft: 'auto' }}>
+        <div className="patient-toolbar-actions">
           {isSearching && <span className="text-muted" style={{ marginRight: 10 }}>Searching...</span>}
+          <button className="btn btn-secondary" type="button" onClick={() => setShowImport(true)}>
+            <Upload size={17} /> Import patients
+          </button>
           <button className="btn btn-primary" onClick={() => onNew()}>
             + New Patient
           </button>
         </div>
       </div>
+      {searchError && (
+        <div className="form-error" role="alert" style={{ margin: '10px 0' }}>
+          Search failed: {searchError}
+        </div>
+      )}
       <div className="patient-list">
         {pagedPatients.map((p) => {
           const appointmentCount = appointments.filter((a) => String(a.patientId) === String(p.id)).length;
@@ -129,7 +154,7 @@ export default function PatientsView({
                 <div className="patient-avatar">{getInitials(p.name)}</div>
                 <div className="patient-info">
                   <div className="patient-name">
-                    {p.name}
+                    {p.name || 'Unnamed patient'}
                     {hasAllergies ? <span className="patient-alert-badge allergy" title="Has allergies">!</span> : null}
                     {hasMedical ? <span className="patient-alert-badge medical" title="Has medical conditions">!</span> : null}
                   </div>
@@ -264,13 +289,15 @@ export default function PatientsView({
             </div>
           );
         })}
-        {filtered.length === 0 && (
+        {!isSearching && filtered.length === 0 && (
           <div className="empty-state">
-            <h3>No patients</h3>
-            <p>Add a patient to get started.</p>
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => onNew()}>
-              Add Patient
-            </button>
+            <h3>{query ? 'No matching patients' : 'No patients'}</h3>
+            <p>{query ? 'Try a different name, email, phone number, IC/ID, or address.' : 'Add a patient to get started.'}</p>
+            {!query && (
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => onNew()}>
+                Add Patient
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -297,6 +324,7 @@ export default function PatientsView({
           </button>
         </div>
       )}
+      {showImport && <PatientImportModal dentists={dentists} onImport={importPatients} onClose={() => setShowImport(false)} />}
     </div>
   );
 }
