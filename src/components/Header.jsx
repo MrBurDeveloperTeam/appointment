@@ -404,9 +404,8 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                           });
                           
                           const supabaseUserId = res.result?.supabase_user_id;
-                          const w = window.open('', '_blank');
-                          if (supabaseUserId && w) {
-                            w.location.href = `https://app.snabbb.com/profile-settings`;
+                          if (supabaseUserId) {
+                            window.location.assign('https://app.snabbb.com/profile-settings');
                           }
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left"
