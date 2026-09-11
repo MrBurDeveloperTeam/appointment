@@ -1,7 +1,7 @@
 ﻿import { useMemo } from 'react';
 import WeekView from './WeekView';
 import DayView from './DayView';
-import { buildMonthGrid } from '../utils/calendar';
+import { buildMonthGrid, buildHolidayMap } from '../utils/calendar';
 import { formatMonthTitle, formatDayLong, sameDate, todayISO, toISODate, addDays, addMonths } from '../utils/date';
 import { formatTime, minutesToTime } from '../utils/time';
 
@@ -22,6 +22,7 @@ export default function CalendarView({
   onAppointmentReschedule,
 }) {
   const monthCells = useMemo(() => buildMonthGrid(currentDate), [currentDate]);
+  const holidayMap = useMemo(() => buildHolidayMap(holidays || []), [holidays]);
 
   const appointmentsByDate = useMemo(() => {
     return appointments.reduce((acc, apt) => {
@@ -106,20 +107,23 @@ export default function CalendarView({
             const items = appointmentsByDate[iso] || [];
             const isToday = sameDate(date, new Date());
             const isPastDay = iso < todayISO();
+            const holiday = holidayMap[iso];
             const cls = ['calendar-day'];
             if (!inMonth) cls.push('other-month');
             if (isToday) cls.push('today');
             if (isPastDay) cls.push('past-day');
+            if (holiday) cls.push('holiday-day');
             return (
               <div
                 key={`${iso}-${idx}`}
                 className={cls.join(' ')}
+                title={holiday ? `Holiday: ${holiday.name}` : undefined}
                 onClick={() => {
                   setCurrentDate(new Date(iso));
                   setCalendarView('day');
                 }}
                 onDoubleClick={() => {
-                  if (isPastDay) return;
+                  if (isPastDay || holiday) return;
                   const defaultStart =
                     (settings && settings.workingHours && settings.workingHours.start) || '09:00';
                   const defaultEnd =
@@ -197,6 +201,7 @@ export default function CalendarView({
           rooms={rooms}
           treatments={treatments}
           staff={staff}
+          holidays={holidays}
           settings={settings}
           onSlotSelect={onSlotSelect}
           onAppointmentSelect={onAppointmentSelect}

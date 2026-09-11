@@ -169,4 +169,18 @@ describe('isDateHoliday', () => {
     expect(isDateHoliday('2026-12-25', [])).toBe(false);
     expect(isDateHoliday('2026-12-25', undefined)).toBe(false);
   });
+
+  it('accepts camelCase startDate/endDate (the clinic app holiday shape)', () => {
+    // The authenticated app maps apt_holidays to camelCase, so the same helper
+    // must match camelCase holidays too, not only the snake_case RPC shape.
+    const camel = [
+      { startDate: '2026-12-25', endDate: '2026-12-25' },
+      { startDate: '2026-09-15', endDate: '2026-09-16' },
+      { startDate: '2026-01-01', endDate: null },
+    ];
+    expect(isDateHoliday('2026-12-25', camel)).toBe(true);
+    expect(isDateHoliday('2026-09-16', camel)).toBe(true);
+    expect(isDateHoliday('2026-01-01', camel)).toBe(true);
+    expect(isDateHoliday('2026-09-17', camel)).toBe(false);
+  });
 });

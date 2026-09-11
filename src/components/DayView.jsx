@@ -4,7 +4,7 @@ import { toISODate, todayISO, sameDate } from '../utils/date';
 import { addMinutes, minutesToTime, formatTime } from '../utils/time';
 import { getInitials } from '../utils/people';
 import { getColorBg } from '../utils/colors';
-import { findAppointmentConflicts } from '../utils/availability';
+import { findAppointmentConflicts, isDateHoliday } from '../utils/availability';
 import Modal from './Modal';
 
 export default function DayView({
@@ -14,6 +14,7 @@ export default function DayView({
   rooms,
   treatments,
   staff,
+  holidays,
   settings,
   onSlotSelect,
   onAppointmentSelect,
@@ -34,6 +35,7 @@ export default function DayView({
   const dayStartMinutes = startHour * 60;
   const dayEndMinutes = endHour * 60;
   const isPastDate = dateStr < todayISO();
+  const isHolidayDay = isDateHoliday(dateStr, holidays);
   const pastBlockHeight =
     isPastDate
       ? columnHeight
@@ -135,6 +137,7 @@ export default function DayView({
   const handleColumnClick = (e, dateStrLocal, offsetMinutes, dentistId) => {
     const absoluteMinutes = dayStartMinutes + offsetMinutes;
     if (isPastDate) return;
+    if (isHolidayDay) return; // clinic closed on holidays
     if (isToday && nowMinutes !== null && absoluteMinutes <= nowMinutes) {
       return; // block past slots only during today's working window
     }
@@ -150,6 +153,7 @@ export default function DayView({
     const dragged = dragRef.current;
     if (!dragged || !onAppointmentReschedule) return;
     if (isPastDate) return;
+    if (isHolidayDay) return; // clinic closed on holidays
     const rect = e.currentTarget.getBoundingClientRect();
     const scrollTop = gridRef.current ? gridRef.current.scrollTop : 0;
     const offsetRaw = e.clientY - rect.top + scrollTop;

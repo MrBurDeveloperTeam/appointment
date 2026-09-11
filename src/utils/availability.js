@@ -98,9 +98,12 @@ export const filterAvailableSlotsByDentist = (
 
 /**
  * True when the given date falls within any clinic holiday range.
- * A holiday with no end_date blocks just its start_date; ranges are inclusive.
+ * A holiday with no end date blocks just its start date; ranges are inclusive.
+ * Accepts both the snake_case shape (start_date/end_date, from the public
+ * booking RPC) and the camelCase shape (startDate/endDate, the authenticated
+ * clinic app's mapped holidays), so the same helper serves both sides.
  * @param {string|Date} date - the day to test (ISO 'YYYY-MM-DD' or Date)
- * @param {Array<{start_date:string,end_date:string|null}>} holidays
+ * @param {Array<{start_date?:string,end_date?:string|null,startDate?:string,endDate?:string|null}>} holidays
  * @returns {boolean}
  */
 export const isDateHoliday = (date, holidays) => {
@@ -110,9 +113,12 @@ export const isDateHoliday = (date, holidays) => {
   compare.setHours(0, 0, 0, 0);
   const t = compare.getTime();
   return (holidays || []).some((h) => {
-    if (!h || !h.start_date) return false;
-    const start = new Date(`${h.start_date}T00:00:00`);
-    const end = new Date(`${h.end_date || h.start_date}T00:00:00`);
+    if (!h) return false;
+    const startDate = h.start_date ?? h.startDate;
+    if (!startDate) return false;
+    const endDate = h.end_date ?? h.endDate ?? startDate;
+    const start = new Date(`${startDate}T00:00:00`);
+    const end = new Date(`${endDate}T00:00:00`);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
     return t >= start.getTime() && t <= end.getTime();
   });
