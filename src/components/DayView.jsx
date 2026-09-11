@@ -36,6 +36,9 @@ export default function DayView({
   const dayEndMinutes = endHour * 60;
   const isPastDate = dateStr < todayISO();
   const isHolidayDay = isDateHoliday(dateStr, holidays);
+  const holidayName = isHolidayDay
+    ? ((holidays || []).find((h) => isDateHoliday(dateStr, [h])) || {}).name || 'Holiday'
+    : '';
   const pastBlockHeight =
     isPastDate
       ? columnHeight
@@ -342,7 +345,7 @@ export default function DayView({
                     .map((_, idx) => (
                       <div key={idx} className="week-hour-line"></div>
                     ))}
-                  {isHolidayDay && <div className="off-duty-overlay">Holiday</div>}
+                  {isHolidayDay && <div className="off-duty-overlay">{holidayName}</div>}
                   {!isHolidayDay && !isWorkingDay && <div className="off-duty-overlay">Off Duty</div>}
                   {previewActive && (
                     <div className="drag-preview-line" style={{ top: previewActive ? dragPreview.offset : 0 }}>
@@ -436,7 +439,7 @@ export default function DayView({
                   .map((_, idx) => (
                     <div key={idx} className="week-hour-line"></div>
                   ))}
-                {isHolidayDay && <div className="off-duty-overlay">Holiday</div>}
+                {isHolidayDay && <div className="off-duty-overlay">{holidayName}</div>}
                 {dragPreview && dragPreview.dentistId === null && (
                   <div className="drag-preview-line" style={{ top: dragPreview.offset }}>
                     <span className="drag-preview-label">

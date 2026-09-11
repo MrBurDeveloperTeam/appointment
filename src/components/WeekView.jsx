@@ -86,6 +86,7 @@ export default function WeekView({
             >
               <div className="week-header-day">{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
               <div className="week-header-date">{d.getDate()}</div>
+              {holiday && <div className="week-header-holiday" title={holiday.name}>{holiday.name}</div>}
             </div>
           );
         })}

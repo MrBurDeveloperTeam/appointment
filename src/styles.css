@@ -2605,6 +2605,22 @@ p {
   min-width: 0;
 }
 
+.calendar-day.holiday-day .day-holiday-label {
+  color: var(--text-muted);
+  display: block;
+  flex: none;
+}
+
+.week-header-holiday {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
 .calendar-day.clinic-closed .day-holiday-label {
   color: var(--primary-dark);
 }
