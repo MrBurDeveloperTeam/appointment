@@ -105,7 +105,14 @@ export const filterAvailableSlotsByDentist = (
  */
 export const isDateHoliday = (date, holidays) => {
   if (!date) return false;
-  const compare = new Date(date);
+  // A plain 'YYYY-MM-DD' string is parsed by `new Date()` as UTC midnight, while
+  // the holiday boundaries below are parsed as LOCAL midnight -- mixing the two
+  // makes this function timezone-dependent (wrong by a day in negative-UTC-offset
+  // zones). Parse date-only strings as local midnight too, so both sides agree
+  // regardless of where this runs.
+  const compare = typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)
+    ? new Date(`${date}T00:00:00`)
+    : new Date(date);
   if (Number.isNaN(compare.getTime())) return false;
   compare.setHours(0, 0, 0, 0);
   const t = compare.getTime();
