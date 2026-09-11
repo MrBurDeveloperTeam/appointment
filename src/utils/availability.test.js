@@ -7,6 +7,7 @@ import {
   filterAvailableSlots,
   findAppointmentConflicts,
   filterAvailableSlotsByDentist,
+  isDateHoliday,
 } from './availability';
 
 const busy = [
@@ -132,5 +133,40 @@ describe('filterAvailableSlotsByDentist', () => {
     const legacy = [{ start_time: '09:00', end_time: '09:30', dentist_id: null }];
     expect(filterAvailableSlotsByDentist(slots, 30, legacy, 2, 'd1'))
       .toEqual(['09:00', '09:30', '10:00']);
+  });
+});
+
+describe('isDateHoliday', () => {
+  const holidays = [
+    { start_date: '2026-12-25', end_date: '2026-12-25' }, // single day
+    { start_date: '2026-09-15', end_date: '2026-09-16' }, // multi-day range
+    { start_date: '2026-01-01', end_date: null },         // null end -> single day
+  ];
+
+  it('blocks a single-day holiday', () => {
+    expect(isDateHoliday('2026-12-25', holidays)).toBe(true);
+  });
+
+  it('blocks every day inside a multi-day range (inclusive)', () => {
+    expect(isDateHoliday('2026-09-15', holidays)).toBe(true);
+    expect(isDateHoliday('2026-09-16', holidays)).toBe(true);
+  });
+
+  it('treats a null end_date as a single day', () => {
+    expect(isDateHoliday('2026-01-01', holidays)).toBe(true);
+  });
+
+  it('does not block a normal day', () => {
+    expect(isDateHoliday('2026-09-17', holidays)).toBe(false);
+    expect(isDateHoliday('2026-12-24', holidays)).toBe(false);
+  });
+
+  it('accepts a Date object as well as an ISO string', () => {
+    expect(isDateHoliday(new Date('2026-12-25T12:00:00'), holidays)).toBe(true);
+  });
+
+  it('returns false for empty or missing holiday list', () => {
+    expect(isDateHoliday('2026-12-25', [])).toBe(false);
+    expect(isDateHoliday('2026-12-25', undefined)).toBe(false);
   });
 });

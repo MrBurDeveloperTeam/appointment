@@ -270,3 +270,51 @@ grant execute on function public.booking_busy_slots(uuid, date) to anon, authent
 grant execute on function public.booking_busy_slots_text(text, text) to anon, authenticated;
 
 notify pgrst, 'reload schema';
+
+-- ---------- Item 3b: public clinic availability (no patient data exposed) ----------
+-- Anon-safe read of a clinic's booking rules for the public booking page.
+-- apt_settings / apt_holidays are member-only under RLS, so the anon page cannot
+-- read them directly; this security-definer RPC exposes only scheduling rules
+-- (hours, rest days, holiday date ranges) — no patient data, no holiday names/notes.
+create or replace function public.booking_clinic_availability(
+  p_clinic_id uuid
+)
+returns jsonb
+language sql
+security definer
+set search_path = public, extensions
+as $$
+  select jsonb_build_object(
+    'working_hours_start', s.working_hours_start,
+    'working_hours_end',   s.working_hours_end,
+    'slot_duration',       s.slot_duration,
+    'rest_days',           coalesce(s.rest_days, '{}'::integer[]),
+    'holidays', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'start_date', h.start_date,
+        'end_date',   h.end_date
+      ) order by h.start_date)
+      from public.apt_holidays h
+      where h.clinic_id = p_clinic_id
+    ), '[]'::jsonb)
+  )
+  from public.apt_settings s
+  where s.clinic_id = p_clinic_id;
+$$;
+
+-- Text wrapper for PostgREST uuid-cast safety (matches booking_busy_slots_text)
+create or replace function public.booking_clinic_availability_text(
+  p_clinic_id text
+)
+returns jsonb
+language sql
+security definer
+set search_path = public, extensions
+as $$
+  select public.booking_clinic_availability(p_clinic_id::uuid);
+$$;
+
+grant execute on function public.booking_clinic_availability(uuid) to anon, authenticated;
+grant execute on function public.booking_clinic_availability_text(text) to anon, authenticated;
+
+notify pgrst, 'reload schema';

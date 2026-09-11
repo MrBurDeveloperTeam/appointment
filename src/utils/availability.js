@@ -95,3 +95,25 @@ export const filterAvailableSlotsByDentist = (
     return countOverlapping(start, durationMin, busy) < cap;
   });
 };
+
+/**
+ * True when the given date falls within any clinic holiday range.
+ * A holiday with no end_date blocks just its start_date; ranges are inclusive.
+ * @param {string|Date} date - the day to test (ISO 'YYYY-MM-DD' or Date)
+ * @param {Array<{start_date:string,end_date:string|null}>} holidays
+ * @returns {boolean}
+ */
+export const isDateHoliday = (date, holidays) => {
+  if (!date) return false;
+  const compare = new Date(date);
+  if (Number.isNaN(compare.getTime())) return false;
+  compare.setHours(0, 0, 0, 0);
+  const t = compare.getTime();
+  return (holidays || []).some((h) => {
+    if (!h || !h.start_date) return false;
+    const start = new Date(`${h.start_date}T00:00:00`);
+    const end = new Date(`${h.end_date || h.start_date}T00:00:00`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
+    return t >= start.getTime() && t <= end.getTime();
+  });
+};
