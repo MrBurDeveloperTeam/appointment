@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { addMinutes } from '../utils/time';
-import { intervalsOverlap, toMinutes } from '../utils/availability';
+import { intervalsOverlap, toMinutes, isDateHoliday } from '../utils/availability';
 
 const normalizeEmail = (value) => (value || '').trim().toLowerCase();
 
@@ -69,6 +69,7 @@ export default function RequestsView({
   settings,
   appointments = [],
   dentists = [],
+  holidays = [],
   addPatient,
   addAppointment,
   updateAppointmentRequest,
@@ -328,6 +329,12 @@ export default function RequestsView({
       if (!date || !startTime) {
         throw new Error(
           'Missing appointment date or time.'
+        );
+      }
+
+      if (isDateHoliday(date, holidays)) {
+        throw new Error(
+          'That date is a clinic holiday. Decline this request or ask the patient to pick another date.'
         );
       }
 

@@ -23,6 +23,7 @@ import ConfirmDialog from './components/ConfirmDialog';
 import TutorialVideoModal from './components/TutorialVideoModal';
 import CreditModal from './components/CreditModal';
 import { todayISO } from './utils/date';
+import { isDateHoliday } from './utils/availability';
 import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from './lib/supabaseClient';
 import DataStore from "./data";
@@ -983,6 +984,11 @@ useEffect(() => {
 
   const handleRescheduleAppointment = (appointment, updates) => {
     if (!appointment || !appointment.id) return;
+    // Hard-block moving an appointment onto a clinic holiday.
+    if (updates && updates.date && isDateHoliday(updates.date, holidays)) {
+      addToast('That date is a clinic holiday. Please choose another date.', 'warning');
+      return;
+    }
     updateAppointment(appointment.id, updates);
   };
 
@@ -1311,6 +1317,7 @@ useEffect(() => {
               settings={settings}
               appointments={appointments}
               dentists={staff.filter((s) => s.role === 'dentist')}
+              holidays={holidays}
               addPatient={addPatient}
               addAppointment={addAppointment}
               updateAppointmentRequest={updateAppointmentRequest}
@@ -1327,6 +1334,7 @@ useEffect(() => {
           treatments={treatments}
           dentists={staff.filter((s) => s.role === 'dentist')}
           appointments={appointments}
+          holidays={holidays}
           settings={settings}
           initialData={appointmentDefaults}
           onSave={handleSaveAppointment}

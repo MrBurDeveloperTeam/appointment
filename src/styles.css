@@ -2560,6 +2560,21 @@ p {
 
 /* Holiday and Rest Day styling - colors removed per user request */
 
+/* Holidays are closed days: grey them out (like past days) and signal
+   non-interactivity. Applied on month cells (.calendar-day) and week columns
+   (.week-day-column). Kept subtle/neutral to respect the earlier "no loud
+   colors" decision while still showing the day is blocked. */
+.calendar-day.holiday-day,
+.week-day-column.holiday-day,
+.day-column.holiday-day {
+  background: var(--surface-2);
+  cursor: not-allowed;
+}
+
+.calendar-day.holiday-day .day-number {
+  color: var(--text-muted);
+}
+
 .day-number {
   display: flex;
   align-items: center;
@@ -2588,6 +2603,22 @@ p {
   text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
+}
+
+.calendar-day.holiday-day .day-holiday-label {
+  color: var(--text-muted);
+  display: block;
+  flex: none;
+}
+
+.week-header-holiday {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .calendar-day.clinic-closed .day-holiday-label {

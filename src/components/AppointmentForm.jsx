@@ -5,7 +5,7 @@ import { todayISO } from '../utils/date';
 import { getInitials } from '../utils/people';
 import { getColorBg } from '../utils/colors';
 import { useToast } from '../context/ToastProvider';
-import { findAppointmentConflicts } from '../utils/availability';
+import { findAppointmentConflicts, isDateHoliday } from '../utils/availability';
 import { hasAppointmentPassed, PAST_APPOINTMENT_MESSAGE } from '../utils/appointmentReadOnly';
 
 const APPOINTMENT_DURATION_OPTIONS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
@@ -16,6 +16,7 @@ export default function AppointmentForm({
   treatments,
   dentists,
   appointments,
+  holidays,
   onSave,
   onDelete,
   onClose,
@@ -216,6 +217,13 @@ export default function AppointmentForm({
           return;
         }
       }
+    }
+
+    // Holiday block (hard stop, no override). The clinic is closed on holidays;
+    // to open a holiday, remove it in Settings > Holidays.
+    if (isDateHoliday(form.date, holidays)) {
+      addToast('This date is a clinic holiday. Please choose another date.', 'warning');
+      return;
     }
 
     // Overlap check (warn + allow override). Same clinic, any dentist; cancelled/no-show ignored.

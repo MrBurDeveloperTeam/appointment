@@ -86,6 +86,7 @@ export default function WeekView({
             >
               <div className="week-header-day">{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
               <div className="week-header-date">{d.getDate()}</div>
+              {holiday && <div className="week-header-holiday" title={holiday.name}>{holiday.name}</div>}
             </div>
           );
         })}
@@ -171,6 +172,7 @@ export default function WeekView({
             const dragged = dragRef.current;
             if (!dragged || !onAppointmentReschedule) return;
             if (isPastDay) return;
+            if (holiday) return; // clinic closed on holidays
             const rect = e.currentTarget.getBoundingClientRect();
             const offset = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
             const scrollOffset = e.currentTarget.scrollTop || 0;
@@ -221,6 +223,7 @@ export default function WeekView({
               onClick={(e) => {
                 if (e.target.closest('.week-appointment')) return;
                 if (isPastDay) return;
+                if (holiday) return; // clinic closed on holidays
                 const rect = e.currentTarget.getBoundingClientRect();
                 const offset = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
                 const scrollOffset = e.currentTarget.scrollTop || 0;
