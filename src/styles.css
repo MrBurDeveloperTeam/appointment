@@ -2565,7 +2565,8 @@ p {
    (.week-day-column). Kept subtle/neutral to respect the earlier "no loud
    colors" decision while still showing the day is blocked. */
 .calendar-day.holiday-day,
-.week-day-column.holiday-day {
+.week-day-column.holiday-day,
+.day-column.holiday-day {
   background: var(--surface-2);
   cursor: not-allowed;
 }

@@ -314,7 +314,7 @@ export default function DayView({
               return (
                 <div
                   key={dentist.id}
-                  className="day-column"
+                  className={`day-column ${isHolidayDay ? 'holiday-day' : ''}`}
                   style={{ position: 'relative', height: columnHeight }}
                   onDragOver={(e) => {
                     handleDragOver(e, dentist.id);
@@ -342,7 +342,8 @@ export default function DayView({
                     .map((_, idx) => (
                       <div key={idx} className="week-hour-line"></div>
                     ))}
-                  {!isWorkingDay && <div className="off-duty-overlay">Off Duty</div>}
+                  {isHolidayDay && <div className="off-duty-overlay">Holiday</div>}
+                  {!isHolidayDay && !isWorkingDay && <div className="off-duty-overlay">Off Duty</div>}
                   {previewActive && (
                     <div className="drag-preview-line" style={{ top: previewActive ? dragPreview.offset : 0 }}>
                       <span className="drag-preview-label">
@@ -407,8 +408,8 @@ export default function DayView({
             })}
             {hasUnassigned && (
               <div
-                className="day-column"
-                style={{ position: 'relative', height: columnHeight, background: 'var(--bg-card)' }}
+                className={`day-column ${isHolidayDay ? 'holiday-day' : ''}`}
+                style={{ position: 'relative', height: columnHeight, background: isHolidayDay ? undefined : 'var(--bg-card)' }}
                 onDragOver={(e) => {
                   handleDragOver(e, null);
                 }}
@@ -435,6 +436,7 @@ export default function DayView({
                   .map((_, idx) => (
                     <div key={idx} className="week-hour-line"></div>
                   ))}
+                {isHolidayDay && <div className="off-duty-overlay">Holiday</div>}
                 {dragPreview && dragPreview.dentistId === null && (
                   <div className="drag-preview-line" style={{ top: dragPreview.offset }}>
                     <span className="drag-preview-label">
