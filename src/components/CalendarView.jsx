@@ -144,6 +144,7 @@ export default function CalendarView({
                 }}
               >
                 <div className="day-number">{date.getDate()}</div>
+                {holiday && <div className="day-holiday-label" title={holiday.name}>{holiday.name}</div>}
                 <div className="day-appointments">
                   {items.slice(0, 3).map((apt) => (
                     <div
