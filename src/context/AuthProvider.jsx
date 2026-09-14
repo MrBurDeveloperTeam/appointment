@@ -20,6 +20,7 @@ export function AuthProvider({ children }) {
     // 1. Initialize Session
     useEffect(() => {
         let mounted = true;
+        let resolvedUserId = null;
 
         const initializeAuth = async () => {
             try {
@@ -27,10 +28,26 @@ export function AuthProvider({ children }) {
                 try {
                     const launchUrl = new URL(window.location.href);
                     const launchToken = launchUrl.searchParams.get('sso_token') || launchUrl.searchParams.get('token');
+
+                    // An explicit token represents an intentional account
+                    // switch. Without one, prefer the persisted local
+                    // Supabase session and skip the central SSO round trip.
+                    if (!launchToken) {
+                        const { data: { session: localSession } } = await supabase.auth.getSession();
+                        if (localSession) {
+                            resolvedUserId = localSession.user.id;
+                            if (mounted) {
+                                setSession(localSession);
+                                setUser(localSession.user);
+                            }
+                            return;
+                        }
+                    }
+
                     const exchangePath = launchToken
                         ? `https://sso.snabbb.com/api/sso/exchange?sso_token=${encodeURIComponent(launchToken)}`
                         : 'https://sso.snabbb.com/api/sso/exchange';
-                    const { data: sso } = await api.get(exchangePath);
+                    const { data: sso } = await api.get(exchangePath, { timeout: 3000 });
                     if (sso?.access_token && sso?.refresh_token) {
                         await supabase.auth.setSession({
                             access_token: sso.access_token,
@@ -73,6 +90,7 @@ export function AuthProvider({ children }) {
 
                 console.log("initialSession", initialSession);
                 if (mounted) {
+                    resolvedUserId = initialSession?.user?.id ?? null;
                     setSession(initialSession);
                     setUser(initialSession?.user ?? null);
                     if (!initialSession) {
@@ -89,6 +107,18 @@ export function AuthProvider({ children }) {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
             if (mounted) {
+                const nextUserId = newSession?.user?.id ?? null;
+                if (nextUserId !== resolvedUserId) {
+                    // Never render permissions from the previous identity while
+                    // the new identity's profile is still in flight.
+                    resolvedUserId = nextUserId;
+                    setLoading(Boolean(nextUserId));
+                    setError(null);
+                    setProfile(null);
+                    setRole(null);
+                    DataStore.setActiveClinicId(null);
+                    setActiveClinicId(null);
+                }
                 setSession(newSession);
                 setUser(newSession?.user ?? null);
                 if (!newSession) {
@@ -118,6 +148,11 @@ export function AuthProvider({ children }) {
             // But if we already have a profile and just switching, maybe not? 
             // safer to generic loading state or specific profile loading state.
             // For global auth "ready", we want to wait for profile.
+
+            setLoading(true);
+            setError(null);
+            setProfile(null);
+            setRole(null);
 
             try {
                 const { data, error: fetchError } = await supabase
