@@ -25,12 +25,23 @@ export function AuthProvider({ children }) {
             try {
                 // 1. First, try to exchange SSO session to ensure we have the latest tokens
                 try {
-                    const { data: sso } = await api.get("/sso/exchange");
+                    const launchUrl = new URL(window.location.href);
+                    const launchToken = launchUrl.searchParams.get('sso_token') || launchUrl.searchParams.get('token');
+                    const exchangePath = launchToken
+                        ? `/sso/exchange?sso_token=${encodeURIComponent(launchToken)}`
+                        : '/sso/exchange';
+                    const { data: sso } = await api.get(exchangePath);
                     if (sso?.access_token && sso?.refresh_token) {
                         await supabase.auth.setSession({
                             access_token: sso.access_token,
                             refresh_token: sso.refresh_token,
                         });
+
+                        if (launchToken) {
+                            launchUrl.searchParams.delete('sso_token');
+                            launchUrl.searchParams.delete('token');
+                            window.history.replaceState({}, document.title, `${launchUrl.pathname}${launchUrl.search}${launchUrl.hash}`);
+                        }
                     }
                 } catch (ssoErr) {
                     console.error('SSO exchange failed in AuthProvider:', ssoErr);
