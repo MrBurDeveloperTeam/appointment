@@ -20,6 +20,7 @@ export function AuthProvider({ children }) {
     // 1. Initialize Session
     useEffect(() => {
         let mounted = true;
+        let resolvedUserId = null;
 
         const initializeAuth = async () => {
             try {
@@ -73,6 +74,7 @@ export function AuthProvider({ children }) {
 
                 console.log("initialSession", initialSession);
                 if (mounted) {
+                    resolvedUserId = initialSession?.user?.id ?? null;
                     setSession(initialSession);
                     setUser(initialSession?.user ?? null);
                     if (!initialSession) {
@@ -89,6 +91,18 @@ export function AuthProvider({ children }) {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
             if (mounted) {
+                const nextUserId = newSession?.user?.id ?? null;
+                if (nextUserId !== resolvedUserId) {
+                    // Never render permissions from the previous identity while
+                    // the new identity's profile is still in flight.
+                    resolvedUserId = nextUserId;
+                    setLoading(Boolean(nextUserId));
+                    setError(null);
+                    setProfile(null);
+                    setRole(null);
+                    DataStore.setActiveClinicId(null);
+                    setActiveClinicId(null);
+                }
                 setSession(newSession);
                 setUser(newSession?.user ?? null);
                 if (!newSession) {
@@ -118,6 +132,11 @@ export function AuthProvider({ children }) {
             // But if we already have a profile and just switching, maybe not? 
             // safer to generic loading state or specific profile loading state.
             // For global auth "ready", we want to wait for profile.
+
+            setLoading(true);
+            setError(null);
+            setProfile(null);
+            setRole(null);
 
             try {
                 const { data, error: fetchError } = await supabase
