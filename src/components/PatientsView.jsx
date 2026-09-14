@@ -4,6 +4,7 @@ import PatientImportModal from './PatientImportModal';
 import { formatTime } from '../utils/time';
 import { getInitials } from '../utils/people';
 import { dentalChartingUrl } from '../utils/dentalCharting';
+import { hasClinicalAlertValue } from '../utils/clinicalAlerts';
 
 const PAGE_SIZE = 8;
 
@@ -137,8 +138,8 @@ export default function PatientsView({
       <div className="patient-list">
         {pagedPatients.map((p) => {
           const appointmentCount = appointments.filter((a) => String(a.patientId) === String(p.id)).length;
-          const hasAllergies = p.allergies && p.allergies.trim() !== '';
-          const hasMedical = p.medicalConditions && p.medicalConditions.trim() !== '';
+          const hasAllergies = hasClinicalAlertValue(p.allergies);
+          const hasMedical = hasClinicalAlertValue(p.medicalConditions);
           const expanded = expandedId === p.id;
           const { upcoming, history } = upcomingAndHistory(p.id);
           return (
