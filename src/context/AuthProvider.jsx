@@ -28,8 +28,8 @@ export function AuthProvider({ children }) {
                     const launchUrl = new URL(window.location.href);
                     const launchToken = launchUrl.searchParams.get('sso_token') || launchUrl.searchParams.get('token');
                     const exchangePath = launchToken
-                        ? `/sso/exchange?sso_token=${encodeURIComponent(launchToken)}`
-                        : '/sso/exchange';
+                        ? `https://sso.snabbb.com/api/sso/exchange?sso_token=${encodeURIComponent(launchToken)}`
+                        : 'https://sso.snabbb.com/api/sso/exchange';
                     const { data: sso } = await api.get(exchangePath);
                     if (sso?.access_token && sso?.refresh_token) {
                         await supabase.auth.setSession({
