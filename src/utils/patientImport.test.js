@@ -8,6 +8,12 @@ describe('patient import mapping', () => {
     });
   });
 
+  it('recognizes the downloadable template column names', () => {
+    expect(suggestPatientMapping(['Name', 'IC/ID', 'DOB', 'Phone'])).toMatchObject({
+      name: 'Name', idNumber: ['IC/ID'], dob: ['DOB'], phone: ['Phone'],
+    });
+  });
+
   it('keeps separate name columns separate from a full name', () => {
     expect(suggestPatientMapping(['First Name', 'Last Name', 'Nickname', 'Mobile'])).toMatchObject({
       name: '', firstName: 'First Name', lastName: 'Last Name', nickname: 'Nickname', phone: ['Mobile'],
@@ -69,6 +75,11 @@ describe('patient import mapping', () => {
   it('keeps Excel columns aligned when blank cells are self-closing', () => {
     const xml = '<worksheet><sheetData><row r="1"><c r="A1" t="str"><v>Name</v></c><c r="B1" t="str"><v>DOB</v></c><c r="C1" t="str"><v>Email</v></c></row><row r="2"><c r="A2" t="str"><v>Aisha</v></c><c r="B2" t="str" /><c r="C2" t="str"><v>a@example.test</v></c></row></sheetData></worksheet>';
     expect(parseWorksheetRows(xml)).toEqual([['Name', 'DOB', 'Email'], ['Aisha', '', 'a@example.test']]);
+  });
+
+  it('reads worksheet XML that uses namespace-prefixed tags', () => {
+    const xml = '<x:worksheet><x:sheetData><x:row r="1"><x:c r="A1" t="str"><x:v>Name</x:v></x:c><x:c r="B1" t="str"><x:v>Phone</x:v></x:c></x:row><x:row r="2"><x:c r="A2" t="str"><x:v>Aisha</x:v></x:c><x:c r="B2" t="str"><x:v>0123</x:v></x:c></x:row></x:sheetData></x:worksheet>';
+    expect(parseWorksheetRows(xml)).toEqual([['Name', 'Phone'], ['Aisha', '0123']]);
   });
 
   it('imports invalid optional values as blanks and reports warnings', () => {

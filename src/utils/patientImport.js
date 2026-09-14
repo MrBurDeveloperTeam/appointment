@@ -1,5 +1,5 @@
 export const PATIENT_IMPORT_NAME_FIELDS = [
-  { key: 'name', label: 'Full / display name', aliases: ['patient name', 'full name', 'fullname', 'display name', 'client name', 'client full name', 'member name', 'customer name', 'nama penuh', 'nama pesakit', '姓名', '全名', '患者姓名'] },
+  { key: 'name', label: 'Full / display name', aliases: ['name', 'patient name', 'full name', 'fullname', 'display name', 'client name', 'client full name', 'member name', 'customer name', 'nama penuh', 'nama pesakit', '姓名', '全名', '患者姓名'] },
   { key: 'title', label: 'Title / prefix', aliases: ['title', 'prefix', 'honorific', 'salutation', 'name prefix', 'gelaran', '称谓', '头衔'] },
   { key: 'firstName', label: 'First / given name', aliases: ['first name', 'firstname', 'given name', 'givenname', 'forename', 'personal name', 'christian name', 'nama pertama', 'nama depan', '名'] },
   { key: 'middleName', label: 'Middle name', aliases: ['middle name', 'middlename', 'middle initial', 'second name', 'additional name', 'nama tengah', '中间名'] },
@@ -9,7 +9,7 @@ export const PATIENT_IMPORT_NAME_FIELDS = [
 ];
 
 export const PATIENT_IMPORT_FIELDS = [
-  { key: 'idNumber', label: 'IC / ID', aliases: ['ic', 'ic no', 'ic number', 'id', 'id no', 'id number', 'identity number', 'national id', 'national ref', 'national reference', 'nric', 'mykad', 'passport', 'passport no', 'passport number', 'patient id', 'medical record number', 'mrn', '身份证', '身份证号码'] },
+  { key: 'idNumber', label: 'IC / ID', aliases: ['ic/id', 'ic / id', 'ic', 'ic no', 'ic number', 'id', 'id no', 'id number', 'identity number', 'national id', 'national ref', 'national reference', 'nric', 'mykad', 'passport', 'passport no', 'passport number', 'patient id', 'medical record number', 'mrn', '身份证', '身份证号码'] },
   { key: 'dob', label: 'Date of birth', aliases: ['dob', 'date of birth', 'birth date', 'birthdate', 'birthday', 'birthday dd mm yyyy', 'tarikh lahir', '出生日期', '生日'] },
   { key: 'dobDay', label: 'Birth day', aliases: ['birth day', 'dob day', 'day of birth', 'birth dd'] },
   { key: 'dobMonth', label: 'Birth month', aliases: ['birth month', 'dob month', 'month of birth', 'birth mm'] },
@@ -111,7 +111,7 @@ async function unzipXlsx(buffer) {
 async function xlsxRows(file) {
   const files = await unzipXlsx(await file.arrayBuffer()); const decoder = new TextDecoder();
   const sharedXml = files.get('xl/sharedStrings.xml');
-  const shared = sharedXml ? [...decoder.decode(sharedXml).matchAll(/<si[^>]*>([\s\S]*?)<\/si>/g)].map((match) => decodeXml([...match[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((part) => part[1]).join(''))) : [];
+  const shared = sharedXml ? [...decoder.decode(sharedXml).matchAll(/<(?:\w+:)?si\b[^>]*>([\s\S]*?)<\/(?:\w+:)?si>/g)].map((match) => decodeXml([...match[1].matchAll(/<(?:\w+:)?t\b[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/g)].map((part) => part[1]).join(''))) : [];
   const sheetName = [...files.keys()].filter((name) => /^xl\/worksheets\/sheet\d+\.xml$/.test(name)).sort()[0];
   if (!sheetName) throw new Error('No worksheet was found in this Excel file.');
   const xml = decoder.decode(files.get(sheetName));
@@ -120,9 +120,9 @@ async function xlsxRows(file) {
 
 export function parseWorksheetRows(xml, shared = []) {
   const rows = [];
-  for (const rowMatch of xml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)) {
+  for (const rowMatch of xml.matchAll(/<(?:\w+:)?row\b[^>]*>([\s\S]*?)<\/(?:\w+:)?row>/g)) {
     const row = []; let fallbackColumn = 0;
-    for (const cellMatch of rowMatch[1].matchAll(/<c\b([^>]*)\/>|<c\b([^>]*)>([\s\S]*?)<\/c>/g)) {
+    for (const cellMatch of rowMatch[1].matchAll(/<(?:\w+:)?c\b([^>]*)\/>|<(?:\w+:)?c\b([^>]*)>([\s\S]*?)<\/(?:\w+:)?c>/g)) {
       const attributes = cellMatch[1] || cellMatch[2] || '';
       const content = cellMatch[3] || '';
 
@@ -140,11 +140,11 @@ export function parseWorksheetRows(xml, shared = []) {
         /\bt="([^"]+)"/.exec(attributes)?.[1];
 
       const raw =
-        /<v[^>]*>([\s\S]*?)<\/v>/
+        /<(?:\w+:)?v\b[^>]*>([\s\S]*?)<\/(?:\w+:)?v>/
           .exec(content)?.[1] ?? '';
 
       const inline =
-        /<t[^>]*>([\s\S]*?)<\/t>/
+        /<(?:\w+:)?t\b[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/
           .exec(content)?.[1];
 
       row[column] =
