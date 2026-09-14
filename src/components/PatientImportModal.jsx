@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, CheckCircle2, FileSpreadsheet, Plus, Upload, Users, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Plus, Upload, Users, X } from 'lucide-react';
 import Modal from './Modal';
 import { mapPatientRows, PATIENT_IMPORT_FIELDS, PATIENT_IMPORT_NAME_FIELDS, readPatientFile, suggestNameOrder, suggestPatientMapping } from '../utils/patientImport';
 
@@ -79,6 +79,9 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
           <p>Choose a .xlsx or .csv file. The file stays in this browser while you match and review its columns.</p>
           <input ref={inputRef} type="file" accept=".xlsx,.csv" hidden onChange={(event) => chooseFile(event.target.files?.[0])} />
           <button type="button" className="btn btn-primary" disabled={busy} onClick={() => inputRef.current?.click()}><Upload size={17} />{busy ? 'Reading file…' : 'Choose file'}</button>
+          <a className="btn btn-secondary" href="/templates/patient-import-template.xlsx" download="patient-import-template.xlsx">
+            <Download size={17} />Download Excel template
+          </a>
           <small>Old .xls files should be saved as .xlsx or CSV first.</small>
         </div>}
         {step === 'map' && <>
