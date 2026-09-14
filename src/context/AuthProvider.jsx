@@ -28,10 +28,26 @@ export function AuthProvider({ children }) {
                 try {
                     const launchUrl = new URL(window.location.href);
                     const launchToken = launchUrl.searchParams.get('sso_token') || launchUrl.searchParams.get('token');
+
+                    // An explicit token represents an intentional account
+                    // switch. Without one, prefer the persisted local
+                    // Supabase session and skip the central SSO round trip.
+                    if (!launchToken) {
+                        const { data: { session: localSession } } = await supabase.auth.getSession();
+                        if (localSession) {
+                            resolvedUserId = localSession.user.id;
+                            if (mounted) {
+                                setSession(localSession);
+                                setUser(localSession.user);
+                            }
+                            return;
+                        }
+                    }
+
                     const exchangePath = launchToken
                         ? `https://sso.snabbb.com/api/sso/exchange?sso_token=${encodeURIComponent(launchToken)}`
                         : 'https://sso.snabbb.com/api/sso/exchange';
-                    const { data: sso } = await api.get(exchangePath);
+                    const { data: sso } = await api.get(exchangePath, { timeout: 3000 });
                     if (sso?.access_token && sso?.refresh_token) {
                         await supabase.auth.setSession({
                             access_token: sso.access_token,
