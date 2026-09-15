@@ -94,11 +94,36 @@ export default function TodayView({ appointments, patients, rooms, treatments, o
 
       <div className="today-appointments-list">
         {todaysAppointments.length === 0 && (
-          <div className="today-empty-state">
-            <h3 className="today-empty-state-title">No appointments today</h3>
-            <p>Schedule a new appointment to see it here.</p>
+          <div
+            className="today-empty-state"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+            }}
+          >
+            <h3 className="today-empty-state-title">
+              No appointments today
+            </h3>
+
+            <p>
+              Schedule a new appointment to see it here.
+            </p>
             {onNewAppointment && (
-              <button type="button" className="btn btn-primary btn-sm" onClick={onNewAppointment}>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={onNewAppointment}
+                style={{
+                  background: 'var(--primary-light)',
+                  border: '1px solid var(--primary-light)',
+                  color: '#ffffff',
+                  boxShadow: '0 2px 6px rgba(90, 184, 174, 0.22)',
+                  textShadow: 'none',
+                }}
+              >
                 New Appointment
               </button>
             )}
