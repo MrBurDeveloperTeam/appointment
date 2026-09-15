@@ -591,14 +591,25 @@ export default function AppointmentForm({
           >
             {isReadOnly ? 'Close' : 'Cancel'}
           </button>
-          {!isReadOnly && <button type="submit" className="btn btn-primary" disabled={showCreditWarning || isSubmitting}>
-            {isSubmitting
-              ? (isEditing ? 'Saving...' : 'Creating...')
-              : pendingConflicts
-                ? 'Book anyway'
-                : (isEditing ? 'Save Appointment' : 'Create Appointment')
-            }
-          </button>}
+
+          {!isReadOnly && (
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={showCreditWarning || isSubmitting}
+              style={{
+                '--primary-dark': '#5AB8AE',
+                '--primary': '#5AB8AE',
+              }}
+            >
+              {isSubmitting
+                ? (isEditing ? 'Saving...' : 'Creating...')
+                : pendingConflicts
+                  ? 'Book anyway'
+                  : (isEditing ? 'Save Appointment' : 'Create Appointment')
+              }
+            </button>
+          )}
         </div>
       </form>
     </Modal>
