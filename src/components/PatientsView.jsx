@@ -127,11 +127,10 @@ export default function PatientsView({
             type="button"
             onClick={() => setShowImport(true)}
             style={{
-              background: 'var(--primary-light)',
-              border: '1px solid var(--primary-light)',
-              color: '#ffffff',
-              boxShadow: '0 2px 6px rgba(90, 184, 174, 0.22)',
-              textShadow: 'none',
+              background: 'var(--primary-bg)',
+              border: '1px solid rgba(42, 157, 143, 0.22)',
+              color: 'var(--primary-dark)',
+              boxShadow: 'none',
             }}
           >
             <Upload size={17} />
