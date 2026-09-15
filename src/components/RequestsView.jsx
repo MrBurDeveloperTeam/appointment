@@ -546,8 +546,12 @@ export default function RequestsView({
             {refreshRequests && (
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
+                className="btn btn-primary btn-sm"
                 onClick={refreshRequests}
+                style={{
+                  '--primary-dark': '#5AB8AE',
+                  '--primary': '#5AB8AE',
+                }}
               >
                 Refresh
               </button>
