@@ -122,10 +122,32 @@ export default function PatientsView({
         />
         <div className="patient-toolbar-actions">
           {isSearching && <span className="text-muted" style={{ marginRight: 10 }}>Searching...</span>}
-          <button className="btn btn-secondary" type="button" onClick={() => setShowImport(true)}>
-            <Upload size={17} /> Import patients
+          <button
+            className="btn"
+            type="button"
+            onClick={() => setShowImport(true)}
+            style={{
+              background: 'var(--primary-bg)',
+              border: '1px solid rgba(42, 157, 143, 0.22)',
+              color: 'var(--primary-dark)',
+              boxShadow: 'none',
+            }}
+          >
+            <Upload size={17} />
+            Import patients
           </button>
-          <button className="btn btn-primary" onClick={() => onNew()}>
+
+          <button
+            className="btn"
+            onClick={() => onNew()}
+            style={{
+              background: 'var(--primary-light)',
+              border: '1px solid var(--primary-light)',
+              color: '#ffffff',
+              boxShadow: '0 2px 6px rgba(90, 184, 174, 0.22)',
+              textShadow: 'none',
+            }}
+          >
             + New Patient
           </button>
         </div>
