@@ -442,6 +442,29 @@ export default function SettingsView({
   };
 
   const isUnconfigured = !form.workingHoursStart || dentists.length === 0 || rooms.length === 0 || treatments.length === 0;
+  const primaryActionStyle = {
+    background: 'var(--primary-light)',
+    border: '1px solid var(--primary-light)',
+    color: '#ffffff',
+    boxShadow: '0 2px 6px rgba(90, 184, 174, 0.22)',
+    textShadow: 'none',
+  };
+
+  const secondaryActionStyle = {
+    background: 'var(--primary-bg)',
+    border: '1px solid rgba(42, 157, 143, 0.22)',
+    color: 'var(--primary-dark)',
+    boxShadow: 'none',
+    textShadow: 'none',
+  };
+
+  const dangerActionStyle = {
+    background: 'var(--danger-bg)',
+    border: '1px solid rgba(255, 86, 48, 0.22)',
+    color: 'var(--danger-dark)',
+    boxShadow: 'none',
+    textShadow: 'none',
+  };
 
   return (
     <div className="settings-layout">
@@ -498,7 +521,11 @@ export default function SettingsView({
             <div className="settings-card">
               <div className="settings-card-header">
                 <div className="settings-card-title">Dentists</div>
-                <button className="btn btn-secondary btn-sm" onClick={() => openStaffModal('dentist')}>
+                <button
+                  className="btn btn-sm"
+                  style={primaryActionStyle}
+                  onClick={() => openStaffModal('dentist')}
+                >
                   + Add Dentist
                 </button>
               </div>
@@ -536,7 +563,11 @@ export default function SettingsView({
             <div className="settings-card">
               <div className="settings-card-header">
                 <div className="settings-card-title">Nurses / Assistants</div>
-                <button className="btn btn-secondary btn-sm" onClick={() => openStaffModal('nurse')}>
+                <button
+                  className="btn btn-sm"
+                  style={primaryActionStyle}
+                  onClick={() => openStaffModal('nurse')}
+                >
                   + Add Nurse
                 </button>
               </div>
@@ -583,7 +614,11 @@ export default function SettingsView({
               <div className="settings-card-title">Rooms</div>
               <div className="settings-card-actions">
                 <span className="settings-card-subtitle">{rooms.length} total</span>
-                <button className="btn btn-secondary btn-sm" onClick={() => openRoomModal()}>
+                <button
+                  className="btn btn-sm"
+                  style={primaryActionStyle}
+                  onClick={() => openRoomModal()}
+                >
                   + Add Room
                 </button>
               </div>
@@ -618,7 +653,11 @@ export default function SettingsView({
               <div className="settings-card-title">Treatments</div>
               <div className="settings-card-actions">
                 <span className="settings-card-subtitle">{treatments.length} total</span>
-                <button className="btn btn-secondary btn-sm" onClick={() => openTreatmentModal()}>
+                <button
+                  className="btn btn-sm"
+                  style={primaryActionStyle}
+                  onClick={() => openTreatmentModal()}
+                >
                   + Add Treatment
                 </button>
               </div>
@@ -654,7 +693,11 @@ export default function SettingsView({
               <div className="settings-card-title">Holidays</div>
               <div className="settings-card-actions">
                 <span className="settings-card-subtitle">{holidays.length} configured</span>
-                <button className="btn btn-secondary btn-sm" onClick={() => openHolidayModal()}>
+                <button
+                  className="btn btn-sm"
+                  style={primaryActionStyle}
+                  onClick={() => openHolidayModal()}
+                >
                   + Add Holiday
                 </button>
                 {showMalaysiaHolidayLoader && (
@@ -806,7 +849,11 @@ export default function SettingsView({
                   <span className="theme-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
                 </label>
               </div> */}
-              <button className="btn btn-primary" onClick={handleSaveSettings}>
+              <button
+                className="btn"
+                style={primaryActionStyle}
+                onClick={handleSaveSettings}
+              >
                 Save Settings
               </button>
             </div>
