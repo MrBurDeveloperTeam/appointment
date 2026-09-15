@@ -23,29 +23,13 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
     const showSupportTickets = true;
     const menuRef = useRef(null);
 
-    async function openSupportTickets() {
+    function openSupportTickets() {
         if (isOpeningSupportTickets) return;
 
         setShowAccountMenu(false);
         setIsOpeningSupportTickets(true);
-
-        try {
-            const response = await fetch('/api/ticketing/sso', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { Accept: 'application/json' },
-            });
-            const data = await response.json().catch(() => null);
-
-            if (!response.ok || !data?.redirectUrl) {
-                throw new Error(data?.error || 'Unable to open the support portal.');
-            }
-
-            window.location.assign(data.redirectUrl);
-        } catch (error) {
-            console.error('Ticketing SSO failed:', error);
-            setIsOpeningSupportTickets(false);
-        }
+        const dashboardPath = role === 'admin' ? '/admin/dashboard' : '/user/dashboard';
+        window.location.assign(`https://app.snabbb.com${dashboardPath}`);
     }
 
     /*
