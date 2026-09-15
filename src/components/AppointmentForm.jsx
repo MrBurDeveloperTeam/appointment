@@ -576,7 +576,19 @@ export default function AppointmentForm({
               Delete
             </button>
           )}
-          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onClose}
+            disabled={isSubmitting}
+            style={{
+              '--surface': 'var(--primary-bg)',
+              '--surface-2': '#F4FBFA',
+              '--border-strong': 'rgba(42, 157, 143, 0.22)',
+              '--text-primary': 'var(--primary-dark)',
+              '--text-muted': 'var(--primary)',
+            }}
+          >
             {isReadOnly ? 'Close' : 'Cancel'}
           </button>
           {!isReadOnly && <button type="submit" className="btn btn-primary" disabled={showCreditWarning || isSubmitting}>
