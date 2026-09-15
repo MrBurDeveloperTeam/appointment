@@ -576,17 +576,42 @@ export default function AppointmentForm({
               Delete
             </button>
           )}
-          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onClose}
+            disabled={isSubmitting}
+            style={{
+              '--surface': '#E8F6F4',
+              '--surface-2': '#E8F6F4',
+              '--bg-hover': '#D8F0ED',
+              '--border-strong': 'rgba(42, 157, 143, 0.28)',
+              '--text-primary': '#1F7A6F',
+              '--text-secondary': '#1F7A6F',
+              '--text-muted': '#2A9D8F',
+            }}
+          >
             {isReadOnly ? 'Close' : 'Cancel'}
           </button>
-          {!isReadOnly && <button type="submit" className="btn btn-primary" disabled={showCreditWarning || isSubmitting}>
-            {isSubmitting
-              ? (isEditing ? 'Saving...' : 'Creating...')
-              : pendingConflicts
-                ? 'Book anyway'
-                : (isEditing ? 'Save Appointment' : 'Create Appointment')
-            }
-          </button>}
+
+          {!isReadOnly && (
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={showCreditWarning || isSubmitting}
+              style={{
+                '--primary-dark': '#5AB8AE',
+                '--primary': '#5AB8AE',
+              }}
+            >
+              {isSubmitting
+                ? (isEditing ? 'Saving...' : 'Creating...')
+                : pendingConflicts
+                  ? 'Book anyway'
+                  : (isEditing ? 'Save Appointment' : 'Create Appointment')
+              }
+            </button>
+          )}
         </div>
       </form>
     </Modal>
