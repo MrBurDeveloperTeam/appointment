@@ -582,11 +582,13 @@ export default function AppointmentForm({
             onClick={onClose}
             disabled={isSubmitting}
             style={{
-              '--surface': 'var(--primary-bg)',
-              '--surface-2': '#F4FBFA',
-              '--border-strong': 'rgba(42, 157, 143, 0.22)',
-              '--text-primary': 'var(--primary-dark)',
-              '--text-muted': 'var(--primary)',
+              '--surface': '#E8F6F4',
+              '--surface-2': '#E8F6F4',
+              '--bg-hover': '#D8F0ED',
+              '--border-strong': 'rgba(42, 157, 143, 0.28)',
+              '--text-primary': '#1F7A6F',
+              '--text-secondary': '#1F7A6F',
+              '--text-muted': '#2A9D8F',
             }}
           >
             {isReadOnly ? 'Close' : 'Cancel'}
