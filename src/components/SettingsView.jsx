@@ -442,28 +442,11 @@ export default function SettingsView({
   };
 
   const isUnconfigured = !form.workingHoursStart || dentists.length === 0 || rooms.length === 0 || treatments.length === 0;
-  const primaryActionStyle = {
-    background: 'var(--primary-light)',
-    border: '1px solid var(--primary-light)',
-    color: '#ffffff',
-    boxShadow: '0 2px 6px rgba(90, 184, 174, 0.22)',
-    textShadow: 'none',
-  };
 
-  const secondaryActionStyle = {
-    background: 'var(--primary-bg)',
-    border: '1px solid rgba(42, 157, 143, 0.22)',
-    color: 'var(--primary-dark)',
-    boxShadow: 'none',
-    textShadow: 'none',
-  };
-
-  const dangerActionStyle = {
-    background: 'var(--danger-bg)',
-    border: '1px solid rgba(255, 86, 48, 0.22)',
-    color: 'var(--danger-dark)',
-    boxShadow: 'none',
-    textShadow: 'none',
+  // Keep the existing btn-primary hover/active behavior while using the lighter Snabbb teal.
+  const lightPrimaryButtonStyle = {
+    '--primary-dark': '#5AB8AE',
+    '--primary': '#5AB8AE',
   };
 
   return (
@@ -521,11 +504,7 @@ export default function SettingsView({
             <div className="settings-card">
               <div className="settings-card-header">
                 <div className="settings-card-title">Dentists</div>
-                <button
-                  className="btn btn-sm"
-                  style={primaryActionStyle}
-                  onClick={() => openStaffModal('dentist')}
-                >
+                <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openStaffModal('dentist')}>
                   + Add Dentist
                 </button>
               </div>
@@ -563,11 +542,7 @@ export default function SettingsView({
             <div className="settings-card">
               <div className="settings-card-header">
                 <div className="settings-card-title">Nurses / Assistants</div>
-                <button
-                  className="btn btn-sm"
-                  style={primaryActionStyle}
-                  onClick={() => openStaffModal('nurse')}
-                >
+                <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openStaffModal('nurse')}>
                   + Add Nurse
                 </button>
               </div>
@@ -614,11 +589,7 @@ export default function SettingsView({
               <div className="settings-card-title">Rooms</div>
               <div className="settings-card-actions">
                 <span className="settings-card-subtitle">{rooms.length} total</span>
-                <button
-                  className="btn btn-sm"
-                  style={primaryActionStyle}
-                  onClick={() => openRoomModal()}
-                >
+                <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openRoomModal()}>
                   + Add Room
                 </button>
               </div>
@@ -653,11 +624,7 @@ export default function SettingsView({
               <div className="settings-card-title">Treatments</div>
               <div className="settings-card-actions">
                 <span className="settings-card-subtitle">{treatments.length} total</span>
-                <button
-                  className="btn btn-sm"
-                  style={primaryActionStyle}
-                  onClick={() => openTreatmentModal()}
-                >
+                <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openTreatmentModal()}>
                   + Add Treatment
                 </button>
               </div>
@@ -693,11 +660,7 @@ export default function SettingsView({
               <div className="settings-card-title">Holidays</div>
               <div className="settings-card-actions">
                 <span className="settings-card-subtitle">{holidays.length} configured</span>
-                <button
-                  className="btn btn-sm"
-                  style={primaryActionStyle}
-                  onClick={() => openHolidayModal()}
-                >
+                <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openHolidayModal()}>
                   + Add Holiday
                 </button>
                 {showMalaysiaHolidayLoader && (
@@ -849,11 +812,7 @@ export default function SettingsView({
                   <span className="theme-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
                 </label>
               </div> */}
-              <button
-                className="btn"
-                style={primaryActionStyle}
-                onClick={handleSaveSettings}
-              >
+              <button className="btn btn-primary" style={lightPrimaryButtonStyle} onClick={handleSaveSettings}>
                 Save Settings
               </button>
             </div>
@@ -965,7 +924,7 @@ export default function SettingsView({
             )}
             <div className="flex-1"></div>
             <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
-            <button type="button" className="btn btn-primary" onClick={handleStaffSubmit}>
+            <button type="button" className="btn btn-primary" style={lightPrimaryButtonStyle} onClick={handleStaffSubmit}>
               {modalState.mode === 'edit' ? 'Save Staff' : 'Add Staff'}
             </button>
           </div>
@@ -1005,7 +964,7 @@ export default function SettingsView({
             )}
             <div className="flex-1"></div>
             <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
-            <button type="button" className="btn btn-primary" onClick={handleRoomSubmit}>
+            <button type="button" className="btn btn-primary" style={lightPrimaryButtonStyle} onClick={handleRoomSubmit}>
               {modalState.mode === 'edit' ? 'Save Room' : 'Add Room'}
             </button>
           </div>
@@ -1127,7 +1086,7 @@ export default function SettingsView({
             )}
             <div className="flex-1"></div>
             <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
-            <button type="button" className="btn btn-primary" onClick={handleTreatmentSubmit}>
+            <button type="button" className="btn btn-primary" style={lightPrimaryButtonStyle} onClick={handleTreatmentSubmit}>
               {modalState.mode === 'edit' ? 'Save Treatment' : 'Add Treatment'}
             </button>
           </div>
@@ -1169,7 +1128,7 @@ export default function SettingsView({
             )}
             <div className="flex-1"></div>
             <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
-            <button type="button" className="btn btn-primary" onClick={handleHolidaySubmit}>
+            <button type="button" className="btn btn-primary" style={lightPrimaryButtonStyle} onClick={handleHolidaySubmit}>
               {modalState.mode === 'edit' ? 'Save Holiday' : 'Add Holiday'}
             </button>
           </div>
