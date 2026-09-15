@@ -318,40 +318,43 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                     {/* Nav Items */}
                     <div className="p-2 border-b border-[var(--border-light)]">
                       {/* Snabbb Credit */}
-                      <button
-                        onClick={async () => {
-                            console.log('user: ',user)
-                          const res = await createAppLink({
-                            app: 'reward',
-                            email: user?.email,
-                            name: user?.user_metadata?.name,
-                          });
-                          
-                          const supabaseUserId = res.result?.supabase_user_id;
-                          const w = window.open('', '_blank');
-                          if (supabaseUserId && w) {
-                            w.location.href = `https://reward.snabbb.com`;
-                          }
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left"
-                      >
-                        <div className="w-7 h-7 rounded-xl bg-[var(--purple-bg)] flex items-center justify-center shrink-0">
-                          <i className="fa-solid fa-wallet text-[11px] text-[var(--purple)]"></i>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">Snabbb Credit</p>
-                          <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">
-                              {creditLoading
-                                  ? 'Loading...'
-                                  : creditError
-                                      ? creditError
-                                      : creditBalance !== null
-                                          ? `${creditBalance} credits`
-                                          : 'Balance unavailable'}
-                          </p>
-                        </div>
-                        <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors"></i>
-                      </button>
+                    <button
+                      onClick={async () => {
+                        console.log('user: ', user)
+
+                        const res = await createAppLink({
+                          app: 'reward',
+                          email: user?.email,
+                          name: user?.user_metadata?.name,
+                        });
+
+                        const supabaseUserId = res.result?.supabase_user_id;
+                        const w = window.open('', '_blank');
+
+                        if (supabaseUserId && w) {
+                          w.location.href = `https://reward.snabbb.com`;
+                        }
+                      }}
+                      className="w-full flex items-center px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">
+                          Snabbb Credit
+                        </p>
+
+                        <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">
+                          {creditLoading
+                            ? 'Loading...'
+                            : creditError
+                              ? creditError
+                              : creditBalance !== null
+                                ? `${creditBalance} credits`
+                                : 'Balance unavailable'}
+                        </p>
+                      </div>
+
+                      <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors"></i>
+                    </button>
                         
                       {/* My Channel */}
                       <button
@@ -368,11 +371,8 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                             w.location.href = `https://e-learning.snabbb.com/channel/${supabaseUserId}`;
                           }
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left"
+                        className="w-full flex items-center px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left"
                       >
-                        <div className="w-7 h-7 rounded-xl bg-[var(--info-bg-subtle)] flex items-center justify-center shrink-0">
-                          <i className="fa-solid fa-tv text-[11px] text-[var(--primary)]"></i>
-                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">My Channel</p>
                           <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">Manage your channel</p>
@@ -413,11 +413,8 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                             window.location.assign('https://app.snabbb.com/profile-settings');
                           }
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left"
+                        className="w-full flex items-center px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left"
                       >
-                        <div className="w-7 h-7 rounded-xl bg-[var(--surface-2)] flex items-center justify-center shrink-0">
-                          <i className="fa-solid fa-gear text-[11px] text-[var(--text-secondary)]"></i>
-                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">Settings</p>
                           <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">Account & preferences</p>
@@ -444,16 +441,41 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                     </AnimatePresence>
                 </div>
 
-                {/* New Appointment Action */}
-                {onNewAppointment && (
-                <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={onNewAppointment}
-                >
-                    + New Appointment
-                </button>
-                )}
+          {/* New Appointment Action */}
+          {onNewAppointment && (
+            <button
+              type="button"
+              className="btn"
+              onClick={onNewAppointment}
+              style={{
+                gap: '6px',
+                paddingLeft: '14px',
+                paddingRight: '14px',
+                background: 'var(--primary-light)',
+                border: '1px solid var(--primary-light)',
+                color: '#ffffff',
+                boxShadow: '0 2px 6px rgba(90, 184, 174, 0.22)',
+                textShadow: 'none',
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+
+              <span>New Appointment</span>
+            </button>
+          )}
             </div>
         </header>
     );
