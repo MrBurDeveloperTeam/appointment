@@ -267,6 +267,12 @@ export default function Sidebar({
                 gap: '6px',
                 paddingLeft: '10px',
                 paddingRight: '10px',
+
+                background: 'var(--primary-light)',
+                border: '1px solid var(--primary-light)',
+                color: '#ffffff',
+                boxShadow: '0 2px 6px rgba(90, 184, 174, 0.22)',
+                textShadow: 'none',
               }}
               aria-label="Copy booking link"
             >
