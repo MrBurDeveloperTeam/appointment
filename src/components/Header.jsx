@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Header({ createAppLink, title, onNewAppointment, onToggleSidebar, credits, onOpenCredits, isSidebarOpen, isUnconfigured }) {
-    const { user, signOut } = useAuth();
+    const { user, signOut, role } = useAuth();
     const [showAccountMenu, setShowAccountMenu] = useState(false);
     const [
         creditBalance,
@@ -20,9 +20,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
         setCreditError
     ] = useState(null);
     const [isOpeningSupportTickets, setIsOpeningSupportTickets] = useState(false);
-    // Temporarily hide the Support Tickets entry until the feature is complete.
-    // Change this flag to true when the entry is ready to be shown again.
-    const showSupportTickets = false;
+    const showSupportTickets = true;
     const menuRef = useRef(null);
 
     async function openSupportTickets() {
@@ -392,8 +390,8 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                             <i className="fa-solid fa-life-ring text-[11px] text-[var(--primary)]" aria-hidden="true"></i>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">Support Tickets</p>
-                            <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">Create and track your support tickets</p>
+                            <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">{role === 'admin' ? 'Admin Dashboard' : 'User Dashboard'}</p>
+                            <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">{role === 'admin' ? 'Manage all support tickets' : 'Create and track support tickets'}</p>
                           </div>
                           <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors" aria-hidden="true"></i>
                         </button>
