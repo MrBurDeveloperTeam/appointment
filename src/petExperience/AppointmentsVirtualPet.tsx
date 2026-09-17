@@ -1,5 +1,5 @@
 // PHASE 8E (Virtual Pet migration): thin host wrapper around
-// `@mrburdeveloperteam/molar-experience/pet`'s <SharedVirtualPet>.
+// `@mrburdeveloperteam/pet-function/pet`'s <SharedVirtualPet>.
 //
 // Everything generic (room UI, adoption UI, shop/inventory UI, stat
 // runtime/decay tick, XP/level/coin arithmetic, mini-game embedding shell,
@@ -42,8 +42,8 @@
 // too would just be a redundant second write to the same style property,
 // not a behavior difference.
 import { useEffect, useRef, useState } from 'react';
-import { SharedVirtualPet } from '@mrburdeveloperteam/molar-experience/pet';
-import type { ExtraGame } from '@mrburdeveloperteam/molar-experience/pet';
+import { SharedVirtualPet } from '@mrburdeveloperteam/pet-function/pet';
+import type { ExtraGame } from '@mrburdeveloperteam/pet-function/pet';
 import { supabase } from '../lib/supabaseClient';
 import { appointmentsPetRepository } from './appointmentsPetRepository';
 import { PET_ASSET_URLS } from '../aiExperience/molarExperienceAssets';

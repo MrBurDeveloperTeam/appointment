@@ -3,6 +3,8 @@ node_modules
 node_modules/
 .vite/
 dist/
+# Generated shared images; predev/prebuild restores them from pet-function.
+/public/molar-experience/
 # Local MCP config (may contain tokens)
 .mcp.json
 # Local-only project guide (not pushed to origin)

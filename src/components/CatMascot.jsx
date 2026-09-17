@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSharedCatDialogueRuntime, SharedCatMascot } from '@mrburdeveloperteam/molar-experience/cat';
+import { useSharedCatDialogueRuntime, SharedCatMascot } from '@mrburdeveloperteam/pet-function/cat';
 import { supabase } from '../lib/supabaseClient';
 import { normalizePetId } from '../VirtualPet/petOptions';
 import { CAT_SPRITE_SHEET_URLS } from '../aiExperience/molarExperienceAssets';
