@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Mail } from 'lucide-react';
-import { SharedMolarAI } from '@mrburdeveloperteam/molar-experience/ai';
+import { SharedMolarAI } from '@mrburdeveloperteam/pet-function/ai';
 import { supabase } from '../lib/supabaseClient';
 import { createAppointmentsMolarAdapter } from '../aiExperience/appointmentsMolarAdapter';
 import { createGroundedContextStore } from '../aiExperience/dataChat/context/groundedConversationContext';
@@ -34,7 +34,7 @@ function MolarSupportFooter() {
 }
 
 // PHASE 8D (Molar AI migration): thin host wrapper around
-// `@mrburdeveloperteam/molar-experience/ai`'s <SharedMolarAI>. Generic chat
+// `@mrburdeveloperteam/pet-function/ai`'s <SharedMolarAI>. Generic chat
 // lifecycle (open/closed, history, input draft, loading, empty-submit/
 // duplicate-submit guards, clear, auto-scroll, Markdown, floating trigger +
 // panel presentation) is now entirely owned by the shared package — ported

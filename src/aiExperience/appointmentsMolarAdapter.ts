@@ -1,5 +1,5 @@
 // PHASE 8D (Molar AI migration): thin host `AIAdapter` implementation for
-// `@mrburdeveloperteam/molar-experience/ai`'s `<SharedMolarAI>`.
+// `@mrburdeveloperteam/pet-function/ai`'s `<SharedMolarAI>`.
 //
 // Phase APPOINTMENT-MOLAR-AI-P0-SECURITY-HARDENING: this adapter no longer
 // parses or dispatches any fenced ```json action block. Prompt instructions
@@ -18,7 +18,7 @@
 // `window.__MOLAR_ACTIONS__` itself (assigned in App.jsx) is left in place —
 // untouched, out of scope — but is now dead: nothing in this file (or
 // anywhere else in the repo) reads it anymore.
-import type { AIAdapter, AIMessage } from '@mrburdeveloperteam/molar-experience/contracts';
+import type { AIAdapter, AIMessage } from '@mrburdeveloperteam/pet-function/contracts';
 import { chatWithMolarAI, chatWithGroundedAppointmentFacts } from '../services/geminiService';
 import { supabase } from '../lib/supabaseClient';
 import { isAppointmentMutationRequest } from './dataChat/router/isAppointmentMutationRequest';
@@ -48,7 +48,7 @@ const CLARIFICATION_LABEL: Record<string, string> = {
 // to the `{role, parts:[{text}]}` shape `chatWithMolarAI` (and the Gemini
 // SDK) expects — this mapping stays local to the adapter, never leaking a
 // Gemini-shaped type into the shared package (see AIRequest/AIMessage in
-// @mrburdeveloperteam/molar-experience/contracts).
+// @mrburdeveloperteam/pet-function/contracts).
 function toGeminiHistory(history: AIMessage[]) {
   return history.map((m) => ({ role: m.role, parts: [{ text: m.text }] }));
 }

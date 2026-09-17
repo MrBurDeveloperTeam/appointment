@@ -14,7 +14,7 @@ import './styles.css';
 // <link>-loaded stylesheet (`./styles.css` above) has already registered
 // its own cascade layer — so Shared's later-declared layer naturally wins
 // per the CSS Cascade Layers spec, without needing revert-layer overrides.
-import molarExperienceStyles from '@mrburdeveloperteam/molar-experience/styles.css?raw';
+import molarExperienceStyles from '@mrburdeveloperteam/pet-function/styles.css?raw';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const queryClient = new QueryClient();

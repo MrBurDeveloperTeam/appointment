@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/prepare-pet.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/prepare-pet.mjs",
     "build": "node ./node_modules/vite/bin/vite.js build",
     "preview": "vite preview",
     "test": "vitest",
@@ -12,7 +14,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mrburdeveloperteam/molar-experience": "0.9.6",
+    "@mrburdeveloperteam/pet-function": "github:mrburdeveloperteam/pet-function#v0.9.10",
     "@supabase/supabase-js": "^2.90.0",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.5",

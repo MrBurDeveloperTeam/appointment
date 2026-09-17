@@ -595,10 +595,8 @@ useEffect(() => {
   const [confirmDialog, setConfirmDialog] = useState({ open: false, type: '', payload: null });
   const [isRedeeming, setIsRedeeming] = useState(false);
   const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false);
-  // molar-experience 0.9.5 integration: Meowdoku predates the shared
-  // Games catalog (only Flappy/Pac-Cat/Tetris) — wired in via
-  // SharedVirtualPet's `extraGames` as a 4th card; the host owns opening
-  // it via MeowdokuLauncher, stacked above the Pet overlay.
+  // Meowdoku uses pet-function's shared launcher; Appointment controls
+  // opening the overlay and supplies its authenticated account.
   const [isMeowdokuOpen, setIsMeowdokuOpen] = useState(false);
   const bookingSlug = getBookingSlugFromPath();
   const [authInitializing, setAuthInitializing] = useState(true);
@@ -634,8 +632,7 @@ useEffect(() => {
         }
       : { status: 'not_ready' };
 
-  // Meowdoku predates the shared Games catalog (only Flappy/Pac-Cat/
-  // Tetris) — wired in via SharedVirtualPet's `extraGames` as a 4th card.
+  // Open the fourth shared game through the host's overlay callback.
   const extraGames = useMemo(
     () => [
       {
