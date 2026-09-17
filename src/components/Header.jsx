@@ -370,9 +370,6 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                           onClick={openSupportTickets}
                           className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          <div className="w-7 h-7 rounded-xl bg-[var(--info-bg-subtle)] flex items-center justify-center shrink-0">
-                            <i className="fa-solid fa-life-ring text-[11px] text-[var(--primary)]" aria-hidden="true"></i>
-                          </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">{role === 'admin' ? 'Admin Dashboard' : 'User Dashboard'}</p>
                             <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">{role === 'admin' ? 'Manage all support tickets' : 'Create and track support tickets'}</p>
