@@ -11,10 +11,11 @@
     "preview": "vite preview",
     "test": "vitest",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:pet": "node scripts/verify-pet.mjs"
   },
   "dependencies": {
-    "@mrburdeveloperteam/pet-function": "github:mrburdeveloperteam/pet-function#v0.9.10",
+    "@mrburdeveloperteam/pet-function": "github:mrburdeveloperteam/pet-function#v0.9.12",
     "@supabase/supabase-js": "^2.90.0",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.5",
