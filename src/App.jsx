@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import React from 'react';
 import useDataStore from './hooks/useDataStore';
 import { useAuth } from './context/AuthProvider';
@@ -20,15 +20,80 @@ import RegisterPage from './components/auth/RegisterPage';
 import AdminDashboard from './components/AdminDashboard';
 import PublicBookingView from './components/PublicBookingView';
 import ConfirmDialog from './components/ConfirmDialog';
+import TutorialVideoModal from './components/TutorialVideoModal';
 import CreditModal from './components/CreditModal';
 import { todayISO } from './utils/date';
+import { isDateHoliday } from './utils/availability';
 import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from './lib/supabaseClient';
 import DataStore from "./data";
 import { api } from './services/api';
 import CatMascot from './components/CatMascot';
-import { VirtualPetContainer } from './VirtualPet/VirtualPetContainer';
+import AppointmentsVirtualPet from './petExperience/AppointmentsVirtualPet';
 import MolarAIFloat from './components/MolarAIFloat';
+import MeowdokuLauncher from './games/MeowdokuLauncher';
+import { useAppointmentPersonalizedInsight } from './aiExperience/hooks/useAppointmentPersonalizedInsight';
+import { isTodayCoveredByDateRange } from './aiExperience/utils/appointmentCoverage';
+import {
+  normalizeTheme,
+  readStoredTheme,
+  readThemeCookie,
+  writeThemeCookie,
+  writeStoredTheme,
+  applyThemeToDocument,
+  broadcastTheme,
+  syncThemeFromOdoo,
+  pushThemeToOdoo,
+  THEME_SYNC,
+} from './utils/themeSync';
+import { useGetUserId } from './mutation/useGetUserId';
+import useGetSessionInfo from './hooks/useGetSessionInfo';
+import usePageDurationTracker from './hooks/usePageDurationTracker';
+import {APPOINTMENT_PERMISSIONS,getAppointmentAccess,hasAppointmentPermission,} from "./services/appointmentAccess";
+
+const getLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const getLocalTimeString = (date = new Date()) => {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  return `${hours}:${minutes}`;
+};
+
+const isAppointmentRequestExpired = (
+  request,
+  now = new Date()
+) => {
+  const requestDate =
+    request.appointmentDate ||
+    request.preferredDates?.[0] ||
+    '';
+
+  const requestTime =
+    request.appointmentStartTime ||
+    request.preferredTimes?.[0] ||
+    '';
+
+  if (!requestDate) return false;
+
+  const today = getLocalDateString(now);
+
+  if (requestDate < today) return true;
+  if (requestDate > today) return false;
+  if (!requestTime) return false;
+
+  const normalizedRequestTime =
+    String(requestTime).slice(0, 5);
+
+  return normalizedRequestTime <=
+    getLocalTimeString(now);
+};
 
 const getBookingSlugFromPath = () => {
   const parts = window.location.pathname.split('/').filter(Boolean);
@@ -45,15 +110,97 @@ export default function App() {
   );
 }
 
-function AppContent() {
+// APPOINTMENT-POST-0.9.6-FOLLOWUP-FIX-1 (Issue 2): a sessionStorage-backed
+// cache for the last successfully-resolved Appointment access context, keyed
+// per user+clinic. sessionStorage (not localStorage) is deliberate — its
+// lifetime is scoped to this browser tab (cleared when the tab/window
+// closes), which is NOT the same thing as the authenticated login session:
+// a token expiring or the user signing out mid-tab does not clear it on its
+// own, which is exactly why loadAppointmentAccess's own identity-change
+// invalidation (see the cache-key ref below) and its always-on background
+// revalidation exist — this cache is never treated as proof of a still-valid
+// login. It is purely a UI-paint optimization: the real
+// /api/company/access-context call is still made on every mount (see
+// loadAppointmentAccess below), and every actual data mutation is
+// independently enforced server-side via Supabase RLS, never by this cached
+// flag.
+const APPOINTMENT_ACCESS_CACHE_KEY_PREFIX = 'appointment_access_cache:';
+const TUTORIAL_VIDEO_SEEN_KEY_PREFIX = 'appointment_tutorial_video_seen_v1_';
 
+function hasSeenTutorialVideo(userId) {
+  try {
+    return localStorage.getItem(
+      `${TUTORIAL_VIDEO_SEEN_KEY_PREFIX}${userId}`
+    ) === 'true';
+  } catch (error) {
+    console.error('Failed to read tutorial video flag', error);
+    return false;
+  }
+}
+
+function markTutorialVideoSeen(userId) {
+  try {
+    localStorage.setItem(
+      `${TUTORIAL_VIDEO_SEEN_KEY_PREFIX}${userId}`,
+      'true'
+    );
+  } catch (error) {
+    console.error('Failed to persist tutorial video flag', error);
+  }
+}
+
+function readCachedAppointmentAccess(cacheKey) {
+  if (!cacheKey) return null;
+  try {
+    const raw = sessionStorage.getItem(cacheKey);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedAppointmentAccess(cacheKey, access) {
+  if (!cacheKey) return;
+  try {
+    sessionStorage.setItem(cacheKey, JSON.stringify(access));
+  } catch {
+    // sessionStorage unavailable (private mode, quota) — the cache is a
+    // pure optimization, so silently falling back to the normal blocking
+    // load next time is safe and expected.
+  }
+}
+
+function clearCachedAppointmentAccess(cacheKey) {
+  if (!cacheKey) return;
+  try {
+    sessionStorage.removeItem(cacheKey);
+  } catch {
+    // Best-effort only — see writeCachedAppointmentAccess.
+  }
+}
+
+function AppContent() {
+  const { mutateAsync: createAppLink, isPending } = useGetUserId();
   const { addToast } = useToast();
+  const { mutateAsync: getSessionInfo } = useGetSessionInfo();
 
   const [exchangeDone, setExchangeDone] = useState(false);
+  const [showTutorialVideo, setShowTutorialVideo] = useState(false);
 
-  useEffect(() => {
-    setExchangeDone(true);
-  }, []);
+  const [
+    appointmentAccess,setAppointmentAccess,] = useState(null);
+
+  const [appointmentAccessLoading,setAppointmentAccessLoading,] = useState(true);
+
+  const [appointmentAccessError,setAppointmentAccessError,] = useState("");
+
+  // APPOINTMENT-POST-0.9.6-FOLLOWUP-FIX-1 (Issue 2): tracks the sessionStorage
+  // key of the most recently resolved access context so a genuine identity
+  // change (different user, different clinic, or signing out — see the
+  // effect below) can explicitly invalidate the PREVIOUS cache entry, not
+  // just stop reading it. sessionStorage itself already bounds the cache's
+  // lifetime to this browser tab's session (cleared on tab/window close).
+  const appointmentAccessCacheKeyRef = useRef(null);
 
   const {
     session,
@@ -66,20 +213,204 @@ function AppContent() {
     signOut
   } = useAuth();
 
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved === 'light' || saved === 'dark') return saved;
-    return 'light';
-  });
+  useEffect(() => {
+    if (
+      !user?.id ||
+      authRole === 'admin' ||
+      !activeClinicId ||
+      authLoading ||
+      appointmentAccessLoading
+    ) {
+      return;
+    }
+
+    if (!hasSeenTutorialVideo(user.id)) {
+      setShowTutorialVideo(true);
+    }
+  }, [
+    user?.id,
+    authRole,
+    activeClinicId,
+    authLoading,
+    appointmentAccessLoading,
+  ]);
+
+  const closeTutorialVideo = useCallback(() => {
+    if (user?.id) markTutorialVideoSeen(user.id);
+    setShowTutorialVideo(false);
+  }, [user?.id]);
+   useEffect(() => {
+    let cancelled = false;
+
+  async function loadAppointmentAccess() {
+    // APPOINTMENT-POST-0.9.6-FOLLOWUP-FIX-1 (Issue 2): a full-screen
+    // "Checking your clinic permissions" loader on every return from
+    // another Snabbb page is unnecessary when this exact user+clinic
+    // already successfully resolved an access context earlier in this
+    // SAME browser tab (sessionStorage's own scope — not a claim about
+    // the authenticated login session itself still being valid, which
+    // the unconditional revalidation below still verifies independently
+    // on every mount). This does NOT weaken enforcement: every real
+    // data mutation (see src/data/datastore.supabase.appointments.js and
+    // sibling files) goes straight through Supabase's own RLS-protected
+    // tables, independent of this client-side flag, which only gates
+    // which UI panels/buttons render. getAppointmentAccess() — the same
+    // authenticated /api/company/access-context call as before — still
+    // runs unconditionally below on every mount; a cache hit only lets
+    // the UI paint immediately with the last-known-good context while
+    // that revalidation happens in the background, and any diff or
+    // failure from the fresh result immediately overwrites/clears it.
+    const cacheKey = user
+      ? `${APPOINTMENT_ACCESS_CACHE_KEY_PREFIX}${user.id}:${activeClinicId ?? 'none'}`
+      : null;
+
+    // Invalidate the PREVIOUS cache entry whenever the effective identity
+    // actually changes (different user, different clinic, or signing
+    // out) — never left around for a different account/clinic to reuse.
+    if (appointmentAccessCacheKeyRef.current && appointmentAccessCacheKeyRef.current !== cacheKey) {
+      clearCachedAppointmentAccess(appointmentAccessCacheKeyRef.current);
+    }
+    appointmentAccessCacheKeyRef.current = cacheKey;
+
+    if (!user) {
+      setAppointmentAccess(null);
+      setAppointmentAccessError("");
+      setAppointmentAccessLoading(false);
+      return;
+    }
+
+    const cached = readCachedAppointmentAccess(cacheKey);
+    if (cached) {
+      setAppointmentAccess(cached);
+      setAppointmentAccessLoading(false);
+    } else {
+      setAppointmentAccessLoading(true);
+    }
+    setAppointmentAccessError("");
+
+    try {
+      const result =
+        await getAppointmentAccess();
+
+      if (!cancelled) {
+        setAppointmentAccess(result);
+        writeCachedAppointmentAccess(cacheKey, result);
+      }
+    } catch (error) {
+      console.error(
+        "Unable to load Appointment access:",
+        error
+      );
+
+      if (!cancelled) {
+        // A background revalidation failure must never leave a stale
+        // optimistic context on screen or cached for next time.
+        clearCachedAppointmentAccess(cacheKey);
+        setAppointmentAccess(null);
+        setAppointmentAccessError(
+          error?.message ||
+          "Unable to load Appointment access"
+        );
+      }
+    } finally {
+      if (!cancelled) {
+        setAppointmentAccessLoading(false);
+      }
+    }
+  }
+
+  loadAppointmentAccess();
+
+  return () => {
+    cancelled = true;
+  };
+}, [user, activeClinicId]);
+
+useEffect(() => {
+  setExchangeDone(true);
+}, []);
+
+  // ─── Theme — hybrid: cookie (instant) + Odoo (cross-device) ─────────────────
+  // Initial value comes from cookie/localStorage synchronously (no flash).
+  // Background Odoo fetch runs after mount to apply cross-device preference.
+  const [theme, setTheme] = useState(() => readStoredTheme() || 'light');
 
   useEffect(() => {
     DataStore.clearLegacyLocalData();
   }, []);
 
+  // Apply theme to DOM whenever it changes
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
+    const normalized = normalizeTheme(theme) || 'light';
+    applyThemeToDocument(normalized);
   }, [theme]);
+
+  // Background Odoo sync on first mount — cross-device source of truth
+  useEffect(() => {
+    syncThemeFromOdoo((odooTheme) => {
+      // Only fires if Odoo returned a DIFFERENT theme than the cookie
+      setTheme((current) => (current === odooTheme ? current : odooTheme));
+    });
+  }, []);
+
+  // Live sync: storage events (same-origin tabs) + cookie poll (cross-subdomain)
+  useEffect(() => {
+    const handleStorageSync = (event) => {
+      if (event.key !== THEME_SYNC.localStorageKey && event.key !== 'snabbb-theme') return;
+      const next = normalizeTheme(event.newValue);
+      if (next) setTheme((cur) => (cur === next ? cur : next));
+    };
+
+    const handleMessageSync = (event) => {
+      const data = event.data;
+      if (!data || data.type !== THEME_SYNC.messageType) return;
+      if (data.source === 'appointment') return; // ignore own broadcasts
+      const next = normalizeTheme(data.theme);
+      if (next) setTheme((cur) => (cur === next ? cur : next));
+    };
+
+    const handleSystemThemeChange = () => {
+      setTheme((cur) => {
+        if (cur === 'system') applyThemeToDocument('system');
+        return cur;
+      });
+    };
+
+    // 1s cookie poll — catches theme changes from other subdomains (e.g. app.snabbb.com)
+    let lastCookie = readThemeCookie();
+    const cookieInterval = window.setInterval(() => {
+      const current = readThemeCookie();
+      if (current && current !== lastCookie) {
+        lastCookie = current;
+        setTheme((cur) => (cur === current ? cur : current));
+      }
+    }, 1000);
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    window.addEventListener('storage', handleStorageSync);
+    window.addEventListener('message', handleMessageSync);
+    mediaQuery.addEventListener?.('change', handleSystemThemeChange);
+    mediaQuery.addListener?.(handleSystemThemeChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageSync);
+      window.removeEventListener('message', handleMessageSync);
+      mediaQuery.removeEventListener?.('change', handleSystemThemeChange);
+      mediaQuery.removeListener?.(handleSystemThemeChange);
+      window.clearInterval(cookieInterval);
+    };
+  }, []);
+
+  // Called by UI (Sidebar, SettingsView, AdminDashboard) when user picks a theme.
+  // Writes cookie immediately + pushes to Odoo in background.
+  const handleSetTheme = (newTheme) => {
+    const normalized = normalizeTheme(newTheme) || 'light';
+    setTheme(normalized);
+    writeThemeCookie(normalized);
+    writeStoredTheme(normalized);
+    broadcastTheme(normalized);
+    pushThemeToOdoo(normalized); // fire and forget
+  };
 
   const [bookingLink, setBookingLink] = useState('');
 
@@ -131,6 +462,7 @@ function AppContent() {
     activeClinicData,
     isReady,
     addPatient,
+    importPatients,
     updatePatient,
     deletePatient,
     addAppointment,
@@ -153,15 +485,94 @@ function AppContent() {
     clearAll,
     updateAppointmentRequest,
     refreshRequests,
+    refreshActivity,
+    dateRange,
     setDateRange,
     searchPatients,
     credits,
     creditHistory,
     addCredits,
+    appointmentDataStatus,
+    loadedAppointmentRange,
   } = useDataStore(activeClinicId, dataEnabled);
-
+  
   const [view, setView] = useState('calendar');
+
+  /*
+ * Appointment access-control permissions
+ */
+  const canAccessSchedule =
+    hasAppointmentPermission(
+      appointmentAccess,
+      APPOINTMENT_PERMISSIONS.SCHEDULE
+    );
+
+  const canManageAppointments =
+    hasAppointmentPermission(
+      appointmentAccess,
+      APPOINTMENT_PERMISSIONS.MANAGE
+    );
+
+  const canAccessPatients =
+    hasAppointmentPermission(
+      appointmentAccess,
+      APPOINTMENT_PERMISSIONS.PATIENTS
+    );
+
+  const canManageRequests =
+    hasAppointmentPermission(
+      appointmentAccess,
+      APPOINTMENT_PERMISSIONS.REQUESTS
+    );
+
+  const canViewReports =
+    hasAppointmentPermission(
+      appointmentAccess,
+      APPOINTMENT_PERMISSIONS.REPORTS
+    );
+
+  const canManageSettings =
+    hasAppointmentPermission(
+      appointmentAccess,
+      APPOINTMENT_PERMISSIONS.SETTINGS
+    );
+
   const [currentDate, setCurrentDate] = useState(new Date());
+  
+  useEffect(() => {
+    if (!appointmentAccess) return;
+
+    const allowedViews = {
+      calendar: canAccessSchedule,
+      today: canAccessSchedule,
+      patients: canAccessPatients,
+      requests: canManageRequests,
+      settings: canManageSettings,
+      reports: canViewReports,
+      activity: canViewReports,
+    };
+
+    if (allowedViews[view] !== false) {
+      return;
+    }
+
+    if (canAccessSchedule) {
+      setView("calendar");
+      return;
+    }
+
+    if (canAccessPatients) {
+      setView("patients");
+    }
+  }, [
+    appointmentAccess,
+    view,
+    canAccessSchedule,
+    canAccessPatients,
+    canManageRequests,
+    canManageSettings,
+    canViewReports,
+  ]);
 
   // Sync date range for appointments
   useEffect(() => {
@@ -184,8 +595,55 @@ function AppContent() {
   const [confirmDialog, setConfirmDialog] = useState({ open: false, type: '', payload: null });
   const [isRedeeming, setIsRedeeming] = useState(false);
   const [isVirtualPetOpen, setIsVirtualPetOpen] = useState(false);
+  // Meowdoku uses pet-function's shared launcher; Appointment controls
+  // opening the overlay and supplies its authenticated account.
+  const [isMeowdokuOpen, setIsMeowdokuOpen] = useState(false);
   const bookingSlug = getBookingSlugFromPath();
   const [authInitializing, setAuthInitializing] = useState(true);
+
+  // Phase-2A: Appointment Within 2 Hours, Daily Summary (today's count +
+  // room-in-use), No Appointments Today. Pure, synchronous, reevaluates
+  // whenever appointments/rooms/dateRange (already owned above via
+  // useDataStore) change or the local minute clock ticks — no new
+  // Supabase query, no dedupe, no polling of the database. See
+  // ./aiExperience/hooks/useAppointmentPersonalizedInsight.ts.
+  const { candidates: appointmentDialoguePool } =
+    useAppointmentPersonalizedInsight(appointments, rooms, dateRange);
+  // Takes the candidate to act on explicitly — invoked by CatMascot with
+  // whichever candidate it is currently showing (its own dismissal-aware
+  // scan over appointmentDialoguePool below).
+  const handleAppointmentInsightAction = useCallback((candidate) => {
+    // Reuses CalendarView.jsx's exact existing "Today" button behavior —
+    // never a fabricated navigation.
+    if (candidate?.action) setCurrentDate(new Date());
+  }, []);
+  // Proactive Cat reminder readiness: reuses the SAME authoritative
+  // signals already piped to MolarAIFloat for Appointment Data Chat's own
+  // readiness gate. `loadedAppointmentRange` is the SUCCESSFULLY LOADED
+  // range (not the currently-requested `dateRange`), so a calendar-range
+  // change in flight never authorizes a Personalized reminder against
+  // stale prior data before the new fetch actually completes.
+  const personalizedInsightState =
+    appointmentDataStatus === 'ready' && isTodayCoveredByDateRange(loadedAppointmentRange)
+      ? {
+          status: 'ready',
+          candidates: appointmentDialoguePool,
+          onAction: handleAppointmentInsightAction,
+        }
+      : { status: 'not_ready' };
+
+  // Open the fourth shared game through the host's overlay callback.
+  const extraGames = useMemo(
+    () => [
+      {
+        id: 'meowdoku',
+        title: 'Meowdoku',
+        iconUrl: '/games/meowdoku/cover-148.png',
+        onSelect: () => setIsMeowdokuOpen(true),
+      },
+    ],
+    []
+  );
 
   // Check what is missing
   const missingSettings = !settings?.workingHours?.start;
@@ -199,7 +657,12 @@ function AppContent() {
   );
 
   // Count of pending appointment requests for the sidebar badge
-  const pendingRequestsCount = appointmentRequests.filter(r => r.status === 'pending').length;
+  const pendingRequestsCount =
+    appointmentRequests.filter(
+      (request) =>
+        request.status === 'pending' &&
+        !isAppointmentRequestExpired(request)
+    ).length;
 
   // Check if subscription is expired
   const isExpired = React.useMemo(() => {
@@ -219,13 +682,19 @@ function AppContent() {
     requests: 'Requests',
   }[view];
 
+  // Track how long the user spends on each page and log it to the
+  // appointment activity log (apt_activity_log — same table/Odoo sync as
+  // every other activity entry) whenever they navigate away, hide the tab,
+  // or close it.
+  usePageDurationTracker(view, viewTitle, dataEnabled && isReady, refreshActivity);
+
   // Force configuration of settings for new clinics
   useEffect(() => {
     let timeoutId;
     // Ensure data is ready, the user is active, we are not already on the settings view,
     // and they have an active clinic assigned.
-    if (isReady && user && activeClinicId && view !== 'settings') {
-      if (isUnconfigured) {
+  if (isReady &&user &&activeClinicId &&canManageSettings &&view !== "settings") {      
+    if (isUnconfigured) {
         setView('settings');
         
         // Build dynamic warning message
@@ -254,7 +723,8 @@ function AppContent() {
     user, 
     activeClinicId, 
     view, 
-    addToast
+    addToast,
+    canManageSettings,
   ]);
 
   // Build real-time context for Molar AI
@@ -511,6 +981,11 @@ function AppContent() {
 
   const handleRescheduleAppointment = (appointment, updates) => {
     if (!appointment || !appointment.id) return;
+    // Hard-block moving an appointment onto a clinic holiday.
+    if (updates && updates.date && isDateHoliday(updates.date, holidays)) {
+      addToast('That date is a clinic holiday. Please choose another date.', 'warning');
+      return;
+    }
     updateAppointment(appointment.id, updates);
   };
 
@@ -585,6 +1060,54 @@ function AppContent() {
     );
   }
 
+  if (
+  user &&
+  authRole !== "admin" &&
+  appointmentAccessLoading
+) {
+  return (
+    <div className="login-page">
+      <div className="login-card">
+        <h1 className="login-title">
+          Loading Appointment…
+        </h1>
+
+        <p className="login-subtitle">
+          Checking your clinic permissions.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+  if (
+    user &&
+    authRole !== "admin" &&
+    appointmentAccessError
+  ) {
+    return (
+      <div className="login-page">
+        <div className="login-card">
+          <h1 className="login-title">
+            Appointment access unavailable
+          </h1>
+
+          <p className="login-subtitle">
+            {appointmentAccessError}
+          </p>
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={signOut}
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (user && !isReady && authRole !== 'admin' && activeClinicId) {
     return (
       <div className="login-page">
@@ -604,7 +1127,7 @@ function AppContent() {
 
   if (authRole === 'admin') {
     return (
-      <AdminDashboard onLogout={signOut} theme={theme} setTheme={setTheme} />
+      <AdminDashboard onLogout={signOut} theme={theme} setTheme={handleSetTheme} />
     );
   }
 
@@ -625,9 +1148,15 @@ function AppContent() {
   return (
     <div className="app-container">
       <Sidebar
-        view={view}
+         view={view}
+          permissions={
+            appointmentAccess?.permissions || {}
+          }
+          enforceConfiguration={
+            isUnconfigured && canManageSettings
+          }
         onChange={(newView) => {
-          if (isUnconfigured && newView !== 'settings') {
+          if (isUnconfigured &&  canManageSettings && newView !== 'settings') {
             const missing = [];
             if (missingSettings) missing.push("working hours");
             if (missingStaff) missing.push("1 staff");
@@ -640,7 +1169,7 @@ function AppContent() {
           closeSidebar(); // Close sidebar on mobile when navigating
         }}
         theme={theme}
-        setTheme={setTheme}
+        setTheme={handleSetTheme}
         onLogout={signOut}
         bookingLink={bookingLink}
         isOpen={sidebarOpen}
@@ -657,8 +1186,16 @@ function AppContent() {
       )}
       <main className="main-content">
         <Header
+          createAppLink={createAppLink}
           title={viewTitle}
-          onNewAppointment={() => setShowAppointmentModal(true)}
+          onNewAppointment={
+            canManageAppointments
+              ? () => {
+                  setAppointmentDefaults(null);
+                  setShowAppointmentModal(true);
+                }
+              : null
+          }
           onToggleSidebar={toggleSidebar}
           isSidebarOpen={sidebarOpen}
           credits={credits}
@@ -679,9 +1216,24 @@ function AppContent() {
               staff={staff}
               holidays={holidays}
               settings={settings}
-              onSlotSelect={(date, time) => openNewAppointment(date, time)}
-              onAppointmentSelect={handleAppointmentClick}
-              onAppointmentReschedule={handleRescheduleAppointment}
+              onSlotSelect={
+                canManageAppointments
+                  ? (date, time) =>
+                      openNewAppointment(date, time)
+                  : undefined
+              }
+
+              onAppointmentSelect={
+                canManageAppointments
+                  ? handleAppointmentClick
+                  : undefined
+              }
+
+              onAppointmentReschedule={
+                canManageAppointments
+                  ? handleRescheduleAppointment
+                  : undefined
+              }
             />
           )}
           {view === 'today' && (
@@ -690,9 +1242,20 @@ function AppContent() {
               patients={patients}
               rooms={rooms}
               treatments={treatments}
-              onAppointmentSelect={handleAppointmentClick}
-              onNewAppointment={() => setShowAppointmentModal(true)}
-            />
+              onAppointmentSelect={
+                canManageAppointments
+                  ? handleAppointmentClick
+                  : undefined
+              }
+
+              onNewAppointment={
+                canManageAppointments
+                  ? () => {
+                      setAppointmentDefaults(null);
+                      setShowAppointmentModal(true);
+                    }
+                  : undefined
+              }/>
           )}
           {view === 'patients' && (
             <PatientsView
@@ -708,6 +1271,8 @@ function AppContent() {
                 setEditingPatient(p);
                 setShowPatientModal(true);
               }}
+              searchPatients={searchPatients}
+              importPatients={importPatients}
             />
           )}
           {view === 'settings' && (
@@ -734,7 +1299,7 @@ function AppContent() {
               clearAll={clearAll}
               onLogout={signOut}
               theme={theme}
-              setTheme={setTheme}
+              setTheme={handleSetTheme}
             />
           )}
           {view === 'reports' && (
@@ -747,6 +1312,9 @@ function AppContent() {
               patients={patients}
               treatments={treatments}
               settings={settings}
+              appointments={appointments}
+              dentists={staff.filter((s) => s.role === 'dentist')}
+              holidays={holidays}
               addPatient={addPatient}
               addAppointment={addAppointment}
               updateAppointmentRequest={updateAppointmentRequest}
@@ -763,6 +1331,7 @@ function AppContent() {
           treatments={treatments}
           dentists={staff.filter((s) => s.role === 'dentist')}
           appointments={appointments}
+          holidays={holidays}
           settings={settings}
           initialData={appointmentDefaults}
           onSave={handleSaveAppointment}
@@ -829,18 +1398,57 @@ function AppContent() {
         onConfirm={handleConfirmDelete}
       />
 
+      <TutorialVideoModal
+        isOpen={showTutorialVideo}
+        onClose={closeTutorialVideo}
+      />
+
       {/* 🐱 MOLAR ECOSYSTEM */}
+      {/* `key` on CatMascot/AppointmentsVirtualPet/MeowdokuLauncher forces
+          a fresh mount on every distinct authenticated identity boundary
+          — this JSX only ever renders once `user` is confirmed non-null
+          (see the `!user` -> LoginView early-return above), so `user.id`
+          is always the real canonical Supabase Auth uuid here, never
+          "still resolving". The permanent-mount `hidden`/`contents`
+          wrapper below is unchanged — Cat still never unmounts merely
+          because Virtual Pet opens/closes. */}
       <div className={isVirtualPetOpen ? 'hidden' : 'contents'}>
-        <CatMascot onCatClick={() => setIsVirtualPetOpen(true)} />
-        <MolarAIFloat 
-          userContext={aiContext} 
-          disabled={!isReady || !user || !activeClinicId} 
+        <CatMascot
+          key={user.id}
+          onCatClick={() => setIsVirtualPetOpen(true)}
+          personalizedInsightState={personalizedInsightState}
+          catCacheOwnerId={user.id}
+        />
+        <MolarAIFloat
+          key={`${user.id}::${activeClinicId ?? 'no-clinic'}`}
+          userContext={aiContext}
+          disabled={!isReady || !user || !activeClinicId}
           onPetToggle={() => setIsVirtualPetOpen(true)}
+          appointments={appointments}
+          rooms={rooms}
+          appointmentDataStatus={appointmentDataStatus}
+          loadedAppointmentRange={loadedAppointmentRange}
+          patients={patients}
+          staff={staff}
+          treatments={treatments}
         />
       </div>
-      <VirtualPetContainer 
-        isOpen={isVirtualPetOpen} 
-        onClose={() => setIsVirtualPetOpen(false)} 
+      <AppointmentsVirtualPet
+        key={user.id}
+        isOpen={isVirtualPetOpen}
+        onClose={() => setIsVirtualPetOpen(false)}
+        userId={user.id}
+        extraGames={extraGames}
+      />
+
+      {/* Rendered as a sibling, outside SharedVirtualPet's own overlay, so
+          it stacks above it (higher z-index) rather than being clipped by
+          or nested inside the Pet's own DOM subtree. */}
+      <MeowdokuLauncher
+        key={`meowdoku-${user.id}`}
+        isOpen={isMeowdokuOpen}
+        onClose={() => setIsMeowdokuOpen(false)}
+        userId={user.id}
       />
 
     </div>

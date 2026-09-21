@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { todayISO } from '../utils/date';
 import { addMinutes } from '../utils/time';
+import {
+  sanitizeIC,
+  sanitizePhone,
+  sanitizeName,
+  validateNewPatient,
+} from '../utils/bookingValidation';
+import { filterAvailableSlotsByDentist, isDateHoliday } from '../utils/availability';
 
 const emptyPatient = {
   name: '',
@@ -11,6 +18,9 @@ const emptyPatient = {
   taxNumber: '',
   phone: '',
   email: '',
+  emailIsGuardian: false,
+  guardianName: '',
+  guardianRelationship: '',
   address: '',
   emergencyContactName: '',
   emergencyContactPhone: '',
@@ -28,6 +38,7 @@ const emptyAppointment = {
   startTime: '09:00',
   duration: 30,
   treatmentId: '',
+  dentistId: '',
   notes: '',
 };
 
@@ -36,6 +47,7 @@ export default function PublicBookingView({ clinicSlug }) {
   const [dentists, setDentists] = useState([]);
   const [treatments, setTreatments] = useState([]);
   const [settings, setSettings] = useState(null);
+  const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -44,6 +56,7 @@ export default function PublicBookingView({ clinicSlug }) {
 
   const [patientType, setPatientType] = useState('');
   const [lookupEmail, setLookupEmail] = useState('');
+  const [lookupPatients, setLookupPatients] = useState([]);
   const [lookupPatient, setLookupPatient] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
@@ -86,11 +99,15 @@ export default function PublicBookingView({ clinicSlug }) {
 
   const [patient, setPatient] = useState({ ...emptyPatient });
   const [appointment, setAppointment] = useState({ ...emptyAppointment });
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
+
+  const [busySlots, setBusySlots] = useState([]);
+  const [clinicCapacity, setClinicCapacity] = useState(1);
 
   // -----------------------------
   // Load clinic
@@ -133,7 +150,10 @@ export default function PublicBookingView({ clinicSlug }) {
     let isActive = true;
 
     const loadClinicData = async () => {
-      const [{ data: dentistData }, { data: treatmentData }, { data: settingsData }] = await Promise.all([
+      // Booking rules (hours, rest days, holidays) come from a security-definer
+      // RPC because anon patients cannot read apt_settings / apt_holidays directly
+      // (member-only RLS). Staff and treatments have public SELECT policies.
+      const [{ data: dentistData }, { data: treatmentData }, { data: availabilityData }] = await Promise.all([
         supabase
           .from('apt_staff')
           .select('id, name, role')
@@ -145,18 +165,17 @@ export default function PublicBookingView({ clinicSlug }) {
           .select('id, name, duration')
           .eq('clinic_id', clinic.id)
           .order('name', { ascending: true }),
-        supabase
-          .from('apt_settings')
-          .select('working_hours_start, working_hours_end, slot_duration, rest_days')
-          .eq('clinic_id', clinic.id)
-          .maybeSingle(),
+        supabase.rpc('booking_clinic_availability_text', {
+          p_clinic_id: clinic.id,
+        }),
       ]);
 
       if (!isActive) return;
 
       setDentists(dentistData || []);
       setTreatments(treatmentData || []);
-      setSettings(settingsData || null);
+      setSettings(availabilityData || null);
+      setHolidays(Array.isArray(availabilityData?.holidays) ? availabilityData.holidays : []);
     };
 
     loadClinicData();
@@ -169,7 +188,10 @@ export default function PublicBookingView({ clinicSlug }) {
   // Existing patient lookup
   // -----------------------------
   useEffect(() => {
+    let cancelled = false;
+
     if (patientType !== 'existing') {
+      setLookupPatients([]);
       setLookupPatient(null);
       setLookupError('');
       setConfirmMatch(false);
@@ -177,7 +199,9 @@ export default function PublicBookingView({ clinicSlug }) {
     }
 
     const email = lookupEmail.trim().toLowerCase();
+
     if (!clinic?.id || email.length < 5 || !email.includes('@')) {
+      setLookupPatients([]);
       setLookupPatient(null);
       setLookupError('');
       setConfirmMatch(false);
@@ -186,16 +210,24 @@ export default function PublicBookingView({ clinicSlug }) {
 
     setLookupLoading(true);
     setLookupError('');
+    setLookupPatients([]);
+    setLookupPatient(null);
+    setConfirmMatch(false);
 
     const timer = setTimeout(async () => {
-      const { data, error: lookupErr } = await supabase
-        .from('apt_patients')
-        .select('id, name, phone, email, id_number, address')
-        .eq('clinic_id', clinic.id)
-        .ilike('email', email)
-        .maybeSingle();
+      const { data, error: lookupErr } = await supabase.rpc(
+        'lookup_patients_by_email',
+        {
+          p_clinic_id: clinic.id,
+          p_email: email,
+        }
+      );
+
+      if (cancelled) return;
 
       if (lookupErr) {
+        console.error('Existing patient lookup failed:', lookupErr);
+        setLookupPatients([]);
         setLookupPatient(null);
         setLookupError('Unable to verify your email right now.');
         setConfirmMatch(false);
@@ -203,7 +235,8 @@ export default function PublicBookingView({ clinicSlug }) {
         return;
       }
 
-      if (!data) {
+      if (!data || data.length === 0) {
+        setLookupPatients([]);
         setLookupPatient(null);
         setLookupError('No patient record found for this email.');
         setConfirmMatch(false);
@@ -211,20 +244,26 @@ export default function PublicBookingView({ clinicSlug }) {
         return;
       }
 
-      setLookupPatient({
-        id: data.id,
-        name: data.name,
-        phone: data.phone || '',
-        email: data.email || '',
-        idNumber: data.id_number || '',
-        address: data.address || '',
-      });
+      const patients = data.map((item) => ({
+        id: item.id,
+        name: item.name,
+        phone: item.phone || '',
+        email: item.email || '',
+        idNumber: item.id_number || '',
+        address: item.address || '',
+      }));
+
+      setLookupPatients(patients);
+      setLookupPatient(null);
       setLookupError('');
       setConfirmMatch(false);
       setLookupLoading(false);
     }, 500);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [clinic, lookupEmail, patientType]);
 
   // -----------------------------
@@ -266,6 +305,34 @@ export default function PublicBookingView({ clinicSlug }) {
       setAppointment((prev) => ({ ...prev, duration: selected.duration }));
     }
   }, [appointment.treatmentId, treatments]);
+
+  // -----------------------------
+  // Load busy slots for the selected date (capacity-aware availability)
+  // -----------------------------
+  useEffect(() => {
+    if (!clinic?.id || !appointment.date) {
+      setBusySlots([]);
+      return;
+    }
+    let isActive = true;
+    (async () => {
+      const { data, error: rpcError } = await supabase.rpc('booking_busy_slots_text', {
+        p_clinic_id: clinic.id,
+        p_date: appointment.date,
+      });
+      if (!isActive) return;
+      if (rpcError || !data) {
+        // Fail open: show all working-hours slots on error.
+        console.error('booking_busy_slots failed:', rpcError);
+        setBusySlots([]);
+        setClinicCapacity(1);
+        return;
+      }
+      setBusySlots(Array.isArray(data.busy) ? data.busy : []);
+      setClinicCapacity(Number(data.capacity) || 1);
+    })();
+    return () => { isActive = false; };
+  }, [clinic, appointment.date]);
 
   // -----------------------------
   // Calendar month sync
@@ -337,6 +404,7 @@ export default function PublicBookingView({ clinicSlug }) {
     compare.setHours(0, 0, 0, 0);
     if (compare < today) return true;
     if (Array.isArray(restDays) && restDays.includes(compare.getDay())) return true;
+    if (isDateHoliday(compare, holidays)) return true;
     return false;
   };
 
@@ -379,8 +447,16 @@ export default function PublicBookingView({ clinicSlug }) {
       if (t < minMinutes) continue;
       slots.push(minutesToTime(t));
     }
-    return slots;
-  }, [appointment.date, selectedDuration, slotDuration, workingHoursStart, workingHoursEnd]);
+    // Per-dentist availability: specific dentist blocks only their overlaps;
+    // "Any" uses the clinic's dentist-count capacity.
+    return filterAvailableSlotsByDentist(
+      slots,
+      selectedDuration,
+      busySlots,
+      clinicCapacity,
+      appointment.dentistId,
+    );
+  }, [appointment.date, selectedDuration, slotDuration, workingHoursStart, workingHoursEnd, busySlots, clinicCapacity, appointment.dentistId]);
 
   useEffect(() => {
     if (!appointment.date) return;
@@ -397,6 +473,11 @@ export default function PublicBookingView({ clinicSlug }) {
 
   const updatePatient = (field) => (event) => {
     setPatient((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const updatePatientSanitized = (field, sanitizer) => (event) => {
+    const clean = sanitizer(event.target.value);
+    setPatient((prev) => ({ ...prev, [field]: clean }));
   };
 
   const updateAppointment = (field) => (event) => {
@@ -566,14 +647,40 @@ export default function PublicBookingView({ clinicSlug }) {
       return true;
     }
 
-    if (!patient.name.trim()) {
-      setError('Please enter patient name.');
+    const {
+      ok,
+      fieldErrors: validationErrors,
+    } = validateNewPatient(patient);
+
+    const errs = {
+      ...validationErrors,
+    };
+
+    let isValid = ok;
+
+    if (patient.emailIsGuardian) {
+      if (!patient.guardianName.trim()) {
+        errs.guardianName =
+          'Parent or guardian name is required.';
+        isValid = false;
+      }
+
+      if (!patient.guardianRelationship) {
+        errs.guardianRelationship =
+          'Please select the relationship.';
+        isValid = false;
+      }
+    }
+
+    setFieldErrors(errs);
+
+    if (!isValid) {
+      setError(
+        'Please complete all required fields correctly.'
+      );
       return false;
     }
-    if (!patient.phone.trim()) {
-      setError('Please enter phone number.');
-      return false;
-    }
+
     return true;
   };
 
@@ -652,16 +759,21 @@ export default function PublicBookingView({ clinicSlug }) {
     const { error: insertError } = await supabase.from('appointment_requests').insert([
       {
         clinic_id: clinic.id,
+
+        patient_id: patientType === 'existing' ? lookupPatient?.id || null : null,
         patient_name: patientType === 'new' ? patient.name.trim() : (lookupPatient?.name || '').trim(),
         phone: patientType === 'new' ? patient.phone.trim() || null : null,
-        email: patientType === 'new' ? patient.email.trim() || null : lookupEmail.trim(),
+        email: patientType === 'new' ? patient.email.trim().toLowerCase() || null : lookupEmail.trim().toLowerCase(),
+        email_is_guardian: patientType === 'new' ? Boolean(patient.emailIsGuardian) : false,
+        guardian_name: patientType === 'new' && patient.emailIsGuardian? patient.guardianName.trim() || null : null,
+        guardian_relationship: patientType === 'new' && patient.emailIsGuardian ? patient.guardianRelationship || null : null,
 
         preferred_dates: appointment.date ? [appointment.date] : [],
         preferred_times: appointment.startTime ? [appointment.startTime] : [],
         notes: appointment.notes.trim() || null,
 
         is_new_patient: patientType === 'new',
-        lookup_email: patientType === 'existing' ? lookupEmail.trim() : null,
+        lookup_email: patientType === 'existing' ? lookupEmail.trim().toLowerCase() : null,
 
         patient_id_number: patientType === 'new' ? patient.idNumber.trim() || null : null,
         patient_dob: patientType === 'new' ? patient.dob || null : null,
@@ -682,6 +794,7 @@ export default function PublicBookingView({ clinicSlug }) {
         appointment_start_time: appointment.startTime || null,
         appointment_duration: appointment.duration || null,
         appointment_treatment_id: appointment.treatmentId || null,
+        requested_dentist_id: appointment.dentistId || null,
         appointment_notes: appointment.notes.trim() || null,
       },
     ]);
@@ -696,6 +809,7 @@ export default function PublicBookingView({ clinicSlug }) {
     setStep(0);
     setPatientType('');
     setLookupEmail('');
+    setLookupPatients([]);
     setLookupPatient(null);
     setConfirmMatch(false);
 
@@ -799,6 +913,8 @@ export default function PublicBookingView({ clinicSlug }) {
                       value={lookupEmail}
                       onChange={(event) => {
                         setLookupEmail(event.target.value);
+                        setLookupPatients([]);
+                        setLookupPatient(null);
                         setConfirmMatch(false);
                       }}
                       placeholder="you@example.com"
@@ -807,6 +923,55 @@ export default function PublicBookingView({ clinicSlug }) {
                     {lookupLoading && <div className="form-hint">Checking your record...</div>}
                     {!lookupLoading && lookupError && <div className="form-error">{lookupError}</div>}
                   </div>
+
+                  {lookupPatients.length > 0 && (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <div className="booking-confirm-title">
+                        Select patient
+                      </div>
+
+                      <p
+                        className="booking-subtitle"
+                        style={{
+                          fontSize: '0.9rem',
+                          marginBottom: '1rem',
+                        }}
+                      >
+                        Select the patient who is making this appointment.
+                      </p>
+
+                      <div className="booking-choice-grid">
+                        {lookupPatients.map((candidate) => (
+                          <button
+                            key={candidate.id}
+                            type="button"
+                            className={`booking-choice ${
+                              lookupPatient?.id === candidate.id
+                                ? 'active'
+                                : ''
+                            }`}
+                            onClick={() => {
+                              setLookupPatient(candidate);
+                              setConfirmMatch(false);
+                              resetOtpState();
+                            }}
+                          >
+                            <div className="booking-choice-title">
+                              {candidate.name}
+                            </div>
+
+                            <div className="booking-choice-sub">
+                              Phone: {maskData(candidate.phone)}
+                            </div>
+
+                            <div className="booking-choice-sub">
+                              IC/ID: {maskData(candidate.idNumber)}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {lookupPatient && (
                     <div className="booking-confirm-card">
@@ -932,30 +1097,34 @@ export default function PublicBookingView({ clinicSlug }) {
               {step === 1 && patientType === 'new' && (
                 <>
                   <div className="form-group">
-                    <label className="form-label">Name</label>
-                    <input className="form-input" value={patient.name} onChange={updatePatient('name')} required />
+                    <label className="form-label">Name *</label>
+                    <input className="form-input" value={patient.name} onChange={updatePatientSanitized('name', sanitizeName)} required />
+                    {fieldErrors.name && <div className="form-error">{fieldErrors.name}</div>}
                   </div>
 
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">IC/ID</label>
-                      <input className="form-input" value={patient.idNumber} onChange={updatePatient('idNumber')} />
+                      <label className="form-label">IC/ID *</label>
+                      <input className="form-input" inputMode="numeric" value={patient.idNumber} onChange={updatePatientSanitized('idNumber', sanitizeIC)} required />
+                      {fieldErrors.idNumber && <div className="form-error">{fieldErrors.idNumber}</div>}
                     </div>
                     <div className="form-group">
-                      <label className="form-label">DOB</label>
-                      <input className="form-input" type="date" value={patient.dob} onChange={updatePatient('dob')} />
+                      <label className="form-label">DOB *</label>
+                      <input className="form-input" type="date" max={todayISO()} value={patient.dob} onChange={updatePatient('dob')} required />
+                      {fieldErrors.dob && <div className="form-error">{fieldErrors.dob}</div>}
                     </div>
                   </div>
 
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">Gender</label>
-                      <select className="form-select" value={patient.gender} onChange={updatePatient('gender')}>
+                      <label className="form-label">Gender *</label>
+                      <select className="form-select" value={patient.gender} onChange={updatePatient('gender')} required>
                         <option value="">Select</option>
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                         <option value="other">Other</option>
                       </select>
+                      {fieldErrors.gender && <div className="form-error">{fieldErrors.gender}</div>}
                     </div>
                     <div className="form-group">
                       <label className="form-label">Tax Number</label>
@@ -965,36 +1134,123 @@ export default function PublicBookingView({ clinicSlug }) {
 
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">Phone</label>
-                      <input className="form-input" value={patient.phone} onChange={updatePatient('phone')} required />
+                      <label className="form-label">Phone *</label>
+                      <input className="form-input" inputMode="tel" value={patient.phone} onChange={updatePatientSanitized('phone', sanitizePhone)} required />
+                      {fieldErrors.phone && <div className="form-error">{fieldErrors.phone}</div>}
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Email</label>
-                      <input className="form-input" type="email" value={patient.email} onChange={updatePatient('email')} />
+                      <label className="form-label"> Email * </label>
+                      <input className="form-input" type="email" value={patient.email} onChange={updatePatient('email')} required/>
+                      {fieldErrors.email && ( <div className="form-error"> {fieldErrors.email} </div> )}
+
+                      <label className="booking-confirm-check"
+                        style={{ marginTop: '0.75rem', alignItems: 'flex-start', }}
+                      >
+                        <input type="checkbox" checked={patient.emailIsGuardian}
+                          onChange={(event) => { const checked = event.target.checked;
+                            setPatient((previous) => ({
+                              ...previous, emailIsGuardian: checked, guardianName: checked
+                                ? previous.guardianName
+                                : '',
+                              guardianRelationship: checked
+                                ? previous.guardianRelationship
+                                : '',
+                            }));
+
+                            setFieldErrors((previous) => ({
+                              ...previous, guardianName: '', guardianRelationship: '',
+                            }));
+                          }}
+                          style={{
+                            width: '1.2rem',
+                            height: '1.2rem',
+                            marginRight: '0.5rem',
+                            marginTop: '0.1rem',
+                          }}
+                        />
+
+                        <span>
+                          This email belongs to the patient's
+                          parent or legal guardian.
+                        </span>
+                      </label>
                     </div>
                   </div>
+                  
+                  {patient.emailIsGuardian && (
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label"> Parent / Guardian Name *  </label>
+
+                        <input className="form-input" value={patient.guardianName}
+                          onChange={updatePatient( 'guardianName' )} placeholder="Enter full name" required
+                        />
+
+                        {fieldErrors.guardianName && (
+                          <div className="form-error"> {fieldErrors.guardianName} </div>
+                        )}
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label"> Relationship to Patient * </label>
+
+                        <select
+                          className="form-select" value={patient.guardianRelationship}
+                          onChange={updatePatient( 'guardianRelationship' )} required
+                        >
+                          <option value="">
+                            Select
+                          </option>
+
+                          <option value="parent">
+                            Parent
+                          </option>
+
+                          <option value="legal-guardian">
+                            Legal guardian
+                          </option>
+
+                          <option value="other-responsible-adult">
+                            Other responsible adult
+                          </option>
+                        </select>
+
+                        {fieldErrors.guardianRelationship && (
+                          <div className="form-error">
+                            {fieldErrors.guardianRelationship}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="form-group">
-                    <label className="form-label">Address</label>
-                    <input className="form-input" value={patient.address} onChange={updatePatient('address')} />
+                    <label className="form-label">Address *</label>
+                    <input className="form-input" value={patient.address} onChange={updatePatient('address')} required />
+                    {fieldErrors.address && <div className="form-error">{fieldErrors.address}</div>}
                   </div>
 
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">Emergency Contact Name</label>
+                      <label className="form-label">Emergency Contact Name *</label>
                       <input
                         className="form-input"
                         value={patient.emergencyContactName}
                         onChange={updatePatient('emergencyContactName')}
+                        required
                       />
+                      {fieldErrors.emergencyContactName && <div className="form-error">{fieldErrors.emergencyContactName}</div>}
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Emergency Contact Phone</label>
+                      <label className="form-label">Emergency Contact Phone *</label>
                       <input
                         className="form-input"
+                        inputMode="tel"
                         value={patient.emergencyContactPhone}
-                        onChange={updatePatient('emergencyContactPhone')}
+                        onChange={updatePatientSanitized('emergencyContactPhone', sanitizePhone)}
+                        required
                       />
+                      {fieldErrors.emergencyContactPhone && <div className="form-error">{fieldErrors.emergencyContactPhone}</div>}
                     </div>
                   </div>
 
@@ -1023,8 +1279,8 @@ export default function PublicBookingView({ clinicSlug }) {
 
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="form-label">Source</label>
-                      <select className="form-select" value={patient.source} onChange={updatePatient('source')}>
+                      <label className="form-label">Source *</label>
+                      <select className="form-select" value={patient.source} onChange={updatePatient('source')} required>
                         <option value="">Select</option>
                         <option value="walk-in">Walk-in</option>
                         <option value="call">Call</option>
@@ -1035,22 +1291,25 @@ export default function PublicBookingView({ clinicSlug }) {
                         <option value="website">Website</option>
                         <option value="other">Other</option>
                       </select>
+                      {fieldErrors.source && <div className="form-error">{fieldErrors.source}</div>}
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Preferred Dentist</label>
+                      <label className="form-label">Preferred Dentist *</label>
                       <select
                         className="form-select"
                         value={patient.preferredDentist}
                         onChange={updatePatient('preferredDentist')}
+                        required
                       >
-                        <option value="">No preference</option>
+                        <option value="">Select</option>
                         {dentists.map((dentist) => (
                           <option key={dentist.id} value={dentist.id}>
                             {dentist.name}
                           </option>
                         ))}
                       </select>
+                      {fieldErrors.preferredDentist && <div className="form-error">{fieldErrors.preferredDentist}</div>}
                     </div>
                   </div>
 
@@ -1171,6 +1430,37 @@ export default function PublicBookingView({ clinicSlug }) {
 
                   <div className="form-row">
                     <div className="form-group">
+                      <label className="form-label">Dentist</label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <select
+                          className="form-select"
+                          value={appointment.dentistId}
+                          onChange={updateAppointment('dentistId')}
+                        >
+                          <option value="">Any dentist</option>
+                          {dentists.map((dentist) => (
+                            <option key={dentist.id} value={dentist.id}>
+                              {dentist.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => {
+                            if (!dentists.length) return;
+                            const pick = dentists[Math.floor(Math.random() * dentists.length)];
+                            setAppointment((prev) => ({ ...prev, dentistId: pick.id }));
+                          }}
+                        >
+                          Random
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
                       <label className="form-label">Treatment</label>
                       <select
                         className="form-select"
@@ -1218,11 +1508,49 @@ export default function PublicBookingView({ clinicSlug }) {
                     <div className="booking-summary-grid">
                       <div>
                         <div className="booking-summary-label">Name</div>
-                        <div>{patientType === 'new' ? patient.name || '-' : 'Existing patient'}</div>
+                        <div>
+                          {patientType === 'new'
+                            ? patient.name || '-'
+                            : lookupPatient?.name || '-'}
+                        </div>
                       </div>
+                      {patientType === 'new' &&
+                          patient.emailIsGuardian && (
+                            <>
+                              <div>
+                                <div className="booking-summary-label"> Email Owner </div>
+                                <div> Parent / Legal Guardian </div>
+                              </div>
+
+                              <div>
+                                <div className="booking-summary-label"> Guardian Name </div>
+                                <div> {patient.guardianName || '-'} </div>
+                              </div>
+
+                              <div>
+                                <div className="booking-summary-label"> Relationship </div>
+                                <div>
+                                  {patient.guardianRelationship ===
+                                  'parent'
+                                    ? 'Parent'
+                                    : patient.guardianRelationship ===
+                                        'legal-guardian'
+                                      ? 'Legal guardian'
+                                      : patient.guardianRelationship ===
+                                          'other-responsible-adult'
+                                        ? 'Other responsible adult'
+                                        : '-'}
+                                </div>
+                              </div>
+                            </>
+                          )}
                       <div>
                         <div className="booking-summary-label">Phone</div>
-                        <div>{patientType === 'new' ? patient.phone || '-' : '-'}</div>
+                        <div>
+                          {patientType === 'new'
+                            ? patient.phone || '-'
+                            : maskData(lookupPatient?.phone)}
+                        </div>
                       </div>
                       <div>
                         <div className="booking-summary-label">Email</div>
@@ -1230,7 +1558,11 @@ export default function PublicBookingView({ clinicSlug }) {
                       </div>
                       <div>
                         <div className="booking-summary-label">IC/ID</div>
-                        <div>{patientType === 'new' ? patient.idNumber || '-' : '-'}</div>
+                        <div>
+                          {patientType === 'new'
+                            ? patient.idNumber || '-'
+                            : maskData(lookupPatient?.idNumber)}
+                        </div>
                       </div>
                       <div>
                         <div className="booking-summary-label">DOB</div>

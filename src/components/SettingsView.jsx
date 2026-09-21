@@ -1,10 +1,32 @@
 
 import { Fragment, useMemo, useState } from 'react';
-import { getColorBg } from '../utils/colors';
+import { getColorBg, getContrastText } from '../utils/colors';
 import { getInitials } from '../utils/people';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import { useToast } from '../context/ToastProvider';
+
+const TREATMENT_DURATION_OPTIONS = [
+  10,
+  15,
+  20,
+  25,
+  30,
+  35,
+  40,
+  45,
+  50,
+  55,
+  60,
+  65,
+  70,
+  75,
+  80,
+  85,
+  90,
+  95,
+  100,
+];
 
 export default function SettingsView({
   settings,
@@ -42,8 +64,17 @@ export default function SettingsView({
     slotDuration: (settings && settings.slotDuration) || 30,
     restDays: (settings && settings.restDays) || [],
   }));
+  const [slotDurationOption, setSlotDurationOption] = useState(
+    TREATMENT_DURATION_OPTIONS.includes(Number(form.slotDuration))
+      ? String(form.slotDuration)
+      : 'other'
+  );
   const [roomForm, setRoomForm] = useState({ id: '', name: '', color: '#4A90A4' });
   const [treatmentForm, setTreatmentForm] = useState({ id: '', name: '', duration: 30, color: '#7CB798', suppliesNeeded: '' });
+  const [
+    treatmentDurationOption,
+    setTreatmentDurationOption
+  ] = useState('30');
   const [staffForm, setStaffForm] = useState({
     id: '',
     role: 'dentist',
@@ -76,12 +107,38 @@ export default function SettingsView({
   };
 
   const handleSaveSettings = () => {
+    const slotDuration =
+      Number(form.slotDuration);
+
+    if (
+      !Number.isInteger(slotDuration) ||
+      slotDuration <= 0
+    ) {
+      addToast(
+        'Enter a valid slot duration',
+        'error'
+      );
+      return;
+    }
+
+    if (form.restDays.length >= 7) {
+      addToast(
+        'You must keep at least one working day (not all 7 can be rest days).',
+        'error'
+      );
+      return;
+    }
+
     saveSettings({
       clinicName: form.clinicName,
-      workingHours: { start: form.workingHoursStart, end: form.workingHoursEnd },
-      slotDuration: Number(form.slotDuration) || 30,
+      workingHours: {
+        start: form.workingHoursStart,
+        end: form.workingHoursEnd,
+      },
+      slotDuration,
       restDays: form.restDays,
     });
+
     addToast('Settings saved', 'success');
   };
 
@@ -97,18 +154,54 @@ export default function SettingsView({
 
   const openTreatmentModal = (treatment) => {
     if (treatment) {
+      const duration =
+        Number(treatment.duration) || 30;
+
       setTreatmentForm({
         id: treatment.id,
         name: treatment.name,
-        duration: treatment.duration,
+        duration,
         color: treatment.color,
-        suppliesNeeded: treatment.suppliesNeeded ? treatment.suppliesNeeded.join(', ') : '',
+        suppliesNeeded:
+          treatment.suppliesNeeded
+            ? treatment.suppliesNeeded.join(', ')
+            : '',
       });
-      setModalState({ type: 'treatment', mode: 'edit' });
+
+      /*
+      * Existing durations that are not part of the standard
+      * options are displayed as a custom duration.
+      */
+      setTreatmentDurationOption(
+        TREATMENT_DURATION_OPTIONS.includes(
+          duration
+        )
+          ? String(duration)
+          : 'other'
+      );
+
+      setModalState({
+        type: 'treatment',
+        mode: 'edit'
+      });
+
       return;
     }
-    setTreatmentForm({ id: '', name: '', duration: 30, color: '#7CB798', suppliesNeeded: '' });
-    setModalState({ type: 'treatment', mode: 'new' });
+
+    setTreatmentForm({
+      id: '',
+      name: '',
+      duration: 30,
+      color: '#7CB798',
+      suppliesNeeded: ''
+    });
+
+    setTreatmentDurationOption('30');
+
+    setModalState({
+      type: 'treatment',
+      mode: 'new'
+    });
   };
 
   const openStaffModal = (role, staffMember) => {
@@ -177,22 +270,59 @@ export default function SettingsView({
 
   const handleTreatmentSubmit = () => {
     if (!treatmentForm.name.trim()) {
-      addToast('Enter treatment name', 'error');
+      addToast(
+        'Enter treatment name',
+        'error'
+      );
+
       return;
     }
+
+    const duration =
+      Number(treatmentForm.duration);
+
+    /*
+    * A custom duration must be a positive whole number.
+    */
+    if (
+      !Number.isInteger(duration) ||
+      duration <= 0
+    ) {
+      addToast(
+        'Enter a valid treatment duration',
+        'error'
+      );
+
+      return;
+    }
+
     const payload = {
-      name: treatmentForm.name,
-      duration: Number(treatmentForm.duration) || 30,
-      color: treatmentForm.color,
-      suppliesNeeded: treatmentForm.suppliesNeeded
-        ? treatmentForm.suppliesNeeded.split(',').map((s) => s.trim()).filter(Boolean)
-        : [],
+      name:
+        treatmentForm.name.trim(),
+
+      duration,
+
+      color:
+        treatmentForm.color,
+
+      suppliesNeeded:
+        treatmentForm.suppliesNeeded
+          ? treatmentForm.suppliesNeeded
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
     };
+
     if (treatmentForm.id) {
-      updateTreatment(treatmentForm.id, payload);
+      updateTreatment(
+        treatmentForm.id,
+        payload
+      );
     } else {
       addTreatment(payload);
     }
+
     closeModal();
   };
 
@@ -279,6 +409,9 @@ export default function SettingsView({
   );
 
   const scheduleSummary = `${form.workingHoursStart}-${form.workingHoursEnd}, ${form.slotDuration} mins`;
+  // Temporarily hide Malaysia holiday bulk loading without deleting its implementation.
+  // Change this flag to true when the feature is ready to be shown again.
+  const showMalaysiaHolidayLoader = false;
   const malaysiaHolidayYear = new Date().getFullYear();
   const buildMalaysiaHolidays = (year) => [
     { name: "New Year's Day", startDate: `${year}-01-01`, endDate: `${year}-01-01`, type: 'public', isPublic: true },
@@ -309,6 +442,12 @@ export default function SettingsView({
   };
 
   const isUnconfigured = !form.workingHoursStart || dentists.length === 0 || rooms.length === 0 || treatments.length === 0;
+
+  // Keep the existing btn-primary hover/active behavior while using the lighter Snabbb teal.
+  const lightPrimaryButtonStyle = {
+    '--primary-dark': '#5AB8AE',
+    '--primary': '#5AB8AE',
+  };
 
   return (
     <div className="settings-layout">
@@ -365,7 +504,7 @@ export default function SettingsView({
             <div className="settings-card">
               <div className="settings-card-header">
                 <div className="settings-card-title">Dentists</div>
-                <button className="btn btn-secondary btn-sm" onClick={() => openStaffModal('dentist')}>
+                <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openStaffModal('dentist')}>
                   + Add Dentist
                 </button>
               </div>
@@ -403,7 +542,7 @@ export default function SettingsView({
             <div className="settings-card">
               <div className="settings-card-header">
                 <div className="settings-card-title">Nurses / Assistants</div>
-                <button className="btn btn-secondary btn-sm" onClick={() => openStaffModal('nurse')}>
+                <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openStaffModal('nurse')}>
                   + Add Nurse
                 </button>
               </div>
@@ -450,7 +589,7 @@ export default function SettingsView({
               <div className="settings-card-title">Rooms</div>
               <div className="settings-card-actions">
                 <span className="settings-card-subtitle">{rooms.length} total</span>
-                <button className="btn btn-secondary btn-sm" onClick={() => openRoomModal()}>
+                <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openRoomModal()}>
                   + Add Room
                 </button>
               </div>
@@ -467,7 +606,7 @@ export default function SettingsView({
                     <div>
                       <div className="settings-list-title">{r.name}</div>
                       <div className="settings-list-meta">
-                        <span style={{ background: getColorBg(r.color), color: r.color, padding: '2px 6px', borderRadius: 6 }}>{r.color}</span>
+                        <span style={{ background: r.color, color: getContrastText(r.color), padding: '2px 6px', borderRadius: 6 }}>{r.color}</span>
                       </div>
                     </div>
                     <span className="settings-cta">View</span>
@@ -485,7 +624,7 @@ export default function SettingsView({
               <div className="settings-card-title">Treatments</div>
               <div className="settings-card-actions">
                 <span className="settings-card-subtitle">{treatments.length} total</span>
-                <button className="btn btn-secondary btn-sm" onClick={() => openTreatmentModal()}>
+                <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openTreatmentModal()}>
                   + Add Treatment
                 </button>
               </div>
@@ -503,7 +642,7 @@ export default function SettingsView({
                       <div className="settings-list-title">{t.name}</div>
                       <div className="settings-list-meta">
                         {t.duration} mins{' '}
-                        <span style={{ background: getColorBg(t.color), color: t.color, padding: '2px 6px', borderRadius: 6 }}>{t.color}</span>
+                        <span style={{ background: t.color, color: getContrastText(t.color), padding: '2px 6px', borderRadius: 6 }}>{t.color}</span>
                       </div>
                     </div>
                     <span className="settings-cta">View</span>
@@ -521,12 +660,14 @@ export default function SettingsView({
               <div className="settings-card-title">Holidays</div>
               <div className="settings-card-actions">
                 <span className="settings-card-subtitle">{holidays.length} configured</span>
-                <button className="btn btn-secondary btn-sm" onClick={() => openHolidayModal()}>
+                <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openHolidayModal()}>
                   + Add Holiday
                 </button>
-                <button className="btn btn-secondary btn-sm" onClick={handleLoadMalaysiaHolidays}>
-                  Load Malaysia Holidays
-                </button>
+                {showMalaysiaHolidayLoader && (
+                  <button className="btn btn-secondary btn-sm" onClick={handleLoadMalaysiaHolidays}>
+                    Load Malaysia Holidays
+                  </button>
+                )}
               </div>
             </div>
             <div className="settings-card-body">
@@ -585,13 +726,65 @@ export default function SettingsView({
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Slot Duration (mins)</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  value={form.slotDuration}
-                  onChange={(e) => setForm({ ...form, slotDuration: Number(e.target.value) })}
-                />
+                <label className="form-label">
+                  Slot Duration (mins)
+                </label>
+
+                <select
+                  className="form-select"
+                  value={slotDurationOption}
+                  onChange={(e) => {
+                    const value = e.target.value;
+
+                    setSlotDurationOption(value);
+
+                    setForm((current) => ({
+                      ...current,
+                      slotDuration:
+                        value === 'other'
+                          ? ''
+                          : Number(value),
+                    }));
+                  }}
+                >
+                  {TREATMENT_DURATION_OPTIONS.map(
+                    (duration) => (
+                      <option
+                        key={duration}
+                        value={String(duration)}
+                      >
+                        {duration}
+                      </option>
+                    )
+                  )}
+
+                  <option value="other">
+                    Others
+                  </option>
+                </select>
+
+                {slotDurationOption === 'other' && (
+                  <input
+                    className="form-input mt-2"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    placeholder="Enter slot duration"
+                    value={form.slotDuration}
+                    onChange={(e) => {
+                      const value = e.target.value;
+
+                      setForm((current) => ({
+                        ...current,
+                        slotDuration:
+                          value === ''
+                            ? ''
+                            : Number(value),
+                      }));
+                    }}
+                  />
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label">Rest Days</label>
@@ -619,7 +812,7 @@ export default function SettingsView({
                   <span className="theme-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
                 </label>
               </div> */}
-              <button className="btn btn-primary" onClick={handleSaveSettings}>
+              <button className="btn btn-primary" style={lightPrimaryButtonStyle} onClick={handleSaveSettings}>
                 Save Settings
               </button>
             </div>
@@ -731,7 +924,7 @@ export default function SettingsView({
             )}
             <div className="flex-1"></div>
             <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
-            <button type="button" className="btn btn-primary" onClick={handleStaffSubmit}>
+            <button type="button" className="btn btn-primary" style={lightPrimaryButtonStyle} onClick={handleStaffSubmit}>
               {modalState.mode === 'edit' ? 'Save Staff' : 'Add Staff'}
             </button>
           </div>
@@ -771,7 +964,7 @@ export default function SettingsView({
             )}
             <div className="flex-1"></div>
             <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
-            <button type="button" className="btn btn-primary" onClick={handleRoomSubmit}>
+            <button type="button" className="btn btn-primary" style={lightPrimaryButtonStyle} onClick={handleRoomSubmit}>
               {modalState.mode === 'edit' ? 'Save Room' : 'Add Room'}
             </button>
           </div>
@@ -787,8 +980,80 @@ export default function SettingsView({
                 <input className="form-input" value={treatmentForm.name} onChange={(e) => setTreatmentForm({ ...treatmentForm, name: e.target.value })} />
               </div>
               <div className="form-group">
-                <label className="form-label">Duration (mins)</label>
-                <input className="form-input" type="number" value={treatmentForm.duration} onChange={(e) => setTreatmentForm({ ...treatmentForm, duration: Number(e.target.value) })} />
+                <label className="form-label">
+                  Duration (mins)
+                </label>
+
+                <select
+                  className="form-select"
+                  value={treatmentDurationOption}
+                  onChange={(event) => {
+                    const selectedValue = event.target.value;
+                    setTreatmentDurationOption(selectedValue);
+
+                    if (selectedValue === 'other') {
+                      setTreatmentForm((current) => ({
+                        ...current,
+                        duration: '',
+                      }));
+                      return;
+                    }
+
+                    setTreatmentForm((current) => ({
+                      ...current,
+                      duration: Number(selectedValue),
+                    }));
+                  }}
+                >
+                  {TREATMENT_DURATION_OPTIONS.map(
+                    (duration) => (
+                      <option
+                        key={duration}
+                        value={String(duration)}
+                      >
+                        {duration}
+                      </option>
+                    )
+                  )}
+
+                  <option value="other">
+                    Others
+                  </option>
+                </select>
+
+                {treatmentDurationOption ===
+                  'other' && (
+                  <input
+                    className="form-input mt-2"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    placeholder="Enter duration in minutes"
+                    value={treatmentForm.duration}
+                    onChange={(event) => {
+                      const customDuration =
+                        event.target.value;
+
+                      setTreatmentForm(
+                        (current) => ({
+                          ...current,
+
+                          /*
+                          * Keep the field empty while the user is
+                          * deleting or replacing its value.
+                          */
+                          duration:
+                            customDuration === ''
+                              ? ''
+                              : Number(
+                                  customDuration
+                                ),
+                        })
+                      );
+                    }}
+                  />
+                )}
               </div>
             </div>
             <div className="form-row">
@@ -821,7 +1086,7 @@ export default function SettingsView({
             )}
             <div className="flex-1"></div>
             <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
-            <button type="button" className="btn btn-primary" onClick={handleTreatmentSubmit}>
+            <button type="button" className="btn btn-primary" style={lightPrimaryButtonStyle} onClick={handleTreatmentSubmit}>
               {modalState.mode === 'edit' ? 'Save Treatment' : 'Add Treatment'}
             </button>
           </div>
@@ -863,7 +1128,7 @@ export default function SettingsView({
             )}
             <div className="flex-1"></div>
             <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
-            <button type="button" className="btn btn-primary" onClick={handleHolidaySubmit}>
+            <button type="button" className="btn btn-primary" style={lightPrimaryButtonStyle} onClick={handleHolidaySubmit}>
               {modalState.mode === 'edit' ? 'Save Holiday' : 'Add Holiday'}
             </button>
           </div>

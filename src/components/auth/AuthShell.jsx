@@ -1,5 +1,5 @@
-export default function AuthShell({ children }) {
-  return <div className="auth-page"><main className="auth-card">{children}</main></div>;
+export default function AuthShell({ children, centered = false }) {
+  return <div className={`auth-page${centered ? ' auth-page-centered' : ''}`}><main className="auth-card">{children}</main></div>;
 }
 
 export function AuthLogo() {

@@ -187,6 +187,40 @@ const DataStore = {
     return Activity.getAdminActivity();
   },
 
+  async getAdminDashboardSummary() {
+    const { data, error } = await supabase.rpc("admin_dashboard_summary");
+    if (error) throw error;
+    const payload = data || {};
+    const summaryByClinicId = {};
+    (payload.clinics || []).forEach((c) => {
+      const s = c.settings || {};
+      summaryByClinicId[c.clinic_id] = {
+        patients: c.counts?.patients ?? 0,
+        appointments: c.counts?.appointments ?? 0,
+        staff: c.counts?.staff ?? 0,
+        rooms: c.counts?.rooms ?? 0,
+        treatments: c.counts?.treatments ?? 0,
+        settings: {
+          clinicName: s.clinic_name || "Dental Clinic",
+          workingHours: { start: s.working_hours_start || "09:00", end: s.working_hours_end || "18:00" },
+          slotDuration: s.slot_duration || 30,
+          phone: s.phone || "-",
+        },
+      };
+    });
+    const monthlyTrend = (payload.monthly_trend || []).map((m) => ({
+      month: m.month,
+      count: m.count,
+    }));
+    const sb = payload.status_breakdown || {};
+    const statusBreakdown = {
+      confirmed: sb.confirmed ?? 0,
+      completed: sb.completed ?? 0,
+      cancelled: sb.cancelled ?? 0,
+    };
+    return { summaryByClinicId, monthlyTrend, statusBreakdown };
+  },
+
   async logAdminActivity(type, description) {
     return Activity.addAdminActivity({ type, description });
   },
@@ -206,6 +240,13 @@ const DataStore = {
       description: `Added patient: ${created.name}`,
     });
     return created;
+  },
+
+  async importPatients(patients) {
+    const activeClinic = requireActiveClinic(getClinicId());
+    const result = await Patients.importPatients(activeClinic, patients);
+    await Activity.addActivityLog(activeClinic, { type: 'patients_imported', description: `Imported ${result.created.length} patients` });
+    return result;
   },
 
   async updatePatient(id, updates) {
@@ -235,8 +276,8 @@ const DataStore = {
     return Patients.getPatientById(id);
   },
 
-  async searchPatients(query) {
-    const activeClinic = getClinicId();
+  async searchPatients(query, clinicId) {
+    const activeClinic = getClinicId(clinicId);
     if (!activeClinic) return [];
     return Patients.searchPatients(activeClinic, query);
   },
@@ -336,15 +377,35 @@ const DataStore = {
 
   async addTreatment(treatment) {
     const activeClinic = requireActiveClinic(getClinicId());
-    return Treatments.addTreatment(activeClinic, treatment);
+    const created = await Treatments.addTreatment(activeClinic, treatment);
+    await Activity.addActivityLog(activeClinic, {
+      type: "treatment_added",
+      description: `Added treatment: ${created.name}`,
+    });
+    return created;
   },
 
   async updateTreatment(id, updates) {
-    return Treatments.updateTreatment(id, updates);
+    const activeClinic = requireActiveClinic(getClinicId());
+    const updated = await Treatments.updateTreatment(id, updates);
+    await Activity.addActivityLog(activeClinic, {
+      type: "treatment_updated",
+      description: `Updated treatment: ${updated.name}`,
+    });
+    return updated;
   },
 
   async deleteTreatment(id) {
-    return Treatments.deleteTreatment(id);
+    const activeClinic = requireActiveClinic(getClinicId());
+    const treatment = await Treatments.getTreatments(activeClinic)
+      .then((list) => list.find((t) => t.id === id))
+      .catch(() => null);
+    await Treatments.deleteTreatment(id);
+    await Activity.addActivityLog(activeClinic, {
+      type: "treatment_deleted",
+      description: `Deleted treatment: ${treatment?.name || id}`,
+    });
+    return true;
   },
 
   // ============ STAFF ============
@@ -469,7 +530,12 @@ const DataStore = {
 
   async saveSettings(settings, clinicId) {
     const activeClinic = requireActiveClinic(getClinicId(clinicId));
-    return Settings.saveSettings(activeClinic, settings);
+    const saved = await Settings.saveSettings(activeClinic, settings);
+    await Activity.addActivityLog(activeClinic, {
+      type: "settings_updated",
+      description: `Updated schedule: ${saved.workingHours?.start || "?"}-${saved.workingHours?.end || "?"}, ${saved.slotDuration || "?"} min slots`,
+    });
+    return saved;
   },
 
   // ============ ACTIVITY LOG ============
@@ -479,9 +545,9 @@ const DataStore = {
     return Activity.getActivityLog(activeClinic);
   },
 
-  async logActivity(type, description) {
+  async logActivity(type, description, meta = {}) {
     const activeClinic = requireActiveClinic(getClinicId());
-    return Activity.addActivityLog(activeClinic, { type, description });
+    return Activity.addActivityLog(activeClinic, { type, description, ...meta });
   },
 
   // ============ UTIL ============

@@ -67,6 +67,8 @@ CREATE TABLE public.apt_clinics (
   status text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   slug text UNIQUE,
+  subscription_type text,
+  subscription_end date,
   CONSTRAINT clinics_pkey PRIMARY KEY (id)
 );
 
@@ -110,7 +112,7 @@ CREATE TABLE public.apt_patients (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   legacy_id text UNIQUE,
   clinic_id uuid NOT NULL,
-  name text NOT NULL,
+  name text,
   phone text,
   email text,
   id_number text,
@@ -273,6 +275,7 @@ CREATE TABLE public.appointment_requests (
   appointment_duration integer,
   appointment_treatment_id uuid,
   appointment_notes text,
+  requested_dentist_id uuid,
   is_new_patient boolean DEFAULT true,
   lookup_email text,
   is_existing_verified boolean NOT NULL DEFAULT false,
@@ -282,6 +285,7 @@ CREATE TABLE public.appointment_requests (
   CONSTRAINT appointment_requests_clinic_id_fkey FOREIGN KEY (clinic_id) REFERENCES public.apt_clinics(id),
   CONSTRAINT appointment_requests_preferred_dentist_id_fkey FOREIGN KEY (preferred_dentist_id) REFERENCES public.apt_staff(id),
   CONSTRAINT appointment_requests_appointment_treatment_id_fkey FOREIGN KEY (appointment_treatment_id) REFERENCES public.apt_treatments(id),
+  CONSTRAINT appointment_requests_requested_dentist_id_fkey FOREIGN KEY (requested_dentist_id) REFERENCES public.apt_staff(id),
   CONSTRAINT appointment_requests_verification_id_fkey FOREIGN KEY (verification_id) REFERENCES public.apt_booking_verifications(id)
 );
 
@@ -367,6 +371,52 @@ as $$
   select clinic_id from public.profiles where user_id = auth.uid();
 $$;
 
+-- slugify(): turn arbitrary text into a URL-safe slug.
+-- lowercase -> non-alphanumerics to '-' -> collapse/trim dashes -> fallback 'clinic'.
+create or replace function public.slugify(input text)
+returns text
+language sql
+immutable
+as $$
+  select coalesce(
+    nullif(
+      trim(both '-' from
+        regexp_replace(
+          regexp_replace(lower(coalesce(input, '')), '[^a-z0-9]+', '-', 'g'),
+          '-{2,}', '-', 'g'
+        )
+      ),
+      ''
+    ),
+    'clinic'
+  );
+$$;
+
+-- unique_clinic_slug(): a slug unique within apt_clinics, appending -2, -3, ... on
+-- collision. p_exclude_id lets an UPDATE keep its own row from counting as a collision.
+create or replace function public.unique_clinic_slug(p_base text, p_exclude_id uuid default null)
+returns text
+language plpgsql
+as $$
+declare
+  base text := public.slugify(p_base);
+  candidate text := base;
+  n int := 1;
+begin
+  loop
+    if not exists (
+      select 1 from public.apt_clinics
+      where slug = candidate
+        and (p_exclude_id is null or id <> p_exclude_id)
+    ) then
+      return candidate;
+    end if;
+    n := n + 1;
+    candidate := base || '-' || n;
+  end loop;
+end;
+$$;
+
 -- handle_new_user() refs profiles
 create or replace function public.handle_new_user()
 returns trigger
@@ -376,6 +426,7 @@ as $$
 declare
   user_name text;
   new_clinic_name text;
+  new_clinic_slug text;
   new_clinic_id uuid;
 begin
   user_name := coalesce(
@@ -385,11 +436,19 @@ begin
     'New User'
   );
   new_clinic_name := user_name || '''s Clinic';
-  
-  -- Create a new clinic for this user
-  insert into public.apt_clinics (name)
-  values (new_clinic_name)
-  returning id into new_clinic_id;
+  new_clinic_slug := public.unique_clinic_slug(new_clinic_name);
+
+  -- Create a new clinic for this user (retry once if a concurrent signup took the slug)
+  begin
+    insert into public.apt_clinics (name, slug)
+    values (new_clinic_name, new_clinic_slug)
+    returning id into new_clinic_id;
+  exception when unique_violation then
+    new_clinic_slug := public.unique_clinic_slug(new_clinic_name);
+    insert into public.apt_clinics (name, slug)
+    values (new_clinic_name, new_clinic_slug)
+    returning id into new_clinic_id;
+  end;
 
   -- Insert basic clinic settings
   insert into public.apt_settings (clinic_id, clinic_name)
@@ -439,6 +498,68 @@ begin
 end;
 $$;
 
+-- admin_dashboard_summary(): aggregated admin dashboard data (counts + settings + 6-month trend), admin-gated.
+create or replace function public.admin_dashboard_summary()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  result jsonb;
+begin
+  -- Gate: bypasses RLS, so only admins may call it.
+  if not exists (
+    select 1 from public.profiles
+    where user_id = auth.uid() and account_type = 'admin'
+  ) then
+    raise exception 'not authorized' using errcode = '42501';
+  end if;
+
+  select jsonb_build_object(
+    'clinics', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'clinic_id', c.id,
+        'counts', jsonb_build_object(
+          'patients',    (select count(*) from public.apt_patients   p where p.clinic_id = c.id),
+          'appointments',(select count(*) from public.appointments   a where a.clinic_id = c.id),
+          'staff',       (select count(*) from public.apt_staff      s where s.clinic_id = c.id),
+          'rooms',       (select count(*) from public.apt_rooms      r where r.clinic_id = c.id),
+          'treatments',  (select count(*) from public.apt_treatments t where t.clinic_id = c.id)
+        ),
+        'settings', jsonb_build_object(
+          'clinic_name',         st.clinic_name,
+          'working_hours_start', st.working_hours_start,
+          'working_hours_end',   st.working_hours_end,
+          'slot_duration',       st.slot_duration,
+          'phone',               null
+        )
+      ) order by c.created_at)
+      from public.apt_clinics c
+      left join public.apt_settings st on st.clinic_id = c.id
+    ), '[]'::jsonb),
+    'monthly_trend', coalesce((
+      select jsonb_agg(jsonb_build_object('month', m.month, 'count', m.cnt) order by m.month)
+      from (
+        select to_char(a.date, 'YYYY-MM') as month, count(*) as cnt
+        from public.appointments a
+        where a.date >= (date_trunc('month', current_date) - interval '5 months')
+        group by 1
+      ) m
+    ), '[]'::jsonb),
+    -- Global appointment status breakdown across ALL clinics, all time.
+    'status_breakdown', jsonb_build_object(
+      'confirmed', (select count(*) from public.appointments where status = 'confirmed'),
+      'completed', (select count(*) from public.appointments where status = 'completed'),
+      'cancelled', (select count(*) from public.appointments where status = 'cancelled')
+    )
+  ) into result;
+
+  return result;
+end;
+$$;
+
+grant execute on function public.admin_dashboard_summary() to authenticated;
 
 -- 5. OTP FUNCTIONS
 

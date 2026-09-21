@@ -5,6 +5,10 @@ import { todayISO } from '../utils/date';
 import { getInitials } from '../utils/people';
 import { getColorBg } from '../utils/colors';
 import { useToast } from '../context/ToastProvider';
+import { findAppointmentConflicts, isDateHoliday } from '../utils/availability';
+import { hasAppointmentPassed, PAST_APPOINTMENT_MESSAGE } from '../utils/appointmentReadOnly';
+
+const APPOINTMENT_DURATION_OPTIONS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
 
 export default function AppointmentForm({
   patients,
@@ -12,6 +16,7 @@ export default function AppointmentForm({
   treatments,
   dentists,
   appointments,
+  holidays,
   onSave,
   onDelete,
   onClose,
@@ -23,6 +28,9 @@ export default function AppointmentForm({
   const { addToast } = useToast();
   const defaultDuration = settings && settings.slotDuration ? settings.slotDuration : 30;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Overlap warning: holds the conflicting appointments after a first save attempt;
+  // a second submit while this is set proceeds (deliberate overbook).
+  const [pendingConflicts, setPendingConflicts] = useState(null);
   const [form, setForm] = useState({
     patientId: patients[0] ? patients[0].id : '',
     roomId: rooms[0] ? rooms[0].id : '',
@@ -35,15 +43,24 @@ export default function AppointmentForm({
     status: 'confirmed',
     id: null,
   });
+  const [durationOption, setDurationOption] = useState(APPOINTMENT_DURATION_OPTIONS.includes(Number(defaultDuration)) ? String(defaultDuration) : 'other');
   const treatmentInitRef = useRef(false);
+  const hydratedInitialRef = useRef(null);
   const isEditing = Boolean(initialData && initialData.id);
+  const [clock, setClock] = useState(() => new Date());
+  const isReadOnly = isEditing && hasAppointmentPassed(initialData, clock);
+  useEffect(() => {
+    if (!isEditing) return;
+    const timer = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, [isEditing]);
   const [showPatientPicker, setShowPatientPicker] = useState(false);
   const [patientQuery, setPatientQuery] = useState('');
   const now = new Date();
   const today = todayISO();
   const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const minDate = isEditing ? undefined : today;
-
+  
   // Working Hours Constraints
   const workingStart = settings?.workingHours?.start || '00:00';
   const workingEnd = settings?.workingHours?.end || '23:59';
@@ -57,11 +74,18 @@ export default function AppointmentForm({
   const maxTime = workingEnd;
 
   useEffect(() => {
-    if (initialData) {
+    // Hydrate from initialData only once per initialData identity. Re-running on
+    // patients/rooms/treatments/dentists changes would clobber the user's edits
+    // (e.g. revert a changed time) when the data store re-renders.
+    if (initialData && hydratedInitialRef.current !== initialData) {
+      hydratedInitialRef.current = initialData;
+      const initialDuration = Number(initialData.duration || defaultDuration);
+      setDurationOption(APPOINTMENT_DURATION_OPTIONS.includes(initialDuration) ? String(initialDuration) : 'other');
+
       setForm((prev) => ({
         ...prev,
         ...initialData,
-        duration: initialData.duration || prev.duration || defaultDuration,
+        duration: initialDuration,
         id: initialData.id || null,
         patientId: initialData.patientId || prev.patientId || (patients[0] ? patients[0].id : ''),
         roomId: initialData.roomId || prev.roomId || (rooms[0] ? rooms[0].id : ''),
@@ -94,12 +118,16 @@ export default function AppointmentForm({
       return;
     }
     const nextTreatment = treatments.find((t) => String(t.id) === String(form.treatmentId));
-    if (nextTreatment && typeof nextTreatment.duration === 'number') {
-      setForm((prev) => ({ ...prev, duration: nextTreatment.duration }));
-    }
+    if (nextTreatment) { const treatmentDuration = Number(nextTreatment.duration); if (Number.isFinite(treatmentDuration) && treatmentDuration > 0) { setForm((prev) => ({ ...prev, duration: treatmentDuration })); setDurationOption(APPOINTMENT_DURATION_OPTIONS.includes(treatmentDuration) ? String(treatmentDuration) : 'other'); } }
   }, [form.treatmentId, treatments, isEditing]);
 
   const endTime = useMemo(() => addMinutes(form.startTime, form.duration), [form.startTime, form.duration]);
+
+  // If the slot changes, drop any stale overlap confirmation so the user must re-confirm.
+  useEffect(() => {
+    setPendingConflicts(null);
+  }, [form.date, form.startTime, form.duration]);
+
   const selectedPatient = patients.find((p) => String(p.id) === String(form.patientId));
   const selectedTreatment = treatments.find((t) => String(t.id) === String(form.treatmentId));
   const [searchResults, setSearchResults] = useState([]);
@@ -157,11 +185,24 @@ export default function AppointmentForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isEditing && hasAppointmentPassed(initialData)) {
+      setClock(new Date());
+      addToast(PAST_APPOINTMENT_MESSAGE, 'warning');
+      return;
+    }
     if (!isEditing && credits < 1) {
       addToast("Insufficient credits to create a new appointment.", 'error');
       return;
     }
     if (!form.patientId || !form.date || !form.startTime) return;
+
+    const duration = Number(form.duration);
+
+    if (!Number.isInteger(duration) || duration <= 0) {
+      addToast('Enter a valid appointment duration', 'error');
+      return;
+    }
+
     if (!isEditing && (form.date < today || (form.date === today && form.startTime <= currentTime))) {
       addToast('Please choose a future date and time.', 'warning');
       return;
@@ -178,10 +219,46 @@ export default function AppointmentForm({
       }
     }
 
+    // Holiday block (hard stop, no override). The clinic is closed on holidays;
+    // to open a holiday, remove it in Settings > Holidays.
+    if (isDateHoliday(form.date, holidays)) {
+      addToast('This date is a clinic holiday. Please choose another date.', 'warning');
+      return;
+    }
+
+    // Overlap check (warn + allow override). Same clinic, any dentist; cancelled/no-show ignored.
+    // First attempt with conflicts shows a centered toast + flips the button to
+    // "Book anyway"; a second submit proceeds (deliberate overbook).
+    if (!pendingConflicts) {
+      const editingId = initialData && initialData.id ? initialData.id : form.id;
+      const conflicts = findAppointmentConflicts(
+        { date: form.date, startTime: form.startTime, duration: form.duration },
+        appointments,
+        editingId
+      );
+      if (conflicts.length > 0) {
+        const detail = conflicts
+          .map((c) => {
+            const cEnd = c.endTime || addMinutes(c.startTime, c.duration || 30);
+            const who = patients.find((p) => String(p.id) === String(c.patientId));
+            return `${formatTime(c.startTime)}–${formatTime(cEnd)}${who ? ` (${who.name})` : ''}`;
+          })
+          .join(', ');
+        addToast(
+          `This time overlaps ${conflicts.length} existing appointment${conflicts.length > 1 ? 's' : ''}: ${detail}. Click "Book anyway" to overbook.`,
+          'warning',
+          6000
+        );
+        setPendingConflicts(conflicts);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     // Wrap async call
     Promise.resolve(onSave({
       ...form,
+      duration,
       endTime,
       status: form.status || 'confirmed',
       id: initialData && initialData.id ? initialData.id : form.id,
@@ -221,16 +298,18 @@ export default function AppointmentForm({
 
 
   return (
-    <Modal title={isEditing ? 'Edit Appointment' : 'New Appointment'} onClose={onClose}>
+    <Modal title={isReadOnly ? 'Appointment Details' : isEditing ? 'Edit Appointment' : 'New Appointment'} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <div className="modal-body">
+          {isReadOnly && <p role="status">{PAST_APPOINTMENT_MESSAGE}</p>}
+          <fieldset disabled={isReadOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <div className="form-group">
             <label className="form-label">Patient</label>
             <div className="patient-item selected" style={{ cursor: 'default', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div className="patient-avatar">{selectedPatient ? getInitials(selectedPatient.name) : 'P'}</div>
                 <div className="patient-info">
-                  <div className="patient-name">{selectedPatient ? selectedPatient.name : 'Select patient'}</div>
+                  <div className="patient-name">{selectedPatient ? selectedPatient.name || 'Unnamed patient' : 'Select patient'}</div>
                   <div className="patient-contact">
                     {selectedPatient ? selectedPatient.phone || selectedPatient.email || 'No contact info' : 'No patient selected'}
                   </div>
@@ -244,7 +323,7 @@ export default function AppointmentForm({
                 Change
               </button>
             </div>
-            {showPatientPicker && (
+            {showPatientPicker && !isReadOnly && (
               <div className="patient-picker">
                 <input
                   className="search-input"
@@ -262,7 +341,7 @@ export default function AppointmentForm({
                     >
                       <div className="patient-avatar">{getInitials(p.name)}</div>
                       <div className="patient-info">
-                        <div className="patient-name">{p.name}</div>
+                        <div className="patient-name">{p.name || 'Unnamed patient'}</div>
                         <div className="patient-contact">{p.phone || p.email || 'No contact info'}</div>
                       </div>
                     </div>
@@ -350,14 +429,15 @@ export default function AppointmentForm({
             </div>
             <div className="form-group">
               <label className="form-label">Duration (mins)</label>
-              <input
-                className="form-input"
-                type="number"
-                min="10"
-                step="5"
-                value={form.duration}
-                onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })}
-              />
+
+              <select className="form-select" value={durationOption} onChange={(e) => { const value = e.target.value; setDurationOption(value); setForm((current) => ({ ...current, duration: value === 'other' ? '' : Number(value) })); }}>
+                {APPOINTMENT_DURATION_OPTIONS.map((duration) => <option key={duration} value={String(duration)}>{duration}</option>)}
+                <option value="other">Others</option>
+              </select>
+
+              {durationOption === 'other' && (
+                <input className="form-input mt-2" type="number" min="1" step="1" inputMode="numeric" placeholder="Enter duration in minutes" value={form.duration} onChange={(e) => setForm((current) => ({ ...current, duration: e.target.value === '' ? '' : Number(e.target.value) }))} />
+              )}
             </div>
           </div>
 
@@ -469,6 +549,7 @@ export default function AppointmentForm({
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
           </div>
+          </fieldset>
         </div>
 
         <div className="modal-footer">
@@ -478,25 +559,59 @@ export default function AppointmentForm({
             </div>
           )}
           <div className="flex-1"></div>
-          {isEditing && (
+          {isEditing && !isReadOnly && (
             <button
               type="button"
               className="btn btn-danger"
               disabled={isSubmitting}
-              onClick={() => onDelete && onDelete(form)}
+              onClick={() => {
+                if (hasAppointmentPassed(initialData)) {
+                  setClock(new Date());
+                  addToast(PAST_APPOINTMENT_MESSAGE, 'warning');
+                  return;
+                }
+                onDelete && onDelete(form);
+              }}
             >
               Delete
             </button>
           )}
-          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>
-            Cancel
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onClose}
+            disabled={isSubmitting}
+            style={{
+              '--surface': '#E8F6F4',
+              '--surface-2': '#E8F6F4',
+              '--bg-hover': '#D8F0ED',
+              '--border-strong': 'rgba(42, 157, 143, 0.28)',
+              '--text-primary': '#1F7A6F',
+              '--text-secondary': '#1F7A6F',
+              '--text-muted': '#2A9D8F',
+            }}
+          >
+            {isReadOnly ? 'Close' : 'Cancel'}
           </button>
-          <button type="submit" className="btn btn-primary" disabled={showCreditWarning || isSubmitting}>
-            {isSubmitting
-              ? (isEditing ? 'Saving...' : 'Creating...')
-              : (isEditing ? 'Save Appointment' : 'Create Appointment')
-            }
-          </button>
+
+          {!isReadOnly && (
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={showCreditWarning || isSubmitting}
+              style={{
+                '--primary-dark': '#5AB8AE',
+                '--primary': '#5AB8AE',
+              }}
+            >
+              {isSubmitting
+                ? (isEditing ? 'Saving...' : 'Creating...')
+                : pendingConflicts
+                  ? 'Book anyway'
+                  : (isEditing ? 'Save Appointment' : 'Create Appointment')
+              }
+            </button>
+          )}
         </div>
       </form>
     </Modal>

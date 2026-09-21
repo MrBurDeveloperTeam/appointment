@@ -9,3 +9,16 @@
   };
   return colorMap[color] || '#E8F4F8';
 }
+
+export function getContrastText(color) {
+  const textColorMap = {
+    '#4A90A4': '#FFFFFF',
+    '#7CB798': '#FFFFFF',
+    '#E5C07B': '#FFFFFF',
+    '#9B8AC4': '#FFFFFF',
+    '#E07B7B': '#FFFFFF',
+    '#A8D8EA': '#0F172A',
+  };
+
+  return textColorMap[color] || '#FFFFFF';
+}

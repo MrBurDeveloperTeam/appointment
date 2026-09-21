@@ -1222,6 +1222,7 @@ function copyResponseHeadersWithoutSetCookie(upstreamRes) {
             const phone = payload?.phone ?? body?.phone;
             const accountType = payload?.account_type ?? payload?.accountType ?? body?.account_type;
             const companyName = payload?.company_name ?? payload?.companyName ?? body?.company_name;
+            const referralCode = payload?.referral_code ?? payload?.referralCode ?? body?.referral_code;
             const jobPosition = payload?.position ?? payload?.jobPosition ?? payload?.job_position ?? body?.position;
 
             if (!email || !name) {
@@ -1232,18 +1233,22 @@ function copyResponseHeadersWithoutSetCookie(upstreamRes) {
             }
 
             // Map fields for the Appointment App (use realistic company_id if needed)
+            const isCompany = accountType === "company";
             const requestData = {
                 jsonrpc: "2.0",
                 method: "call",
                 params: {
                     email,
-                    name,
+                    name: isCompany ? (companyName || name) : name,
                     ...(password ? { password } : {}),
                     company_id: 2, // Make sure this is correct for appointments
                     ...(phone ? { phone } : {}),
                     ...(jobPosition ? { job_position: jobPosition } : {}),
                     ...(accountType ? { account_type: accountType } : {}),
+                    company_type: isCompany ? "company" : "person",
+                    ...(isCompany && name ? { contact_name: name } : {}),
                     ...(companyName ? { company_name: companyName } : {}),
+                    ...(referralCode ? { referral_code: referralCode } : {}),
                 },
                 id: 1,
             };

@@ -21,6 +21,7 @@ const mapRequest = (row) => ({
   medications: row.medications,
   source: row.source,
   preferredDentistId: row.preferred_dentist_id,
+  requestedDentistId: row.requested_dentist_id,
   insurance: row.insurance,
   patientNotes: row.patient_notes,
   appointmentDate: row.appointment_date,

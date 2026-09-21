@@ -1,16 +1,75 @@
 import { useToast } from '../context/ToastProvider';
 
-export default function Sidebar({ view, onChange, theme, setTheme, onLogout, bookingLink, isOpen, onClose, isUnconfigured, pendingRequestsCount }) {
+export default function Sidebar({
+  view,
+  onChange,
+  theme,
+  setTheme,
+  onLogout,
+  bookingLink,
+  isOpen,
+  onClose,
+  isUnconfigured,
+  enforceConfiguration = false,
+  pendingRequestsCount,
+  permissions = {},
+}) {
   const { addToast } = useToast();
   const items = [
-    { id: 'calendar', label: 'Calendar', icon: 'calendar' },
-    { id: 'today', label: 'Today', icon: 'clock' },
-    { id: 'patients', label: 'Patients', icon: 'users' },
-    { id: 'requests', label: 'Requests', icon: 'inbox' },
-    { id: 'settings', label: 'Settings', icon: 'gear' },
-    { id: 'reports', label: 'Reports', icon: 'bar' },
-    { id: 'activity', label: 'Activity', icon: 'pulse' },
-  ];
+    {
+      id: "calendar",
+      label: "Calendar",
+      icon: "calendar",
+      permission:
+        "appointment.schedule.access",
+    },
+    {
+      id: "today",
+      label: "Today",
+      icon: "clock",
+      permission:
+        "appointment.schedule.access",
+    },
+    {
+      id: "patients",
+      label: "Patients",
+      icon: "users",
+      permission:
+        "appointment.patients.access",
+    },
+    {
+      id: "requests",
+      label: "Requests",
+      icon: "inbox",
+      permission:
+        "appointment.requests.manage",
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      icon: "gear",
+      permission:
+        "appointment.settings.manage",
+    },
+    {
+      id: "reports",
+      label: "Reports",
+      icon: "bar",
+      permission:
+        "appointment.reports.view",
+    },
+    {
+      id: "activity",
+      label: "Activity",
+      icon: "pulse",
+      permission:
+        "appointment.reports.view",
+    },
+  ].filter(
+    (item) =>
+      permissions[item.permission] === true
+  );
+
 
   const renderIcon = (icon) => {
     switch (icon) {
@@ -99,8 +158,8 @@ export default function Sidebar({ view, onChange, theme, setTheme, onLogout, boo
       </div>
       <nav className="sidebar-nav" aria-label="Primary">
         {items.map((item) => {
-          const isDisabled = isUnconfigured && item.id !== 'settings';
-          return (
+        const isDisabled =enforceConfiguration &&item.id !== "settings";
+            return (
             <button
               key={item.id}
               type="button"
@@ -134,31 +193,105 @@ export default function Sidebar({ view, onChange, theme, setTheme, onLogout, boo
       </nav>
       <div className="sidebar-footer">
         <div className="sidebar-booking">
-          <div>
-            <div className="sidebar-theme-title">Booking link</div>
-            <div className="sidebar-theme-subtitle">Share with patients</div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <div
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '8px',
+                background: 'var(--primary-bg)',
+                color: 'var(--primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M10 13a5 5 0 0 0 7.07.07l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15" />
+                <path d="M14 11a5 5 0 0 0-7.07-.07l-2 2A5 5 0 0 0 12 20l1.15-1.15" />
+              </svg>
+            </div>
+
+            <div style={{ minWidth: 0 }}>
+              <div className="sidebar-theme-title">Booking link</div>
+              <div className="sidebar-theme-subtitle">
+                Share with patients
+              </div>
+            </div>
           </div>
+
           <div className="sidebar-booking-row">
             <input
               className="form-input sidebar-booking-input"
               value={bookingLink || 'Set clinic slug to enable link'}
               readOnly
               aria-label="Booking link"
+              style={{
+                flex: 1,
+                minWidth: 0,
+              }}
             />
+
             <button
-              className="btn btn-secondary btn-sm"
+              className="btn btn-primary btn-sm"
               type="button"
               disabled={!bookingLink || isUnconfigured}
               onClick={() => {
                 if (!bookingLink) return;
+
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                   navigator.clipboard.writeText(bookingLink);
                 } else {
                   window.prompt('Copy booking link:', bookingLink);
                 }
               }}
+              style={{
+                flexShrink: 0,
+                gap: '6px',
+                paddingLeft: '10px',
+                paddingRight: '10px',
+
+                background: 'var(--primary-light)',
+                border: '1px solid var(--primary-light)',
+                color: '#ffffff',
+                boxShadow: '0 2px 6px rgba(90, 184, 174, 0.22)',
+                textShadow: 'none',
+              }}
+              aria-label="Copy booking link"
             >
-              Copy
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+
+              <span>Copy</span>
             </button>
           </div>
         </div>
@@ -178,8 +311,32 @@ export default function Sidebar({ view, onChange, theme, setTheme, onLogout, boo
             <span className="theme-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
           </label>
         </div>
-        <button className="btn btn-secondary sidebar-logout" onClick={onLogout}>
-          Logout
+        <button
+          className="btn btn-ghost sidebar-logout"
+          onClick={onLogout}
+          style={{
+            justifyContent: 'flex-start',
+            paddingLeft: '12px',
+            paddingRight: '12px',
+          }}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+
+          <span>Log out</span>
         </button>
       </div>
     </aside>
