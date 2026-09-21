@@ -22,7 +22,7 @@ export function AuthProvider({ children }) {
         let mounted = true;
         let resolvedUserId = null;
 
-        const initializeAuth = async () => {
+        const initializeAuth = async (forceCheck = false) => {
             try {
                 // 1. First, try to exchange SSO session to ensure we have the latest tokens
                 try {
@@ -30,9 +30,15 @@ export function AuthProvider({ children }) {
                     const launchToken = launchUrl.searchParams.get('sso_token') || launchUrl.searchParams.get('token');
 
                     // An explicit token represents an intentional account
-                    // switch. Without one, prefer the persisted local
-                    // Supabase session and skip the central SSO round trip.
-                    if (!launchToken) {
+                    // switch. Without one -- and without a forced recheck --
+                    // prefer the persisted local Supabase session and skip
+                    // the central SSO round trip. forceCheck exists
+                    // specifically to NOT take this shortcut: it's how this
+                    // tab notices the user logged out of Snabbb elsewhere
+                    // while this tab already had a valid local session it
+                    // would otherwise go on trusting forever (see the
+                    // visibilitychange/focus listener below).
+                    if (!launchToken && !forceCheck) {
                         const { data: { session: localSession } } = await supabase.auth.getSession();
                         if (localSession) {
                             resolvedUserId = localSession.user.id;
@@ -105,6 +111,21 @@ export function AuthProvider({ children }) {
 
         initializeAuth();
 
+        // A tab open before someone logs out of Snabbb elsewhere never finds
+        // out on its own -- initializeAuth() only runs once, above, on
+        // mount, and (per the shortcut just above) doesn't even make a
+        // network call when a local session already exists. Re-running it
+        // with forceCheck=true whenever this tab regains focus closes that
+        // gap: it skips the shortcut, hits the exchange endpoint for real,
+        // and a 401 there (shared SSO cookie gone) signs this tab out too.
+        const revalidateOnFocus = () => {
+            if (document.visibilityState === 'visible') {
+                initializeAuth(true);
+            }
+        };
+        document.addEventListener('visibilitychange', revalidateOnFocus);
+        window.addEventListener('focus', revalidateOnFocus);
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
             if (mounted) {
                 const nextUserId = newSession?.user?.id ?? null;
@@ -134,6 +155,8 @@ export function AuthProvider({ children }) {
         return () => {
             mounted = false;
             subscription.unsubscribe();
+            document.removeEventListener('visibilitychange', revalidateOnFocus);
+            window.removeEventListener('focus', revalidateOnFocus);
         };
     }, []);
 
