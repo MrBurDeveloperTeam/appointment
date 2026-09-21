@@ -1,5 +1,4 @@
 import { supabase } from "../lib/supabaseClient";
-import { logActivityToOdoo } from "../services/logActivityToOdoo";
 
 const mapActivity = (row) => ({
   id: row.id,
@@ -7,37 +6,6 @@ const mapActivity = (row) => ({
   description: row.description,
   timestamp: row.created_at,
 });
-
-// Best-effort: every clinic/admin activity write also gets pushed to Odoo
-// (see services/logActivityToOdoo.js + APPOINTMENT_ACTIVITY_TRACKER_ODOO_SYNC.md),
-// mirroring the same sync built for the inventory app. Fire-and-forget so a
-// slow/unreachable worker or Odoo instance never blocks or fails the local
-// Supabase write, which stays the source of truth either way.
-//
-// `extra` carries fields that only apply to certain event types and aren't
-// columns on apt_activity_log itself (e.g. pagePath/pageDurationSeconds for
-// type: "page_view") — they're forwarded to Odoo's dedicated columns without
-// being persisted locally.
-async function syncActivityToOdoo(row, clinicId, extra = {}) {
-  try {
-    const { data: { user } = {} } = await supabase.auth.getUser();
-    if (!user?.email) return;
-    await logActivityToOdoo({
-      logId: row.id,
-      actorEmail: user.email,
-      actorName: user.user_metadata?.full_name || user.user_metadata?.name || null,
-      supabaseUserId: user.id,
-      clinicId: clinicId ?? null,
-      type: row.type,
-      description: row.description,
-      occurredAt: row.created_at,
-      pagePath: extra.pagePath ?? null,
-      pageDurationSeconds: extra.pageDurationSeconds ?? null,
-    });
-  } catch (err) {
-    console.error("Failed to sync activity to Odoo:", err?.message || err);
-  }
-}
 
 export async function getActivityLog(clinicId) {
   const { data, error } = await supabase
@@ -62,10 +30,6 @@ export async function addActivityLog(clinicId, entry) {
     .select("*")
     .single();
   if (error) throw error;
-  syncActivityToOdoo(data, clinicId, {
-    pagePath: entry.pagePath,
-    pageDurationSeconds: entry.pageDurationSeconds,
-  });
   return mapActivity(data);
 }
 
@@ -91,6 +55,5 @@ export async function addAdminActivity(entry) {
     .select("*")
     .single();
   if (error) throw error;
-  syncActivityToOdoo(data, null);
   return mapActivity(data);
 }

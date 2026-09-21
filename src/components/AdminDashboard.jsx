@@ -34,9 +34,6 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
   // ... (rest of simple state)
   const [adminActivity, setAdminActivity] = useState([]);
   const [clinicDetails, setClinicDetails] = useState({});
-  const [summaryByClinicId, setSummaryByClinicId] = useState({});
-  const [monthlyTrend, setMonthlyTrend] = useState([]);
-  const [statusBreakdown, setStatusBreakdown] = useState({ confirmed: 0, completed: 0, cancelled: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedClinicId, setExpandedClinicId] = useState('');
@@ -57,52 +54,54 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
   const [confirmDialog, setConfirmDialog] = useState({ open: false, type: '', payload: null });
 
   const refresh = async () => {
+    // ... refresh logic ...
     setLoading(true);
     setError('');
     try {
-      const [clinicsData, usersData, adminActivityData, summary] = await Promise.all([
+      const [clinicsData, usersData, adminActivityData] = await Promise.all([
         DataStore.getClinics(),
         DataStore.getUsers(),
         DataStore.getAdminActivity(),
-        DataStore.getAdminDashboardSummary(),
       ]);
       setClinics(clinicsData || []);
-      setUsers((usersData || []).filter((u) => u.status !== 'inactive'));
+      setUsers((usersData || []).filter(u => u.status !== 'inactive'));
       setAdminActivity(adminActivityData || []);
-      setSummaryByClinicId(summary?.summaryByClinicId || {});
-      setMonthlyTrend(summary?.monthlyTrend || []);
-      setStatusBreakdown(summary?.statusBreakdown || { confirmed: 0, completed: 0, cancelled: 0 });
+
+      const detailsEntries = await Promise.all(
+        (clinicsData || []).map(async (clinic) => {
+          const [
+            patients,
+            appointments,
+            staff,
+            rooms,
+            treatments,
+            settings,
+            holidays,
+            activity,
+          ] = await Promise.all([
+            DataStore.getPatients(clinic.id),
+            DataStore.getAppointments(clinic.id),
+            DataStore.getStaff(clinic.id),
+            DataStore.getRooms(clinic.id),
+            DataStore.getTreatments(clinic.id),
+            DataStore.getSettings(clinic.id),
+            DataStore.getHolidays(clinic.id),
+            DataStore.getActivityLog(clinic.id),
+          ]);
+
+          return [
+            clinic.id,
+            { patients, appointments, staff, rooms, treatments, settings, holidays, activity },
+          ];
+        })
+      );
+
+      setClinicDetails(Object.fromEntries(detailsEntries));
     } catch (err) {
       console.error(err);
       setError('Failed to load admin data.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const ensureClinicDetails = async (clinicId) => {
-    if (!clinicId) return;
-    // Already cached — skip refetch.
-    if (clinicDetails[clinicId]) return;
-    try {
-      const [patients, appointments, staff, rooms, treatments, settings, holidays, activity] =
-        await Promise.all([
-          DataStore.getPatients(clinicId),
-          DataStore.getAppointments(clinicId),
-          DataStore.getStaff(clinicId),
-          DataStore.getRooms(clinicId),
-          DataStore.getTreatments(clinicId),
-          DataStore.getSettings(clinicId),
-          DataStore.getHolidays(clinicId),
-          DataStore.getActivityLog(clinicId),
-        ]);
-      setClinicDetails((prev) => ({
-        ...prev,
-        [clinicId]: { patients, appointments, staff, rooms, treatments, settings, holidays, activity },
-      }));
-    } catch (err) {
-      console.error("Failed to load clinic details:", err);
-      setDetailError("Failed to load clinic details.");
     }
   };
 
@@ -116,17 +115,17 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
 
   const clinicSummaries = useMemo(() => {
     return clinics.map((clinic) => {
-      const summary = summaryByClinicId[clinic.id];
+      const detail = clinicDetails[clinic.id] || {};
       const stats = {
-        patients: summary?.patients ?? 0,
-        appointments: summary?.appointments ?? 0,
-        staff: summary?.staff ?? 0,
-        rooms: summary?.rooms ?? 0,
-        treatments: summary?.treatments ?? 0,
+        patients: detail.patients ? detail.patients.length : 0,
+        appointments: detail.appointments ? detail.appointments.length : 0,
+        staff: detail.staff ? detail.staff.length : 0,
+        rooms: detail.rooms ? detail.rooms.length : 0,
+        treatments: detail.treatments ? detail.treatments.length : 0,
       };
       return { ...clinic, stats };
     });
-  }, [clinics, summaryByClinicId]);
+  }, [clinics, clinicDetails]);
 
   // Map clinicId -> list of emails from profiles table (already loaded as `users`)
   const clinicEmailsMap = useMemo(() => {
@@ -152,6 +151,7 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
     return base;
   }, [clinicSummaries, clinics.length, users.length]);
 
+  // ... (appointmentTrend chart logic skipped for brevity if unchanged logic is compatible with replacement) ...
   const appointmentTrend = useMemo(() => {
     const months = [];
     const now = new Date();
@@ -164,16 +164,19 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
       });
     }
     const index = Object.fromEntries(months.map((m, i) => [m.key, i]));
-    (monthlyTrend || []).forEach((row) => {
-      const idx = index[row.month];
-      if (idx !== undefined) months[idx].count = row.count;
+    Object.values(clinicDetails).forEach((detail) => {
+      (detail.appointments || []).forEach((apt) => {
+        if (!apt.date) return;
+        const key = apt.date.slice(0, 7);
+        const idx = index[key];
+        if (idx !== undefined) months[idx].count += 1;
+      });
     });
     return months;
-  }, [monthlyTrend]);
+  }, [clinicDetails]);
 
 
   const openClinicModal = (clinic) => {
-    if (clinic?.id) ensureClinicDetails(clinic.id);
     if (clinic) {
       setClinicForm({
         id: clinic.id,
@@ -214,7 +217,6 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
   const closeModal = () => setModalState({ type: null, mode: 'new' });
 
   const openDetailModal = (clinicId, type) => {
-    ensureClinicDetails(clinicId);
     setDetailModal({ open: true, clinicId, type });
     setDetailForm({});
     setDetailError('');
@@ -635,9 +637,16 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                 <div className="admin-panel-subtitle">Global Breakdown</div>
                 <div style={{ width: '100%', height: 300, marginTop: 16 }}>
                   {(() => {
-                    const confirmed = statusBreakdown.confirmed || 0;
-                    const completed = statusBreakdown.completed || 0;
-                    const cancelled = statusBreakdown.cancelled || 0;
+                    let confirmed = 0;
+                    let completed = 0;
+                    let cancelled = 0;
+                    Object.values(clinicDetails).forEach(d => {
+                      (d.appointments || []).forEach(a => {
+                        if (a.status === 'confirmed') confirmed++;
+                        if (a.status === 'completed') completed++;
+                        if (a.status === 'cancelled') cancelled++;
+                      });
+                    });
                     const data = [
                       { name: 'Confirmed', value: confirmed, color: 'var(--primary)' },
                       { name: 'Completed', value: completed, color: 'var(--success)' },
@@ -757,11 +766,7 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                         </button>
                         <button
                           className="btn btn-ghost btn-sm"
-                          onClick={() => {
-                            const next = expandedClinicId === clinic.id ? '' : clinic.id;
-                            setExpandedClinicId(next);
-                            if (next) ensureClinicDetails(next);
-                          }}
+                          onClick={() => setExpandedClinicId(expandedClinicId === clinic.id ? '' : clinic.id)}
                         >
                           {expandedClinicId === clinic.id ? 'Hide Details' : 'View Details'}
                         </button>
@@ -978,7 +983,7 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                                   <div className="admin-settings-grid">
                                     <div className="setting-item">
                                       <span className="setting-label">Clinic Name</span>
-                                      <span className="setting-value">{summaryByClinicId[clinic.id]?.settings?.clinicName || 'Dental Clinic'}</span>
+                                      <span className="setting-value">{clinicDetails[clinic.id]?.settings?.clinicName || 'Dental Clinic'}</span>
                                     </div>
                                     <div className="setting-item">
                                       <span className="setting-label">Subscription</span>
@@ -990,16 +995,16 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                                     <div className="setting-item">
                                       <span className="setting-label">Working Hours</span>
                                       <span className="setting-value">
-                                        {summaryByClinicId[clinic.id]?.settings?.workingHours?.start || '09:00'} - {summaryByClinicId[clinic.id]?.settings?.workingHours?.end || '18:00'}
+                                        {clinicDetails[clinic.id]?.settings?.workingHours?.start || '09:00'} - {clinicDetails[clinic.id]?.settings?.workingHours?.end || '18:00'}
                                       </span>
                                     </div>
                                     <div className="setting-item">
                                       <span className="setting-label">Slot Duration</span>
-                                      <span className="setting-value">{summaryByClinicId[clinic.id]?.settings?.slotDuration || 30} mins</span>
+                                      <span className="setting-value">{clinicDetails[clinic.id]?.settings?.slotDuration || 30} mins</span>
                                     </div>
                                     <div className="setting-item">
                                       <span className="setting-label">Phone</span>
-                                      <span className="setting-value">{summaryByClinicId[clinic.id]?.settings?.phone || '-'}</span>
+                                      <span className="setting-value">{clinicDetails[clinic.id]?.settings?.phone || '-'}</span>
                                     </div>
                                   </div>
                                 </div>

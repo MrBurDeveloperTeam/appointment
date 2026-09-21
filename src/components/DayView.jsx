@@ -1,10 +1,8 @@
-import { hasAppointmentPassed } from '../utils/appointmentReadOnly';
 import { useRef, useState } from 'react';
 import { toISODate, todayISO, sameDate } from '../utils/date';
 import { addMinutes, minutesToTime, formatTime } from '../utils/time';
 import { getInitials } from '../utils/people';
 import { getColorBg } from '../utils/colors';
-import { findAppointmentConflicts, isDateHoliday } from '../utils/availability';
 import Modal from './Modal';
 
 export default function DayView({
@@ -14,7 +12,6 @@ export default function DayView({
   rooms,
   treatments,
   staff,
-  holidays,
   settings,
   onSlotSelect,
   onAppointmentSelect,
@@ -35,10 +32,6 @@ export default function DayView({
   const dayStartMinutes = startHour * 60;
   const dayEndMinutes = endHour * 60;
   const isPastDate = dateStr < todayISO();
-  const isHolidayDay = isDateHoliday(dateStr, holidays);
-  const holidayName = isHolidayDay
-    ? ((holidays || []).find((h) => isDateHoliday(dateStr, [h])) || {}).name || 'Holiday'
-    : '';
   const pastBlockHeight =
     isPastDate
       ? columnHeight
@@ -140,7 +133,6 @@ export default function DayView({
   const handleColumnClick = (e, dateStrLocal, offsetMinutes, dentistId) => {
     const absoluteMinutes = dayStartMinutes + offsetMinutes;
     if (isPastDate) return;
-    if (isHolidayDay) return; // clinic closed on holidays
     if (isToday && nowMinutes !== null && absoluteMinutes <= nowMinutes) {
       return; // block past slots only during today's working window
     }
@@ -156,7 +148,6 @@ export default function DayView({
     const dragged = dragRef.current;
     if (!dragged || !onAppointmentReschedule) return;
     if (isPastDate) return;
-    if (isHolidayDay) return; // clinic closed on holidays
     const rect = e.currentTarget.getBoundingClientRect();
     const scrollTop = gridRef.current ? gridRef.current.scrollTop : 0;
     const offsetRaw = e.clientY - rect.top + scrollTop;
@@ -171,25 +162,15 @@ export default function DayView({
       endTime: addMinutes(newStart, duration),
       dentistId: dentistId || null,
     };
-    const conflicts = findAppointmentConflicts(
-      { date: dateStrLocal, startTime: newStart, duration },
-      appointments,
-      dragged.id
-    );
     setPendingReschedule({
       appointment: dragged,
       updates,
-      conflicts,
       message: `Reschedule ${patientName(dragged.patientId)} to ${dateStrLocal} at ${formatTime(newStart)}?`,
     });
     setDragPreview(null);
   };
 
   const handleDragStart = (apt) => (e) => {
-    if (hasAppointmentPassed(apt)) {
-      e.preventDefault();
-      return;
-    }
     dragRef.current = apt;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', apt.id);
@@ -317,7 +298,7 @@ export default function DayView({
               return (
                 <div
                   key={dentist.id}
-                  className={`day-column ${isHolidayDay ? 'holiday-day' : ''}`}
+                  className="day-column"
                   style={{ position: 'relative', height: columnHeight }}
                   onDragOver={(e) => {
                     handleDragOver(e, dentist.id);
@@ -345,8 +326,7 @@ export default function DayView({
                     .map((_, idx) => (
                       <div key={idx} className="week-hour-line"></div>
                     ))}
-                  {isHolidayDay && <div className="off-duty-overlay">{holidayName}</div>}
-                  {!isHolidayDay && !isWorkingDay && <div className="off-duty-overlay">Off Duty</div>}
+                  {!isWorkingDay && <div className="off-duty-overlay">Off Duty</div>}
                   {previewActive && (
                     <div className="drag-preview-line" style={{ top: previewActive ? dragPreview.offset : 0 }}>
                       <span className="drag-preview-label">
@@ -375,7 +355,7 @@ export default function DayView({
                       <div
                         key={apt.id}
                         className="day-appointment-card"
-                        draggable={!hasAppointmentPassed(apt)}
+                        draggable
                         style={{
                           top,
                           height: height,
@@ -411,8 +391,8 @@ export default function DayView({
             })}
             {hasUnassigned && (
               <div
-                className={`day-column ${isHolidayDay ? 'holiday-day' : ''}`}
-                style={{ position: 'relative', height: columnHeight, background: isHolidayDay ? undefined : 'var(--bg-card)' }}
+                className="day-column"
+                style={{ position: 'relative', height: columnHeight, background: 'var(--bg-card)' }}
                 onDragOver={(e) => {
                   handleDragOver(e, null);
                 }}
@@ -439,7 +419,6 @@ export default function DayView({
                   .map((_, idx) => (
                     <div key={idx} className="week-hour-line"></div>
                   ))}
-                {isHolidayDay && <div className="off-duty-overlay">{holidayName}</div>}
                 {dragPreview && dragPreview.dentistId === null && (
                   <div className="drag-preview-line" style={{ top: dragPreview.offset }}>
                     <span className="drag-preview-label">
@@ -467,7 +446,7 @@ export default function DayView({
                     <div
                       key={apt.id}
                       className="day-appointment-card"
-                      draggable={!hasAppointmentPassed(apt)}
+                      draggable
                       style={{
                         top,
                         height: height,
@@ -503,19 +482,6 @@ export default function DayView({
         <Modal title="Confirm reschedule" onClose={() => setPendingReschedule(null)}>
           <div style={{ padding: '0 var(--space-lg) var(--space-lg)' }}>
             <p style={{ marginBottom: 'var(--space-md)' }}>{pendingReschedule.message}</p>
-            {pendingReschedule.conflicts && pendingReschedule.conflicts.length > 0 && (
-              <div className="form-error" style={{ marginBottom: 'var(--space-md)' }}>
-                This time overlaps {pendingReschedule.conflicts.length} existing appointment
-                {pendingReschedule.conflicts.length > 1 ? 's' : ''}:{' '}
-                {pendingReschedule.conflicts
-                  .map((c) => {
-                    const cEnd = c.endTime || addMinutes(c.startTime, c.duration || 30);
-                    return `${formatTime(c.startTime)}–${formatTime(cEnd)} (${patientName(c.patientId)})`;
-                  })
-                  .join(', ')}
-                . Reschedule anyway to overbook?
-              </div>
-            )}
             <div className="confirm-actions">
               <button className="btn btn-secondary" onClick={() => setPendingReschedule(null)}>
                 Cancel
@@ -527,9 +493,7 @@ export default function DayView({
                   setPendingReschedule(null);
                 }}
               >
-                {pendingReschedule.conflicts && pendingReschedule.conflicts.length > 0
-                  ? 'Reschedule anyway'
-                  : 'Confirm'}
+                Confirm
               </button>
             </div>
           </div>
@@ -538,3 +502,5 @@ export default function DayView({
     </div>
   );
 }
+
+

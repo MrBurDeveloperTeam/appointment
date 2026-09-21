@@ -11,12 +11,4 @@ const api = axios.create({
   },
 });
 
-export const creditApi = axios.create({
-  baseURL: import.meta.env.ODOO_API_URL, 
-  withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
 export default api;

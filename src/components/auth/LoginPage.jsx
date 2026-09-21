@@ -29,7 +29,7 @@ export default function LoginPage() {
     }
   }
 
-  return <AuthShell centered>
+  return <AuthShell>
     <header className="auth-header"><AuthLogo /><h1>Welcome Back</h1></header>
     <form onSubmit={handleSubmit} className="auth-form">
       <div className="auth-field"><label htmlFor="login-email" className="auth-label">Email</label><input id="login-email" className="auth-input auth-input-plain" type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" /></div>
@@ -37,6 +37,6 @@ export default function LoginPage() {
       <label className="auth-checkbox"><input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} /><span>Remember me</span></label>
       <button type="submit" disabled={loading} className="auth-submit">{loading ? 'Logging in…' : 'Log in'}</button>
     </form>
-    <p className="auth-switch"><a href="/register">Don't have an account? Sign Up</a></p>
+    <p className="auth-switch"><a href="/register">Don't have an account? Sign up</a></p>
   </AuthShell>;
 }

@@ -1,11 +1,9 @@
-export function getInitials(name) {
-  const initials = String(name || '')
+﻿export function getInitials(name) {
+  return name
     .split(' ')
     .filter(Boolean)
-    .map((part) => part[0])
+    .map((n) => n[0])
     .join('')
     .toUpperCase()
     .slice(0, 2);
-
-  return initials || '?';
 }

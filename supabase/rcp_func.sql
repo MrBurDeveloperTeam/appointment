@@ -139,7 +139,7 @@ begin
       'Content-Type', 'application/json'
     ),
     body := jsonb_build_object(
-      'from', 'Snabbb <noreply@snabbb.com>',
+      'from', 'Resend <onboarding@resend.dev>',
       'to', jsonb_build_array(v_email),
       'subject', 'Your booking verification code',
       'html', format(

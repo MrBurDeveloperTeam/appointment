@@ -2,7 +2,6 @@
 import { fileURLToPath } from "url";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
-import { sharedGamesPlugin } from './node_modules/@mrburdeveloperteam/pet-function/scripts/vite-games.mjs';
 
 // Fix for __dirname in ESM modules
 const __filename = fileURLToPath(import.meta.url);
@@ -15,8 +14,7 @@ export default defineConfig(({ mode }) => {
 
   const isDev = mode === "development";
   return {
-    plugins: [react(), sharedGamesPlugin()],
-    resolve: { dedupe: ['react', 'react-dom'] },
+    plugins: [react()],
     server: {
       port: 3000,
       host: '0.0.0.0',

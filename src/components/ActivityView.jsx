@@ -30,9 +30,7 @@ export default function ActivityView({ activity }) {
             {pagedActivity.map((item) => {
               const type = item.type || '';
               const typeClass =
-                type === 'page_view'
-                  ? 'view'
-                  : type.indexOf('delete') !== -1 || type === 'appointment_deleted'
+                type.indexOf('delete') !== -1 || type === 'appointment_deleted'
                   ? 'delete'
                   : type.indexOf('update') !== -1 || type.indexOf('updated') !== -1
                   ? 'update'
