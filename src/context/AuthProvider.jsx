@@ -137,12 +137,14 @@ export function AuthProvider({ children }) {
         };
     }, []);
 
+    const authenticatedUserId = user?.id ?? null;
+
     // 2. Load Profile when User changes
     useEffect(() => {
         let mounted = true;
 
         const loadProfile = async () => {
-            if (!user) return;
+            if (!authenticatedUserId) return;
 
             // Keep loading true while fetching profile if we just got a user
             // But if we already have a profile and just switching, maybe not? 
@@ -158,14 +160,14 @@ export function AuthProvider({ children }) {
                 const { data, error: fetchError } = await supabase
                     .from('profiles')
                     .select('*')
-                    .eq('user_id', user.id)
+                    .eq('user_id', authenticatedUserId)
                     .maybeSingle();
 
                 if (fetchError) throw fetchError;
 
                 if (mounted) {
                     if (!data) {
-                        console.warn('No profile found for user:', user.id);
+                        console.warn('No profile found for user:', authenticatedUserId);
                         setProfile(null);
                         setRole(null);
                         return;
@@ -195,11 +197,16 @@ export function AuthProvider({ children }) {
             }
         };
 
-        if (user) {
+        if (authenticatedUserId) {
             // If we have a user but no profile yet (or user changed), load it
             loadProfile();
         }
-    }, [user]);
+    // Supabase replaces the User object when it refreshes an access token.
+    // The authenticated identity has not changed in that case, so key this
+    // profile lifecycle to the stable id instead of the object reference.
+    // This keeps the mounted appointment view, unsaved form values and open
+    // pet/game screen intact when a background tab becomes visible again.
+    }, [authenticatedUserId]);
 
     const signOut = async () => {
         // 1. Best-effort: clear the SSO cookie on the server
