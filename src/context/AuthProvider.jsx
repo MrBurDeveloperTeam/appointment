@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { api } from '../services/api';
+import { getAppointmentAccess } from '../services/appointmentAccess';
 import DataStore from '../data';
 import React from "react";
 
@@ -13,7 +14,7 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
     const [role, setRole] = useState(null);
-    const [activeClinicId, setActiveClinicId] = useState(() => DataStore.getActiveClinicId());
+    const [activeClinicId, setActiveClinicId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -22,7 +23,7 @@ export function AuthProvider({ children }) {
         let mounted = true;
         let resolvedUserId = null;
 
-        const initializeAuth = async () => {
+        const initializeAuth = async (forceCheck = false) => {
             try {
                 // 1. First, try to exchange SSO session to ensure we have the latest tokens
                 try {
@@ -30,9 +31,15 @@ export function AuthProvider({ children }) {
                     const launchToken = launchUrl.searchParams.get('sso_token') || launchUrl.searchParams.get('token');
 
                     // An explicit token represents an intentional account
-                    // switch. Without one, prefer the persisted local
-                    // Supabase session and skip the central SSO round trip.
-                    if (!launchToken) {
+                    // switch. Without one -- and without a forced recheck --
+                    // prefer the persisted local Supabase session and skip
+                    // the central SSO round trip. forceCheck exists
+                    // specifically to NOT take this shortcut: it's how this
+                    // tab notices the user logged out of Snabbb elsewhere
+                    // while this tab already had a valid local session it
+                    // would otherwise go on trusting forever (see the
+                    // visibilitychange/focus listener below).
+                    if (!launchToken && !forceCheck) {
                         const { data: { session: localSession } } = await supabase.auth.getSession();
                         if (localSession) {
                             resolvedUserId = localSession.user.id;
@@ -105,6 +112,21 @@ export function AuthProvider({ children }) {
 
         initializeAuth();
 
+        // A tab open before someone logs out of Snabbb elsewhere never finds
+        // out on its own -- initializeAuth() only runs once, above, on
+        // mount, and (per the shortcut just above) doesn't even make a
+        // network call when a local session already exists. Re-running it
+        // with forceCheck=true whenever this tab regains focus closes that
+        // gap: it skips the shortcut, hits the exchange endpoint for real,
+        // and a 401 there (shared SSO cookie gone) signs this tab out too.
+        const revalidateOnFocus = () => {
+            if (document.visibilityState === 'visible') {
+                initializeAuth(true);
+            }
+        };
+        document.addEventListener('visibilitychange', revalidateOnFocus);
+        window.addEventListener('focus', revalidateOnFocus);
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
             if (mounted) {
                 const nextUserId = newSession?.user?.id ?? null;
@@ -134,15 +156,19 @@ export function AuthProvider({ children }) {
         return () => {
             mounted = false;
             subscription.unsubscribe();
+            document.removeEventListener('visibilitychange', revalidateOnFocus);
+            window.removeEventListener('focus', revalidateOnFocus);
         };
     }, []);
+
+    const authenticatedUserId = user?.id ?? null;
 
     // 2. Load Profile when User changes
     useEffect(() => {
         let mounted = true;
 
         const loadProfile = async () => {
-            if (!user) return;
+            if (!authenticatedUserId) return;
 
             // Keep loading true while fetching profile if we just got a user
             // But if we already have a profile and just switching, maybe not? 
@@ -155,28 +181,36 @@ export function AuthProvider({ children }) {
             setRole(null);
 
             try {
+                DataStore.setActiveClinicId(null);
+                setActiveClinicId(null);
                 const { data, error: fetchError } = await supabase
                     .from('profiles')
                     .select('*')
-                    .eq('user_id', user.id)
+                    .eq('user_id', authenticatedUserId)
                     .maybeSingle();
 
                 if (fetchError) throw fetchError;
 
+                if (!data) throw new Error('Your profile could not be found.');
+                // Internal administrators retain their existing clinic management flow.
+                const access = data.account_type === 'admin'
+                    ? null
+                    : await getAppointmentAccess();
+                const clinicId = data.account_type === 'admin'
+                    ? data.clinic_id
+                    : access.clinicId;
+                if (access && !clinicId) {
+                    throw new Error('The selected workspace has no appointment clinic.');
+                }
+
                 if (mounted) {
-                    if (!data) {
-                        console.warn('No profile found for user:', user.id);
-                        setProfile(null);
-                        setRole(null);
-                        return;
-                    }
-                    setProfile(data);
+setProfile(data);
                     const derivedRole = data.account_type === 'admin' ? 'admin' : 'dentist';
                     setRole(derivedRole);
 
-                    if (data.clinic_id) {
-                        DataStore.setActiveClinicId(data.clinic_id);
-                        setActiveClinicId(data.clinic_id);
+                    if (clinicId) {
+                        DataStore.setActiveClinicId(clinicId);
+                        setActiveClinicId(clinicId);
                     } else {
                         DataStore.setActiveClinicId(null);
                         setActiveClinicId(null);
@@ -185,7 +219,9 @@ export function AuthProvider({ children }) {
             } catch (err) {
                 console.error('Failed to load profile:', err);
                 if (mounted) {
-                    setError('Unable to load your profile. Please try again.');
+                    setError(err?.message || 'Unable to load your workspace. Please try again.');
+                    DataStore.setActiveClinicId(null);
+                    setActiveClinicId(null);
                     setProfile(null);
                 }
             } finally {
@@ -195,11 +231,17 @@ export function AuthProvider({ children }) {
             }
         };
 
-        if (user) {
+        if (authenticatedUserId) {
             // If we have a user but no profile yet (or user changed), load it
             loadProfile();
         }
-    }, [user]);
+        return () => { mounted = false; };
+    // Supabase replaces the User object when it refreshes an access token.
+    // The authenticated identity has not changed in that case, so key this
+    // profile lifecycle to the stable id instead of the object reference.
+    // This keeps the mounted appointment view, unsaved form values and open
+    // pet/game screen intact when a background tab becomes visible again.
+    }, [authenticatedUserId]);
 
     const signOut = async () => {
         // 1. Best-effort: clear the SSO cookie on the server

@@ -1,6 +1,7 @@
 import {
   supabase,
 } from "../lib/supabaseClient";
+import { getWorkspaceHeaders } from './workspaceContext';
 
 export const APPOINTMENT_PERMISSIONS = {
   SCHEDULE: "appointment.schedule.access",
@@ -67,6 +68,7 @@ export async function getAppointmentAccess() {
       method: "GET",
       credentials: "include",
       headers: {
+        ...getWorkspaceHeaders(),
         Accept: "application/json",
         Authorization:
           `Bearer ${accessToken}`,
