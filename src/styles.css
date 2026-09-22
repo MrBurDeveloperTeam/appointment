@@ -5517,10 +5517,14 @@ tbody tr:hover {
 
 /* New Reports Layout */
 .reports-layout {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: var(--space-lg);
-  padding: var(--space-lg);
+  display: flex;
+  gap: 0;
+  min-height: calc(100vh - 140px);
+  background: var(--bg-card); /* white page container */
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
 }
 
 .reports-nav {
@@ -5558,6 +5562,8 @@ tbody tr:hover {
 }
 
 .reports-content {
+  flex: 1;
+  min-width: 0;
   padding: var(--space-lg);
   overflow-y: auto;
 }
