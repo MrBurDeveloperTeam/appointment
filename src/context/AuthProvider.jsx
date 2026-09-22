@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { api } from '../services/api';
+import { getAppointmentAccess } from '../services/appointmentAccess';
 import DataStore from '../data';
 import React from "react";
 
@@ -13,7 +14,7 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
     const [role, setRole] = useState(null);
-    const [activeClinicId, setActiveClinicId] = useState(() => DataStore.getActiveClinicId());
+    const [activeClinicId, setActiveClinicId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -180,6 +181,8 @@ export function AuthProvider({ children }) {
             setRole(null);
 
             try {
+                DataStore.setActiveClinicId(null);
+                setActiveClinicId(null);
                 const { data, error: fetchError } = await supabase
                     .from('profiles')
                     .select('*')
@@ -188,20 +191,26 @@ export function AuthProvider({ children }) {
 
                 if (fetchError) throw fetchError;
 
+                if (!data) throw new Error('Your profile could not be found.');
+                // Internal administrators retain their existing clinic management flow.
+                const access = data.account_type === 'admin'
+                    ? null
+                    : await getAppointmentAccess();
+                const clinicId = data.account_type === 'admin'
+                    ? data.clinic_id
+                    : access.clinicId;
+                if (access && !clinicId) {
+                    throw new Error('The selected workspace has no appointment clinic.');
+                }
+
                 if (mounted) {
-                    if (!data) {
-                        console.warn('No profile found for user:', authenticatedUserId);
-                        setProfile(null);
-                        setRole(null);
-                        return;
-                    }
-                    setProfile(data);
+setProfile(data);
                     const derivedRole = data.account_type === 'admin' ? 'admin' : 'dentist';
                     setRole(derivedRole);
 
-                    if (data.clinic_id) {
-                        DataStore.setActiveClinicId(data.clinic_id);
-                        setActiveClinicId(data.clinic_id);
+                    if (clinicId) {
+                        DataStore.setActiveClinicId(clinicId);
+                        setActiveClinicId(clinicId);
                     } else {
                         DataStore.setActiveClinicId(null);
                         setActiveClinicId(null);
@@ -210,7 +219,9 @@ export function AuthProvider({ children }) {
             } catch (err) {
                 console.error('Failed to load profile:', err);
                 if (mounted) {
-                    setError('Unable to load your profile. Please try again.');
+                    setError(err?.message || 'Unable to load your workspace. Please try again.');
+                    DataStore.setActiveClinicId(null);
+                    setActiveClinicId(null);
                     setProfile(null);
                 }
             } finally {
@@ -224,6 +235,7 @@ export function AuthProvider({ children }) {
             // If we have a user but no profile yet (or user changed), load it
             loadProfile();
         }
+        return () => { mounted = false; };
     // Supabase replaces the User object when it refreshes an access token.
     // The authenticated identity has not changed in that case, so key this
     // profile lifecycle to the stable id instead of the object reference.

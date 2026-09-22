@@ -42,10 +42,10 @@ const DataStore = {
   },
 
   getActiveClinicId() {
-    const stored = localStorage.getItem(ACTIVE_CLINIC_KEY);
+    const stored = sessionStorage.getItem(ACTIVE_CLINIC_KEY);
     if (!stored) return null;
     if (!uuidPattern.test(stored)) {
-      localStorage.removeItem(ACTIVE_CLINIC_KEY);
+      sessionStorage.removeItem(ACTIVE_CLINIC_KEY);
       return null;
     }
     return stored;
@@ -53,9 +53,9 @@ const DataStore = {
 
   setActiveClinicId(clinicId) {
     if (clinicId) {
-      localStorage.setItem(ACTIVE_CLINIC_KEY, clinicId);
+      sessionStorage.setItem(ACTIVE_CLINIC_KEY, clinicId);
     } else {
-      localStorage.removeItem(ACTIVE_CLINIC_KEY);
+      sessionStorage.removeItem(ACTIVE_CLINIC_KEY);
     }
   },
 

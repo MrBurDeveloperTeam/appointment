@@ -28,6 +28,7 @@ import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { supabase } from './lib/supabaseClient';
 import DataStore from "./data";
 import { api } from './services/api';
+import { getWorkspaceCacheKey } from './services/workspaceContext';
 import CatMascot from './components/CatMascot';
 import AppointmentsVirtualPet from './petExperience/AppointmentsVirtualPet';
 import MolarAIFloat from './components/MolarAIFloat';
@@ -261,7 +262,7 @@ function AppContent() {
     // that revalidation happens in the background, and any diff or
     // failure from the fresh result immediately overwrites/clears it.
     const cacheKey = user
-      ? `${APPOINTMENT_ACCESS_CACHE_KEY_PREFIX}${user.id}:${activeClinicId ?? 'none'}`
+      ? `${APPOINTMENT_ACCESS_CACHE_KEY_PREFIX}${user.id}:${getWorkspaceCacheKey()}:${activeClinicId ?? 'none'}`
       : null;
 
     // Invalidate the PREVIOUS cache entry whenever the effective identity

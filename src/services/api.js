@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getWorkspaceHeaders } from './workspaceContext';
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL, 
@@ -6,6 +7,14 @@ export const api = axios.create({
   headers: { 
     "Content-Type": "application/json",
   },
+});
+
+api.interceptors.request.use((config) => {
+  config.headers.delete('X-Snabbb-Workspace-User-Id');
+  for (const [name, value] of Object.entries(getWorkspaceHeaders())) {
+    config.headers.set(name, value);
+  }
+  return config;
 });
 
 // Optional: basic error unwrap

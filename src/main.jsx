@@ -2,6 +2,7 @@
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { AuthProvider } from './context/AuthProvider';
+import { captureWorkspaceFromUrl } from './services/workspaceContext';
 import './styles.css';
 // The shared package's dist/styles.css is built by Tailwind v4 and contains
 // raw `@layer utilities {...}` blocks with no matching `@tailwind utilities`
@@ -17,6 +18,7 @@ import './styles.css';
 import molarExperienceStyles from '@mrburdeveloperteam/pet-function/styles.css?raw';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+captureWorkspaceFromUrl();
 const queryClient = new QueryClient();
 
 const molarStyleEl = document.createElement('style');
