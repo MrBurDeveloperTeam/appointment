@@ -5517,13 +5517,21 @@ tbody tr:hover {
 
 /* New Reports Layout */
 .reports-layout {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: var(--space-lg);
-  padding: var(--space-lg);
+  display: flex;
+  gap: 0;
+  min-height: calc(100vh - 140px);
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+
+  padding: var(--space-lg); /* adds the Settings-like gap around the nav */
 }
 
 .reports-nav {
+  width: 220px;
+  flex: 0 0 220px;
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
@@ -5536,13 +5544,14 @@ tbody tr:hover {
 
 .reports-nav-item {
   text-align: left;
-  border: none;
-  background: transparent;
   padding: var(--space-sm) var(--space-md);
+  border: none;
   border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
+  font-size: var(--font-size-base); /* 16px instead of Reports' 14px */
+  font-weight: var(--font-weight-medium);
   transition: all var(--transition-normal);
 }
 
@@ -5558,6 +5567,8 @@ tbody tr:hover {
 }
 
 .reports-content {
+  flex: 1;
+  min-width: 0;
   padding: var(--space-lg);
   overflow-y: auto;
 }
@@ -6578,18 +6589,25 @@ tbody tr:hover {
   }
 
   .reports-layout {
-    grid-template-columns: 1fr;
+   flex-direction: row;
+   min-width: 760px;
   }
 
   .reports-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--border-light);
+   width: 220px;
+   flex: 0 0 220px;
+   flex-direction: column;
+   overflow-x: visible;
+   border-right: 1px solid var(--border-light);
+   border-bottom: none;
   }
 
   .reports-nav-item {
-    white-space: nowrap;
+    white-space: normal;
+  }
+
+  .main.content {
+    overflow-x: auto;
   }
 
   .reports-header {
