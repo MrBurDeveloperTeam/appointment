@@ -5520,11 +5520,13 @@ tbody tr:hover {
   display: flex;
   gap: 0;
   min-height: calc(100vh - 140px);
-  background: var(--bg-card); /* white page container */
+  background: var(--bg-card);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-light);
   overflow: hidden;
+
+  padding: var(--space-lg); /* adds the Settings-like gap around the nav */
 }
 
 .reports-nav {
