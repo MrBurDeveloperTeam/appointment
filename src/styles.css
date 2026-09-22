@@ -5528,6 +5528,8 @@ tbody tr:hover {
 }
 
 .reports-nav {
+  width: 220px;
+  flex: 0 0 220px;
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
@@ -5540,13 +5542,14 @@ tbody tr:hover {
 
 .reports-nav-item {
   text-align: left;
-  border: none;
-  background: transparent;
   padding: var(--space-sm) var(--space-md);
+  border: none;
   border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
+  font-size: var(--font-size-base); /* 16px instead of Reports' 14px */
+  font-weight: var(--font-weight-medium);
   transition: all var(--transition-normal);
 }
 
