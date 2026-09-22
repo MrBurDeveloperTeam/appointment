@@ -6589,18 +6589,25 @@ tbody tr:hover {
   }
 
   .reports-layout {
-    grid-template-columns: 1fr;
+   flex-direction: row;
+   min-width: 760px;
   }
 
   .reports-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--border-light);
+   width: 220px;
+   flex: 0 0 220px;
+   flex-direction: column;
+   overflow-x: visible;
+   border-right: 1px solid var(--border-light);
+   border-bottom: none;
   }
 
   .reports-nav-item {
-    white-space: nowrap;
+    white-space: normal;
+  }
+
+  .main.content {
+    overflow-x: auto;
   }
 
   .reports-header {
