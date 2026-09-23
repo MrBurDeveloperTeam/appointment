@@ -88,7 +88,6 @@ export function AuthProvider({ children }) {
                 // 2. Now get the session (either from SSO update or local storage)
                 const { data: { session: initialSession } } = await supabase.auth.getSession();
 
-                console.log("initialSession", initialSession);
                 if (mounted) {
                     resolvedUserId = initialSession?.user?.id ?? null;
                     setSession(initialSession);
