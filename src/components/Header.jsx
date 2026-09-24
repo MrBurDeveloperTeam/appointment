@@ -371,7 +371,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                           className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">{role === 'admin' ? 'Admin Dashboard' : 'User Dashboard'}</p>
+                            <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">{role === 'admin' ? 'Support Tickets' : 'Support Tickets'}</p>
                             <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">{role === 'admin' ? 'Manage all support tickets' : 'Create and track support tickets'}</p>
                           </div>
                           <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors" aria-hidden="true"></i>
