@@ -59,7 +59,8 @@ const TutorialVideoModal: React.FC<TutorialVideoModalProps> = ({ isOpen, onClose
           <button
             type="button"
             onClick={onClose}
-            className="btn btn-primary"
+            // className="btn btn-primary"
+            className="btn btn-primary tutorial-video-cta"
           >
             Got it, let's go
           </button>
