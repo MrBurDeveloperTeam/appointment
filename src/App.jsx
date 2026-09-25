@@ -467,6 +467,7 @@ useEffect(() => {
     addPatient,
     importPatients,
     updatePatient,
+    updatePatientFlag,
     deletePatient,
     addAppointment,
     updateAppointment,
@@ -1310,6 +1311,7 @@ useEffect(() => {
               }}
               searchPatients={searchPatients}
               importPatients={importPatients}
+              onFlagChange={updatePatientFlag}
             />
           )}
           {view === 'settings' && (

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Upload } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Flag, Upload } from 'lucide-react';
+import { useToast } from '../context/ToastProvider';
 import PatientImportModal from './PatientImportModal';
 import { formatTime } from '../utils/time';
 import { getInitials } from '../utils/people';
@@ -17,7 +18,11 @@ export default function PatientsView({
   onEdit,
   searchPatients,
   importPatients,
+  onFlagChange,
 }) {
+  const { addToast } = useToast();
+  const pendingFlagsRef = useRef(new Set());
+  const [pendingFlags, setPendingFlags] = useState(new Set());
   const [query, setQuery] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [page, setPage] = useState(1);
@@ -26,6 +31,22 @@ export default function PatientsView({
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [showImport, setShowImport] = useState(false);
+
+  const toggleFlag = async (patient) => {
+    if (pendingFlagsRef.current.has(patient.id)) return;
+    pendingFlagsRef.current.add(patient.id);
+    setPendingFlags(new Set(pendingFlagsRef.current));
+    try {
+      const updated = await onFlagChange(patient.id, patient.is_flagged !== true);
+      setSearchResults((current) => current?.map((p) => p.id === patient.id ? updated : p) ?? null);
+    } catch (error) {
+      console.error('Failed to update patient flag:', error);
+      addToast(error?.message || 'Failed to update patient flag. Please try again.', 'error');
+    } finally {
+      pendingFlagsRef.current.delete(patient.id);
+      setPendingFlags(new Set(pendingFlagsRef.current));
+    }
+  };
 
   // Debounced search
   useEffect(() => {
@@ -183,6 +204,21 @@ export default function PatientsView({
                   </div>
                   <div className="patient-contact">{p.phone || p.email || 'No contact info'}</div>
                 </div>
+                <button
+                  type="button"
+                  className={`patient-edit-btn patient-flag-btn${p.is_flagged === true ? ' flagged' : ''}`}
+                  title={p.is_flagged === true ? 'Remove patient flag' : 'Flag patient'}
+                  aria-label={p.is_flagged === true ? 'Remove patient flag' : 'Flag patient'}
+                  aria-pressed={p.is_flagged === true}
+                  aria-busy={pendingFlags.has(p.id)}
+                  disabled={pendingFlags.has(p.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleFlag(p);
+                  }}
+                >
+                  <Flag size={16} fill={p.is_flagged === true ? 'currentColor' : 'none'} aria-hidden="true" />
+                </button>
                 <span className="text-muted" style={{ fontSize: 12 }}>
                   {appointmentCount} apt{appointmentCount !== 1 ? 's' : ''}
                 </span>
@@ -200,6 +236,11 @@ export default function PatientsView({
                 <div className="patient-details" style={{ display: 'block' }}>
                   <div className="patient-details-content">
                     <div className="patient-info-section">
+                      {p.is_flagged === true && (
+                        <div className="patient-detail-item patient-red-flag">
+                          <span className="detail-label">Red Flag:</span> No-show / same-day cancellation history
+                        </div>
+                      )}
                       {p.phone && (
                         <div className="patient-detail-item">
                           <span className="detail-label">Phone:</span> {p.phone}
@@ -245,7 +286,7 @@ export default function PatientsView({
                           <span className="detail-label">Notes:</span> {p.notes}
                         </div>
                       )}
-                      {!p.phone && !p.email && !p.idNumber && !p.dob && !p.address && !p.source && !p.allergies && !p.medicalConditions && !p.notes && (
+                      {!p.is_flagged && !p.phone && !p.email && !p.idNumber && !p.dob && !p.address && !p.source && !p.allergies && !p.medicalConditions && !p.notes && (
                         <div className="patient-detail-item text-muted">
                           No additional information recorded. Click Edit to add details.
                         </div>
