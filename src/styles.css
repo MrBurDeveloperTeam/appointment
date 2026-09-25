@@ -4786,6 +4786,14 @@ tbody tr:hover {
   color: #dc2626;
 }
 
+.patient-appointment-count {
+  flex: 0 0 64px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .patient-flag-btn:hover {
   background: #fef2f2;
   color: #dc2626;

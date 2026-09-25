@@ -219,7 +219,7 @@ export default function PatientsView({
                 >
                   <Flag size={16} fill={p.is_flagged === true ? 'currentColor' : 'none'} aria-hidden="true" />
                 </button>
-                <span className="text-muted" style={{ fontSize: 12 }}>
+                <span className="text-muted patient-appointment-count">
                   {appointmentCount} apt{appointmentCount !== 1 ? 's' : ''}
                 </span>
                 <button className="patient-edit-btn" onClick={() => onEdit(p)} aria-label="Edit patient">
