@@ -36,6 +36,8 @@ const ACTIVITY_ENDPOINT = "/api/appointment/activity";
  *   occurredAt: string,            // ISO timestamp
  *   pagePath?: string | null,              // e.g. "/patients" — only set for type: "page_view"
  *   pageDurationSeconds?: number | null,   // only set for type: "page_view"
+ *   sessionDurationSeconds?: number | null, // only set for type: "session_end" — seconds the whole session lasted
+ *   useBeacon?: boolean,           // send via navigator.sendBeacon (page close / tab hidden), where fetch is unreliable
  * }} params
  * @returns {Promise<boolean>}
  */
@@ -63,7 +65,16 @@ export async function logActivityToOdoo(params) {
     // other event type.
     ...(params.pagePath != null ? { page_path: params.pagePath } : {}),
     ...(params.pageDurationSeconds != null ? { page_duration_seconds: params.pageDurationSeconds } : {}),
+    ...(params.sessionDurationSeconds != null ? { session_duration_seconds: params.sessionDurationSeconds } : {}),
   };
+
+  // On page close / tab hidden a normal fetch is often cancelled by the
+  // browser; sendBeacon is queued and delivered anyway (same approach as the
+  // inventory app's session_end). It can't return the response, so this is
+  // "queued or not" only.
+  if (params.useBeacon && typeof navigator !== "undefined" && navigator.sendBeacon) {
+    return navigator.sendBeacon(ACTIVITY_ENDPOINT, new Blob([JSON.stringify(payload)], { type: "application/json" }));
+  }
 
   try {
     const res = await fetch(ACTIVITY_ENDPOINT, {

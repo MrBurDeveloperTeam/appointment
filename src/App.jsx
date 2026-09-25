@@ -50,6 +50,8 @@ import {
 import { useGetUserId } from './mutation/useGetUserId';
 import useGetSessionInfo from './hooks/useGetSessionInfo';
 import usePageDurationTracker from './hooks/usePageDurationTracker';
+import useSessionDurationTracker from './hooks/useSessionDurationTracker';
+import { logActivityToOdoo } from './services/logActivityToOdoo';
 import {APPOINTMENT_PERMISSIONS,getAppointmentAccess,hasAppointmentPermission,} from "./services/appointmentAccess";
 
 const getLocalDateString = (date = new Date()) => {
@@ -688,6 +690,40 @@ useEffect(() => {
   // every other activity entry) whenever they navigate away, hide the tab,
   // or close it.
   usePageDurationTracker(view, viewTitle, dataEnabled && isReady, refreshActivity);
+
+  // Logs a "session_end" (with the session's total duration) when the user
+  // signs out, closes/leaves the page, or hides the tab — same event the
+  // inventory app sends. Sent to Odoo only (like page_view's Odoo-only
+  // fields): it is analytics, not a clinic operation, so it is not written
+  // to apt_activity_log. The identity is remembered by the hook, so it is
+  // still attributed correctly after sign-out has cleared `user`.
+  // See hooks/useSessionDurationTracker.js.
+  const sessionIdentity = useMemo(
+    () =>
+      user?.email
+        ? {
+            email: user.email,
+            name: profile?.name || user.user_metadata?.full_name || user.user_metadata?.name || null,
+            id: user.id ?? null,
+            clinicId: activeClinicId ?? null,
+          }
+        : null,
+    [user?.email, user?.id, profile?.name, activeClinicId]
+  );
+  useSessionDurationTracker(sessionIdentity, (details, durationSeconds, useBeacon, who) => {
+    logActivityToOdoo({
+      logId: crypto.randomUUID(),
+      actorEmail: who.email,
+      actorName: who.name,
+      supabaseUserId: who.id,
+      clinicId: who.clinicId,
+      type: 'session_end',
+      description: details,
+      occurredAt: new Date().toISOString(),
+      sessionDurationSeconds: durationSeconds,
+      useBeacon,
+    });
+  });
 
   // Force configuration of settings for new clinics
   useEffect(() => {
