@@ -129,6 +129,7 @@ export async function importPatients(clinicId, patients) {
 
 export async function updatePatient(patientUuid, updates) {
   const payload = {};
+  if (typeof updates.is_flagged === 'boolean') payload.is_flagged = updates.is_flagged;
   if (updates.name !== undefined) payload.name = updates.name;
   if (updates.phone !== undefined) payload.phone = updates.phone || null;
   if (updates.email !== undefined) { payload.email = updates.email ? updates.email.trim().toLowerCase() : null; }

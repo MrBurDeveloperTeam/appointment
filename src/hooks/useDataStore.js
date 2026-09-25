@@ -212,6 +212,14 @@ export default function useDataStore(activeClinicId, enabled = true) {
       refreshActivity();
     });
 
+  // Propagate failures so the flag button can retain its last saved state.
+  const updatePatientFlag = async (id, isFlagged) => {
+    const updated = await DataStore.updatePatient(id, { is_flagged: isFlagged });
+    setPatients((current) => current.map((patient) => patient.id === id ? updated : patient));
+    refreshActivity();
+    return updated;
+  };
+
   const deletePatient = (id) =>
     handleAsync(DataStore.deletePatient(id), () => {
       refreshPatients();
@@ -388,6 +396,7 @@ export default function useDataStore(activeClinicId, enabled = true) {
     addPatient,
     importPatients,
     updatePatient,
+    updatePatientFlag,
     deletePatient,
     addAppointment: handleAddAppointment,
     updateAppointment,
