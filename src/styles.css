@@ -1989,14 +1989,15 @@ p {
 }
 
 .tutorial-video-cta {
-  min-width: 200px;
+  width: min(200px, 100%);
   min-height: 80px;
-  padding: 0 2rem;
+  padding: 0 1.5rem;
+  box-sizing: border-box;
   border: 0;
   border-radius: 24px;
   background: #64bcbc;
   color: #fff;
-  font-size: 1.75rem;
+  font-size: clamp(1.25rem, 4vw, 1.75rem);
   font-weight: 700;
   box-shadow: 0 12px 24px rgba(100, 188, 188, 0.25);
 }
@@ -2004,6 +2005,13 @@ p {
 .tutorial-video-cta:hover:not(:disabled) {
   background: #58aeae;
   transform: translateY(-1px);
+}
+
+@media (max-width: 480px) {
+  .tutorial-video-cta {
+    width: 100%;
+    min-height: 60px;
+  }
 }
 
 .btn-primary:hover:not(:disabled) {
