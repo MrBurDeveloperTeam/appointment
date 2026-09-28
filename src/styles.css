@@ -3965,6 +3965,13 @@ tbody tr:hover {
   color: var(--text-primary);
   display: flex;
   align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.today-patient-flag {
+  width: 16px;
+  height: 16px;
 }
 
 .today-appointment-treatment {
