@@ -6,6 +6,7 @@ import { getInitials } from '../utils/people';
 import { getColorBg } from '../utils/colors';
 import { findAppointmentConflicts, isDateHoliday } from '../utils/availability';
 import Modal from './Modal';
+import PatientFlag from './PatientFlag';
 
 export default function DayView({
   currentDate,
@@ -54,9 +55,12 @@ export default function DayView({
   const hasUnassigned = unassignedAppointments.length > 0;
 
   const patientName = (id) => {
-    const p = patients.find((pt) => pt.id === id);
+    const p = patients.find((pt) => String(pt.id) === String(id));
     return p ? p.name : 'Unknown';
   };
+  const isPatientFlagged = (id) => patients.some(
+    (patient) => String(patient.id) === String(id) && patient.is_flagged === true
+  );
   const treatmentColor = (id) => {
     const t = treatments.find((tr) => tr.id === id);
     return t ? t.color : '#4A90A4';
@@ -394,10 +398,13 @@ export default function DayView({
                         }}
                       >
                         <div className="day-appointment-header">
-                          <div className="week-appointment-time">{formatTime(apt.startTime)}</div>
+                          <div className="appointment-primary-line">
+                            <span className="week-appointment-time">{formatTime(apt.startTime)}</span>
+                            {isPatientFlagged(apt.patientId) && <PatientFlag className="calendar-patient-flag" />}
+                            <span className="appointment-patient-name">{patientName(apt.patientId)}</span>
+                          </div>
                           {statusIcon(apt.status)}
                         </div>
-                        <div className="week-appointment-title">{patientName(apt.patientId)}</div>
                         <div className="week-appointment-title">
                           {apt.dentistId ? `${dentistName(apt.dentistId)} - ` : ''}
                           {treatmentName(apt.treatmentId || apt.treatmentType) || 'No treatment'}
@@ -486,10 +493,13 @@ export default function DayView({
                       }}
                     >
                       <div className="day-appointment-header">
-                        <div className="week-appointment-time">{formatTime(apt.startTime)}</div>
+                        <div className="appointment-primary-line">
+                          <span className="week-appointment-time">{formatTime(apt.startTime)}</span>
+                          {isPatientFlagged(apt.patientId) && <PatientFlag className="calendar-patient-flag" />}
+                          <span className="appointment-patient-name">{patientName(apt.patientId)}</span>
+                        </div>
                         {statusIcon(apt.status)}
                       </div>
-                      <div className="week-appointment-title">{patientName(apt.patientId)}</div>
                       {apt.roomId && <div className="week-appointment-title">{roomName(apt.roomId)}</div>}
                     </div>
                   );

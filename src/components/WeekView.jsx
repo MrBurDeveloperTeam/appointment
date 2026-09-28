@@ -6,6 +6,7 @@ import { addMinutes, formatTime, minutesToTime } from '../utils/time';
 import { getColorBg } from '../utils/colors';
 import { findAppointmentConflicts } from '../utils/availability';
 import Modal from './Modal';
+import PatientFlag from './PatientFlag';
 
 export default function WeekView({
   currentDate,
@@ -38,9 +39,12 @@ export default function WeekView({
   }, [currentDate]);
 
   const patientName = (id) => {
-    const p = patients.find((pt) => pt.id === id);
+    const p = patients.find((pt) => String(pt.id) === String(id));
     return p ? p.name : 'Unknown';
   };
+  const isPatientFlagged = (id) => patients.some(
+    (patient) => String(patient.id) === String(id) && patient.is_flagged === true
+  );
   const treatmentColor = (id) => {
     const t = treatments.find((tr) => tr.id === id);
     return t ? t.color : '#4A90A4';
@@ -295,13 +299,16 @@ export default function WeekView({
                     }}
                   >
                     <div className="week-appointment-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                      <div className="week-appointment-time">{formatTime(apt.startTime)}</div>
+                      <div className="appointment-primary-line">
+                        <span className="week-appointment-time">{formatTime(apt.startTime)}</span>
+                        {isPatientFlagged(apt.patientId) && <PatientFlag className="calendar-patient-flag" />}
+                        <span className="appointment-patient-name">{patientName(apt.patientId)}</span>
+                      </div>
                       {statusIcon(apt.status)}
                     </div>
                     <div className="week-appointment-title">
-                      {patientName(apt.patientId)}
                       {treatmentName(apt.treatmentId || apt.treatmentType)
-                        ? ` - ${treatmentName(apt.treatmentId || apt.treatmentType)}`
+                        ? treatmentName(apt.treatmentId || apt.treatmentType)
                         : ''}
                     </div>
                   </div>

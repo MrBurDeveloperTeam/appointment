@@ -7,6 +7,7 @@ import { getColorBg } from '../utils/colors';
 import { useToast } from '../context/ToastProvider';
 import { findAppointmentConflicts, isDateHoliday } from '../utils/availability';
 import { hasAppointmentPassed, PAST_APPOINTMENT_MESSAGE } from '../utils/appointmentReadOnly';
+import PatientFlag from './PatientFlag';
 
 const APPOINTMENT_DURATION_OPTIONS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
 
@@ -305,8 +306,8 @@ export default function AppointmentForm({
           <fieldset disabled={isReadOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <div className="form-group">
             <label className="form-label">Patient</label>
-            <div className="patient-item selected" style={{ cursor: 'default', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div className="patient-item selected patient-picker-item" style={{ cursor: 'default' }}>
+              <div className="patient-item-main">
                 <div className="patient-avatar">{selectedPatient ? getInitials(selectedPatient.name) : 'P'}</div>
                 <div className="patient-info">
                   <div className="patient-name">{selectedPatient ? selectedPatient.name || 'Unnamed patient' : 'Select patient'}</div>
@@ -315,6 +316,7 @@ export default function AppointmentForm({
                   </div>
                 </div>
               </div>
+              {selectedPatient?.is_flagged === true && <PatientFlag className="patient-picker-flag" />}
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
@@ -336,7 +338,7 @@ export default function AppointmentForm({
                   {!isSearching && filteredPatients.map((p) => (
                     <div
                       key={p.id}
-                      className={`patient-item ${String(form.patientId) === String(p.id) ? 'selected' : ''}`}
+                      className={`patient-item patient-picker-item ${String(form.patientId) === String(p.id) ? 'selected' : ''}`}
                       onClick={() => handlePatientSelect(p.id)}
                     >
                       <div className="patient-avatar">{getInitials(p.name)}</div>
@@ -344,6 +346,7 @@ export default function AppointmentForm({
                         <div className="patient-name">{p.name || 'Unnamed patient'}</div>
                         <div className="patient-contact">{p.phone || p.email || 'No contact info'}</div>
                       </div>
+                      {p.is_flagged === true && <PatientFlag className="patient-picker-flag" />}
                     </div>
                   ))}
                   {!isSearching && filteredPatients.length === 0 && (

@@ -3,6 +3,7 @@ import { todayISO, formatDayLong } from '../utils/date';
 import { addMinutes, formatTime } from '../utils/time';
 import { getInitials } from '../utils/people';
 import { dentalChartingUrl } from '../utils/dentalCharting';
+import PatientFlag from './PatientFlag';
 
 const PAGE_SIZE = 4;
 
@@ -29,10 +30,10 @@ export default function TodayView({ appointments, patients, rooms, treatments, o
   }, [todaysAppointments, page]);
 
   const patientName = (id) => {
-    const p = patients.find((pt) => pt.id === id);
+    const p = patients.find((pt) => String(pt.id) === String(id));
     return p ? p.name : 'Unknown';
   };
-  const patientDetails = (id) => patients.find((pt) => pt.id === id);
+  const patientDetails = (id) => patients.find((pt) => String(pt.id) === String(id));
   const roomName = (id) => {
     const r = rooms.find((rm) => rm.id === id);
     return r ? r.name : 'Room';
@@ -152,6 +153,7 @@ export default function TodayView({ appointments, patients, rooms, treatments, o
                       {patient ? getInitials(patient.name) : 'P'}
                     </span>
                     <span>{patientName(apt.patientId)}</span>
+                    {patient?.is_flagged === true && <PatientFlag className="today-patient-flag" />}
                   </div>
                   <div className="today-appointment-actions">
                     <span className={`today-status-pill ${apt.status || 'confirmed'}`}>

@@ -2703,6 +2703,17 @@ p {
   flex-shrink: 0;
 }
 
+.patient-flag-icon {
+  color: #dc2626;
+  flex: 0 0 auto;
+}
+
+.calendar-patient-flag {
+  width: 13px;
+  height: 13px;
+  align-self: center;
+}
+
 .day-appointment-title {
   min-width: 0;
   overflow: hidden;
@@ -3023,6 +3034,21 @@ p {
 
 .week-appointment-title {
   word-break: break-word;
+}
+
+.appointment-primary-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.appointment-patient-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .day-appointment-card {
@@ -3939,6 +3965,13 @@ tbody tr:hover {
   color: var(--text-primary);
   display: flex;
   align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.today-patient-flag {
+  width: 16px;
+  height: 16px;
 }
 
 .today-appointment-treatment {
@@ -4819,6 +4852,28 @@ tbody tr:hover {
 
 .patient-detail-item.patient-red-flag .detail-label {
   color: inherit;
+}
+
+.patient-picker-item {
+  min-width: 0;
+}
+
+.patient-item-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-width: 0;
+  flex: 1;
+}
+
+.patient-picker-flag {
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+}
+
+.patient-picker-flag + .btn {
+  margin-left: var(--space-sm);
 }
 
 :root[data-theme="dark"] .patient-detail-item.patient-red-flag {
