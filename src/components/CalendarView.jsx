@@ -4,6 +4,7 @@ import DayView from './DayView';
 import { buildMonthGrid, buildHolidayMap } from '../utils/calendar';
 import { formatMonthTitle, formatDayLong, sameDate, todayISO, toISODate, addDays, addMonths } from '../utils/date';
 import { formatTime, minutesToTime } from '../utils/time';
+import PatientFlag from './PatientFlag';
 
 export default function CalendarView({
   currentDate,
@@ -42,9 +43,12 @@ export default function CalendarView({
   };
 
   const patientName = (id) => {
-    const p = patients.find((pt) => pt.id === id);
+    const p = patients.find((pt) => String(pt.id) === String(id));
     return p ? p.name : 'Unknown';
   };
+  const isPatientFlagged = (id) => patients.some(
+    (patient) => String(patient.id) === String(id) && patient.is_flagged === true
+  );
   const roomName = (id) => {
     const r = rooms.find((rm) => rm.id === id);
     return r ? r.name : 'Room';
@@ -158,6 +162,7 @@ export default function CalendarView({
                     >
                       <span className={`day-appointment-dot status-${statusClass(apt.status)}`} />
                       <span className="day-appointment-time">{formatTime(apt.startTime)}</span>
+                      {isPatientFlagged(apt.patientId) && <PatientFlag className="calendar-patient-flag" />}
                       <span className="day-appointment-title">
                         {(() => {
                           const name = patientName(apt.patientId);

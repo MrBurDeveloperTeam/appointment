@@ -31,3 +31,24 @@ describe('past appointment details', () => {
     expect(screen.queryByText('Save Appointment')).toBeNull();
   });
 });
+
+describe('flagged patient indicator', () => {
+  it('shows a red flag for a flagged selected patient and picker row only', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-08T09:00:00'));
+    render(
+      <AppointmentForm
+        {...props}
+        initialData={{ ...props.initialData, id: null, date: '2026-09-09' }}
+        patients={[
+          { id: 'p', name: 'Patient', is_flagged: true },
+          { id: 'safe', name: 'Safe Patient', is_flagged: false },
+        ]}
+      />
+    );
+
+    expect(screen.getAllByLabelText('Flagged patient')).toHaveLength(1);
+    fireEvent.click(screen.getByText('Change'));
+    expect(screen.getAllByLabelText('Flagged patient')).toHaveLength(2);
+  });
+});
