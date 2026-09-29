@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { dirname, resolve, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 const host = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
 const root = dirname(require.resolve('@mrburdeveloperteam/pet-function/package.json'));
@@ -14,7 +15,14 @@ const canonical = join(root, 'public/games');
 const walk = dir => readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]);
 const files = walk(canonical);
 for (const file of files) {
-  assert.deepEqual(readFileSync(join(host, 'dist/games', relative(canonical, file))), readFileSync(file));
+  const relativePath = relative(canonical, file);
+  const builtPath = join(host, 'dist/games', relativePath);
+  if (relativePath === join('mole-game', 'index.wasm')) {
+    assert.ok(!existsSync(builtPath), 'Cloudflare output must not contain the oversized raw Godot WASM.');
+    assert.deepEqual(gunzipSync(readFileSync(`${builtPath}.gz`)), readFileSync(file));
+    continue;
+  }
+  assert.deepEqual(readFileSync(builtPath), readFileSync(file));
 }
 assert.equal(walk(join(host, 'dist/games')).length, files.length);
 for (const game of ['flappy-cat', 'pac-cat', 'tetris', 'meowdoku', 'mole-game']) {

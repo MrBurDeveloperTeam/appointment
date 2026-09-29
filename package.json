@@ -8,6 +8,7 @@
     "dev": "vite",
     "prebuild": "node scripts/prepare-pet.mjs",
     "build": "node ./node_modules/vite/bin/vite.js build",
+    "postbuild": "node scripts/compress-cloudflare-games.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "lint": "eslint .",
