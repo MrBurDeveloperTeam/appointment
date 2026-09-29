@@ -1397,8 +1397,7 @@ useEffect(() => {
         />
       )}
 
-
-      {(showCreditModal || isExpired) && (
+      {/* {(showCreditModal || isExpired) && (
         <CreditModal
           credits={credits}
           history={creditHistory}
@@ -1421,7 +1420,7 @@ useEffect(() => {
             }
           }}
         />
-      )}
+      )} */}
 
       <ConfirmDialog
         open={confirmDialog.open}
