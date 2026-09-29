@@ -122,8 +122,8 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  min-width: 230px;
-  padding: 14px 22px;
+  min-width: 0px;
+  padding: 12px 18px;
   border: 0;
   border-radius: 13px;
   color: #ffffff !important;
@@ -142,31 +142,52 @@
   transform: translateY(-2px);
 }
 
-.appointment-primary-button {
-  padding: 15px 21px;
-}
-
-.appointment-nav-cta:hover,
-.appointment-primary-button:hover {
-  transform: translateY(-2px);
-  background: var(--appointment-teal-dark);
-}
-
+.appointment-primary-button,
 .appointment-secondary-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 14px 20px;
-  border: 1px solid var(--appointment-line);
-  border-radius: 13px;
-  color: var(--appointment-navy);
+  gap: 12px;
+
+  min-height: 62px;
+  padding: 14px 38px;
+
+  border-radius: 24px;
+  font-size: 20px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.appointment-primary-button {
+  color: #ffffff !important;
+  background: #55a39a;
+  box-shadow: 0 12px 25px rgba(85, 163, 154, 0.2);
+}
+
+.appointment-nav-cta:hover,
+.appointment-primary-button:hover {
+  color: #ffffff !important;
+  background: #478d85;
+  transform: translateY(-2px);
+}
+
+.appointment-secondary-button {
+  color: #102b35;
   background: #ffffff;
-  font-weight: 800;
+  border: 2px solid #dcebea;
 }
 
 .appointment-secondary-button:hover {
-  border-color: var(--appointment-teal);
-  color: var(--appointment-teal-dark);
+  color: #102b35;
+  background: #f7fbfa;
+  border-color: #55a39a;
+  transform: translateY(-2px);
 }
 
 .appointment-menu-button,
@@ -238,9 +259,8 @@
 
 .appointment-hero-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 13px;
-  margin-top: 30px;
+  align-items: center;
+  gap: 16px;
 }
 
 .appointment-trust-row {
@@ -760,6 +780,16 @@
 }
 
 @media (max-width: 620px) {
+  .appointment-hero-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .appointment-primary-button,
+  .appointment-secondary-button {
+    width: 100%;
+  }
+
   .appointment-stat-strip {
     grid-template-columns: repeat(2, 1fr);
   }

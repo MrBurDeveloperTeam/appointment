@@ -148,11 +148,12 @@ export default function LoginView() {
                 className="appointment-primary-button"
                 href={SNABBB_SIGNUP_URL}
               >
-                Get Started
+                <span>Get Started</span>
+                <ArrowRight size={22} strokeWidth={2.5} />
               </a>
 
               <a className="appointment-secondary-button" href="#features">
-                Learn More
+                Explore Features
               </a>
             </div>
 
