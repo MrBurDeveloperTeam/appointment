@@ -36,11 +36,11 @@ export default function LoginView() {
   ];
 
   const faqs = [
-    {
-      question: "What happens at the end of my trial?",
-      answer:
-        "Your account will be paused until you select a paid plan. No data will be lost.",
-    },
+    // {
+    //   question: "What happens at the end of my trial?",
+    //   answer:
+    //     "Your account will be paused until you select a paid plan. No data will be lost.",
+    // },
     {
       question: "Can I use the app with multiple clinic locations?",
       answer:
@@ -381,13 +381,21 @@ export default function LoginView() {
       </main>
 
       <footer className="appointment-footer">
+        <a
+          className="appointment-brand"
+          href="#top"
+          aria-label="Snabbb Appointment home"
+        >
+          <img src="/assets/Snabbb (Teal).png" alt="Snabbb" />
+          <span>Appointment</span>
+        </a>
+
         <p>
-          © 2026 Snabbb Appointment. Smart scheduling for modern clinics.
+          Simple appointment management for modern clinics.
         </p>
 
         <div className="appointment-footer-links">
           <a href="#features">Features</a>
-          {/* <a href="#pricing">Pricing</a> */}
           <a href="#faq">FAQ</a>
         </div>
       </footer>

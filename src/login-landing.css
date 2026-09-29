@@ -675,13 +675,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 28px;
+  gap: 34px;
   padding: 35px 6vw;
   border-top: 1px solid var(--appointment-line);
   background: #ffffff;
 }
 
+.appointment-footer .appointment-brand {
+  flex-shrink: 0;
+}
+
 .appointment-footer p {
+  flex: 1;
   margin: 0;
   color: var(--appointment-muted);
   font-size: 13px;
@@ -689,10 +694,17 @@
 
 .appointment-footer-links {
   display: flex;
-  gap: 22px;
+  align-items: center;
+  gap: 28px;
+  flex-shrink: 0;
+
   color: var(--appointment-muted);
   font-size: 13px;
   font-weight: 700;
+}
+
+.appointment-footer-links a:hover {
+  color: var(--appointment-teal);
 }
 
 .appointment-nav-cta svg {
