@@ -251,7 +251,7 @@
   font-size: clamp(42px, 5.2vw, 76px);
   font-weight: 800;
   letter-spacing: -0.055em;
-  line-height: 1.2;
+  line-height: 1.0;
 }
 
 .appointment-hero h1 em {
