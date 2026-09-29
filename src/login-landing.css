@@ -806,7 +806,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgb(0, 0, 0);
+    /* background: rgb(0, 0, 0); */
+    background: #2eb5b1;
     color: #ffffff;
     text-decoration: none;
     padding: 1rem 2.5rem;
@@ -819,6 +820,11 @@
     position: relative;
     z-index: 1;
     transition: transform 0.2s;
+}
+
+.landing-btn-white:hover {
+    background: #218b87;
+    transform: translateY(-2px);
 }
 
 .landing-btn-dark {
@@ -842,7 +848,7 @@
 }
 
 /* ================= Footer ================= */
-.landing-footer {
+/* .landing-footer {
     display: flex;
     justify-content: space-between;
     padding: 4rem 5% 2rem;
@@ -850,6 +856,16 @@
     border-top: 1px solid #e2e8f0;
     flex-wrap: wrap;
     gap: 2rem;
+} */
+.landing-footer {
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    column-gap: 6rem;
+    padding: 4rem 5% 2rem;
+    background: #fafafa;
+    border-top: 1px solid #e2e8f0;
+    flex-wrap: wrap;
 }
 
 .landing-footer-col h4 {
