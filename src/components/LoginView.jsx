@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import CatMascot from "./CatMascot";
 import MolarAIFloat from "./MolarAIFloat";
 import { SNABBB_SIGNUP_URL } from "../constants/authLinks";
+import {
+  ArrowRight,
+} from "lucide-react";
 
 export default function LoginView() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -68,9 +71,9 @@ export default function LoginView() {
             Features
           </a>
 
-          <a href="#pricing" onClick={() => setMenuOpen(false)}>
+          {/* <a href="#pricing" onClick={() => setMenuOpen(false)}>
             Pricing
-          </a>
+          </a> */}
 
           <a href="#faq" onClick={() => setMenuOpen(false)}>
             FAQ
@@ -101,8 +104,12 @@ export default function LoginView() {
             Log In
           </button>
 
-          <a className="appointment-nav-cta" href={SNABBB_SIGNUP_URL}>
+          {/* <a className="appointment-nav-cta" href={SNABBB_SIGNUP_URL}>
             Sign Up
+          </a> */}
+          <a className="appointment-nav-cta" href={SNABBB_SIGNUP_URL}>
+            <span>Sign Up</span>
+            <ArrowRight size={22} strokeWidth={2.5} />
           </a>
         </div>
 
@@ -379,7 +386,7 @@ export default function LoginView() {
 
         <div className="appointment-footer-links">
           <a href="#features">Features</a>
-          <a href="#pricing">Pricing</a>
+          {/* <a href="#pricing">Pricing</a> */}
           <a href="#faq">FAQ</a>
         </div>
       </footer>
