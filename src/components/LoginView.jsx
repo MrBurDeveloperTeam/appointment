@@ -185,14 +185,14 @@ export default function LoginView() {
       </section>
 
       {/* PRICING SECTION */}
-      <section id="pricing" className="landing-pricing">
+      {/* <section id="pricing" className="landing-pricing">
         <div className="landing-pricing-header">
           <h2>Your Digital Partner for Success in a Virtual World.</h2>
-        </div>
+        </div> */}
 
-        <div className="landing-pricing-grid two-cols">
+        {/* <div className="landing-pricing-grid two-cols"> */}
           {/* Monthly Plan */}
-          <div className="landing-price-card">
+          {/* <div className="landing-price-card">
             <h3>Monthly</h3>
             <p className="price-desc">Pay as you go, cancel anytime.</p>
             <div className="landing-price-amount">$39<span>/ mo</span></div>
@@ -203,10 +203,10 @@ export default function LoginView() {
               <li><span className="landing-check-icon">✓</span> Automated SMS reminders</li>
               <li><span className="landing-check-icon">✓</span> Standard email support</li>
             </ul>
-          </div>
+          </div> */}
 
           {/* Annual Plan (Featured) */}
-          <div className="landing-price-card featured">
+          {/* <div className="landing-price-card featured">
             <div className="landing-price-badge">Best Value - Save 50%</div>
             <h3>Annually</h3>
             <p className="price-desc">Commit for a year and save big on your clinic.</p>
@@ -220,7 +220,7 @@ export default function LoginView() {
             </ul>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* FAQ SECTION */}
       <section id="faq" className="landing-faq">
