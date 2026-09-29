@@ -337,27 +337,44 @@ export default {
     const url =
         new URL(request.url);
 
-    // Pages rejects individual assets larger than 25 MiB. The Godot Web
-    // export is uploaded as index.wasm.gz while retaining its public URL.
+    // Pages rejects individual assets larger than 25 MiB. Reassemble the
+    // Godot WASM from two smaller static assets as one streaming response.
     if (url.pathname === '/games/mole-game/index.wasm') {
-      const compressedUrl = new URL(request.url);
-      compressedUrl.pathname = `${url.pathname}.gz`;
-      const compressedResponse = await env.ASSETS.fetch(
-        new Request(compressedUrl, request)
+      const partUrls = [0, 1].map((part) => {
+        const partUrl = new URL(request.url);
+        partUrl.pathname = `${url.pathname}.part${part}`;
+        return partUrl;
+      });
+      const partResponses = await Promise.all(
+        partUrls.map((partUrl) => env.ASSETS.fetch(new Request(partUrl, request)))
       );
+      const failedPart = partResponses.find((response) => !response.ok || !response.body);
+      if (failedPart) return failedPart;
 
-      if (!compressedResponse.ok) return compressedResponse;
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            for (const response of partResponses) {
+              const reader = response.body.getReader();
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                controller.enqueue(value);
+              }
+            }
+            controller.close();
+          } catch (error) {
+            controller.error(error);
+          }
+        },
+      });
 
-      const headers = new Headers(compressedResponse.headers);
+      const headers = new Headers();
       headers.set('Content-Type', 'application/wasm');
-      headers.set('Content-Encoding', 'gzip');
       headers.set('Vary', 'Accept-Encoding');
       headers.set('Cache-Control', 'public, max-age=31536000, immutable');
 
-      return new Response(compressedResponse.body, {
-        status: compressedResponse.status,
-        headers,
-      });
+      return new Response(stream, { status: 200, headers });
     }
 
     /*
