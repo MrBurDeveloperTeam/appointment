@@ -48,7 +48,7 @@ export default function LoginView() {
         </div>
         <div className="landing-nav-links">
           <a href="#features">Features</a>
-          <a href="#pricing">Pricing</a>
+          {/* <a href="#pricing">Pricing</a> */}
           <a href="#faq">FAQ</a>
         </div>
         <div className="landing-nav-actions">
@@ -254,7 +254,7 @@ export default function LoginView() {
       {/* FOOTER DIRECTORY */}
       <footer className="landing-footer">
         <div className="landing-footer-col">
-          <img src="/assets/Snabbb (White).png" alt="Snabbb Logo" style={{ height: '32px', marginBottom: '1rem' }} />
+          <img src="/assets/Snabbb (Teal).png" alt="Snabbb Logo" style={{ height: '32px', marginBottom: '1rem' }} />
           <p style={{ color: '#64748b', fontSize: '0.9rem', maxWidth: '250px' }}>
             Empowering clinics worldwide with smart, easy-to-use scheduling software.
           </p>
@@ -263,7 +263,7 @@ export default function LoginView() {
           <h4>Product</h4>
           <ul>
             <li><a href="#">Features</a></li>
-            <li><a href="#">Pricing</a></li>
+            {/* <li><a href="#">Pricing</a></li> */}
             <li><a href="#">Integrations</a></li>
             <li><a href="#">Changelog</a></li>
           </ul>
@@ -272,12 +272,12 @@ export default function LoginView() {
           <h4>Company</h4>
           <ul>
             <li><a href="#">About Us</a></li>
-            <li><a href="#">Careers</a></li>
-            <li><a href="#">Customers</a></li>
+            {/* <li><a href="#">Careers</a></li>
+            <li><a href="#">Customers</a></li> */}
             <li><a href="#">Contact</a></li>
           </ul>
         </div>
-        <div className="landing-footer-col">
+        {/* <div className="landing-footer-col">
           <h4>Resource</h4>
           <ul>
             <li><a href="#">Blog</a></li>
@@ -285,15 +285,15 @@ export default function LoginView() {
             <li><a href="#">Community</a></li>
             <li><a href="#">Guides</a></li>
           </ul>
-        </div>
-        <div className="landing-footer-col">
+        </div> */}
+        {/* <div className="landing-footer-col">
           <h4>Download</h4>
           <ul>
             <li><a href="#">iOS App</a></li>
             <li><a href="#">Android App</a></li>
             <li><a href="#">Desktop App</a></li>
           </ul>
-        </div>
+        </div> */}
       </footer>
 
 
