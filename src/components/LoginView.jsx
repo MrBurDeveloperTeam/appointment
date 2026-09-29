@@ -171,9 +171,9 @@ export default function LoginView() {
                     transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
                   }}
                 >
-                  <div className="landing-feature-icon-wrapper" style={index === 1 ? { background: '#eff6ff', color: '#3b82f6' } : {}}>
+                  {/* <div className="landing-feature-icon-wrapper" style={index === 1 ? { background: '#eff6ff', color: '#3b82f6' } : {}}>
                     {feature.icon}
-                  </div>
+                  </div> */}
                   <h3>{feature.title}</h3>
                   <p>{feature.desc}</p>
                 </div>
