@@ -249,7 +249,7 @@ export default function LoginView() {
           </div>
         </section>
 
-        <section
+        {/* <section
           id="pricing"
           className="appointment-section appointment-pricing"
         >
@@ -305,7 +305,7 @@ export default function LoginView() {
               </ul>
             </article>
           </div>
-        </section>
+        </section> */}
 
         <section id="faq" className="appointment-section appointment-faq">
           <div className="appointment-section-heading">
