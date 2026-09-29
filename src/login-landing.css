@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&display=swap");
 :root {
   --appointment-teal: #55a39a;
   --appointment-teal-dark: #478d85;
@@ -14,7 +15,7 @@
   overflow-x: hidden;
   color: var(--appointment-navy);
   background: var(--appointment-background);
-  font-family: "DM Sans", Arial, sans-serif;
+  font-family: "Open Sans", Arial, sans-serif;
 }
 
 .appointment-landing *,
