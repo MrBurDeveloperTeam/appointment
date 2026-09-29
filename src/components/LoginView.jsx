@@ -375,7 +375,8 @@ export default function LoginView() {
             className="appointment-primary-button appointment-light-button"
             href={SNABBB_SIGNUP_URL}
           >
-            Get Started Now
+            Sign Up 
+            <ArrowRight size={22} strokeWidth={2.5} />
           </a>
         </section>
       </main>
