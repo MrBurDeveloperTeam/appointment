@@ -4,300 +4,386 @@ import MolarAIFloat from "./MolarAIFloat";
 import { SNABBB_SIGNUP_URL } from "../constants/authLinks";
 
 export default function LoginView() {
-  // 3D Carousel State
-  const [activeFeature, setActiveFeature] = useState(0);
-
-  React.useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveFeature((prev) => (prev + 1) % 3);
-    }, 7000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleNextFeature = () => setActiveFeature((prev) => (prev + 1) % 3);
-  const handlePrevFeature = () => setActiveFeature((prev) => (prev - 1 + 3) % 3);
-
-  // Toggle FAQ accordion
+  const [menuOpen, setMenuOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState(null);
 
-  const toggleFaq = (index) => {
-    setActiveFaq(activeFaq === index ? null : index);
+  const goToAuth = (path) => {
+    window.location.assign(path);
   };
 
-  const faqs = [
-    { q: "What happens at the end of my trial?", a: "Your account will be paused until you select a paid plan. No data will be lost." },
-    { q: "Can I use the app with multiple clinic locations?", a: "Yes! Our Teams and Enterprise plans support multi-location management from a single dashboard." },
-    { q: "What does the onboarding process look like?", a: "We provide guided setup and 1-on-1 team training to get your clinic running smoothly in under 48 hours." },
-    { q: "How do I upgrade or downgrade?", a: "You can change your plan at any time from your billing dashboard. Changes are prorated automatically." },
-    { q: "What payment methods do you accept?", a: "We accept all major credit cards including Visa, Mastercard, and American Express." }
+  const features = [
+    {
+      icon: "01",
+      title: "Set your availability",
+      description:
+        "Enter services, working hours, buffers, blocked times, and calendar availability for your staff.",
+    },
+    {
+      icon: "02",
+      title: "Share your booking link",
+      description:
+        "Share your online appointment booking page through emails, texts, brochures, or your website.",
+    },
+    {
+      icon: "03",
+      title: "Accept bookings 24/7",
+      description:
+        "Let customers self-schedule, cancel, reschedule, and book recurring appointments at any time.",
+    },
   ];
 
-  const goToAuth = (path) => window.location.assign(path);
+  const faqs = [
+    {
+      question: "What happens at the end of my trial?",
+      answer:
+        "Your account will be paused until you select a paid plan. No data will be lost.",
+    },
+    {
+      question: "Can I use the app with multiple clinic locations?",
+      answer:
+        "Yes. Teams and Enterprise plans support multiple clinic locations.",
+    },
+    {
+      question: "What does the onboarding process look like?",
+      answer:
+        "We provide guided setup and team training to help your clinic get started.",
+    },
+    {
+      question: "How do I upgrade or downgrade?",
+      answer:
+        "You can change your plan at any time from your billing dashboard.",
+    },
+  ];
 
   return (
-    <div className="landing-fullscreen-container">
+    <div className="appointment-landing">
+      <nav className="appointment-nav">
+        <a className="appointment-brand" href="/" aria-label="Snabbb Appointment">
+          <img src="/assets/Snabbb (Teal).png" alt="Snabbb" />
+          <span>Appointment</span>
+        </a>
 
-      {/* NAVBAR */}
-      <nav className="landing-navbar">
-        <div
-          className="landing-nav-logo"
-          onClick={() => window.open('https://app.snabbb.com/', '_self')}
-          style={{ cursor: 'pointer' }}
+        <div className={`appointment-nav-links ${menuOpen ? "is-open" : ""}`}>
+          <a href="#features" onClick={() => setMenuOpen(false)}>
+            Features
+          </a>
+
+          <a href="#pricing" onClick={() => setMenuOpen(false)}>
+            Pricing
+          </a>
+
+          <a href="#faq" onClick={() => setMenuOpen(false)}>
+            FAQ
+          </a>
+
+          <div className="appointment-mobile-actions">
+            <button
+              className="appointment-login"
+              onClick={() => goToAuth("/login")}
+            >
+              Log In
+            </button>
+
+            <a
+              className="appointment-mobile-signup"
+              href={SNABBB_SIGNUP_URL}
+            >
+              Sign Up
+            </a>
+          </div>
+        </div>
+
+        <div className="appointment-nav-actions">
+          <button
+            className="appointment-login"
+            onClick={() => goToAuth("/login")}
+          >
+            Log In
+          </button>
+
+          <a className="appointment-nav-cta" href={SNABBB_SIGNUP_URL}>
+            Sign Up
+          </a>
+        </div>
+
+        <button
+          className="appointment-menu-button"
+          type="button"
+          aria-label="Toggle navigation"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((value) => !value)}
         >
-          <img src="/assets/Snabbb (Teal).png" alt="Snabbb Logo" />
-        </div>
-        <div className="landing-nav-links">
-          <a href="#features">Features</a>
-          {/* <a href="#pricing">Pricing</a> */}
-          <a href="#faq">FAQ</a>
-        </div>
-        <div className="landing-nav-actions">
-          <button className="landing-btn-outline" onClick={() => goToAuth('/login')}>Log In</button>
-          <a className="landing-btn-primary" href={SNABBB_SIGNUP_URL}>Sign Up</a>
-        </div>
+          ☰
+        </button>
       </nav>
 
-      {/* HERO SECTION */}
-      <section className="landing-hero">
-        <div className="landing-hero-content">
-          <div className="landing-hero-badge">
-            <span>EXCELLENT</span>
-            ⭐⭐⭐⭐⭐ 4.9/5 based on 10k+ reviews
-          </div>
-          <h1>Online Booking Made Simple, Your Appointments <span>Sorted.</span></h1>
-          <p>
-            With our simple online booking system, scheduling dental appointments has never been easier. Focus on your patients, we handle the workflow.
-          </p>
-          <div className="landing-hero-actions">
-            <a className="landing-btn-primary" href={SNABBB_SIGNUP_URL}>Get Started</a>
-            <button className="landing-btn-secondary" onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}>
-              Learn More →
-            </button>
-          </div>
-        </div>
-
-        <div className="landing-hero-visuals">
-          <div className="landing-mockup-card">
-            <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=100&q=80" alt="Doctor" className="landing-mockup-avatar top-left" />
-            <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=100&q=80" alt="Doctor" className="landing-mockup-avatar bottom-right" />
-
-            <div className="landing-mockup-header">
-              <span className="landing-mockup-badge">Confirmed</span>
-              <p>You are scheduled with Dr. Sarah</p>
+      <main>
+        <section className="appointment-hero">
+          <div className="appointment-hero-copy">
+            <div className="appointment-eyebrow">
+              <span className="appointment-live-dot" />
+              APPOINTMENT MANAGEMENT
             </div>
 
-            <div className="landing-mockup-body">
-              <h4>Dental Checkup</h4>
-              <p>30 Minute Meeting</p>
-              <p style={{ marginTop: '0.5rem', fontWeight: 600 }}>10:30am - 11:00am</p>
-              <p>Tuesday, March 24, 2026</p>
+            <h1>
+              Online booking made simple, your appointments{" "}
+              <em>sorted.</em>
+            </h1>
+
+            <p>
+              With our simple online booking system, scheduling dental
+              appointments has never been easier. Focus on your patients; we
+              handle the workflow.
+            </p>
+
+            <div className="appointment-hero-actions">
+              <a
+                className="appointment-primary-button"
+                href={SNABBB_SIGNUP_URL}
+              >
+                Get Started
+              </a>
+
+              <a className="appointment-secondary-button" href="#features">
+                Learn More
+              </a>
             </div>
 
-            <div className="landing-mockup-integrations">
-              <div className="landing-integration-dot" style={{ color: '#ea4335' }}>G</div>
-              <div className="landing-integration-dot" style={{ color: '#0061ff' }}>D</div>
-              <div className="landing-integration-dot" style={{ color: '#0070f3' }}>▲</div>
-              <div className="landing-integration-dot" style={{ color: '#24292e' }}>git</div>
+            <div className="appointment-trust-row">
+              <span>✓ Easy scheduling</span>
+              <span>✓ Automated reminders</span>
+              <span>✓ 24/7 online booking</span>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* TRUST BRANDS */}
-      <section className="landing-brands">
-        <div className="landing-brand">Scheduled</div>
-        <div className="landing-brand">Email</div>
-        <div className="landing-brand">Customize</div>
-        <div className="landing-brand">User Friendly</div>
-        <div className="landing-brand">Affordable</div>
-      </section>
+          <div className="appointment-hero-preview">
+            <div className="appointment-preview-glow" />
 
-      {/* FEATURES SECTION */}
-      <section id="features" className="landing-features">
-        <div className="landing-section-tag">Features</div>
-        <h2>Online Appointment Booking Made Simple</h2>
+            <div className="appointment-preview-card">
+              <img
+                className="appointment-avatar appointment-avatar-top"
+                src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=100&q=80"
+                alt="Doctor"
+              />
 
-        <div className="landing-features-carousel-container">
-          <button className="landing-carousel-btn left" onClick={handlePrevFeature}>&#8592;</button>
-          <div className="landing-features-grid">
-            {[
-              {
-                icon: '🕒',
-                title: 'Set your availability, Simple and Flexible',
-                desc: 'Simply enter the available services and working hours for you and your staff so your booking page is live, ready. Add buffers, block times, or integrate multiple calendars.'
-              },
-              {
-                icon: '🔗',
-                title: 'Share your link with your Customer',
-                desc: 'Share your online appointment booking page URL with your customer in emails, texts, brochures, etc. Start appointments by placing our widget on your site.'
-              },
-              {
-                icon: '📱',
-                title: 'Accept online booking hassle free 24/7',
-                desc: 'Give customers the convenience to self-schedule, cancel, reschedule and book recurring appointments using our 24/7 online booking software. Send automated SMS/Emails.'
-              }
-            ].map((feature, index) => {
-              // Calculate relative position: 0 (front), 1 (right/back), 2 (left/back)
-              const offset = (index - activeFeature + 3) % 3;
-              let transformStyle = '';
-              let opacity = 1;
-              let zIndex = 3;
+              <img
+                className="appointment-avatar appointment-avatar-bottom"
+                src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=100&q=80"
+                alt="Doctor"
+              />
 
-              if (offset === 0) {
-                // Front active
-                transformStyle = 'translateZ(0px) translateY(0) rotateX(0deg)';
-                opacity = 1;
-                zIndex = 3;
-              } else if (offset === 1) {
-                // Right back path
-                transformStyle = 'translateZ(-150px) translateY(-60px) rotateX(8deg)';
-                opacity = 0.5;
-                zIndex = 2;
-              } else if (offset === 2) {
-                // Left deeper back path
-                transformStyle = 'translateZ(-300px) translateY(40px) rotateX(-8deg)';
-                opacity = 0;
-                zIndex = 1;
-              }
+              <span className="appointment-confirmed">Confirmed</span>
+
+              <p className="appointment-preview-subtitle">
+                You are scheduled with Dr. Sarah
+              </p>
+
+              <div className="appointment-preview-body">
+                <h3>Dental Checkup</h3>
+                <p>30 Minute Meeting</p>
+                <strong>10:30am - 11:00am</strong>
+                <p>Tuesday, March 24, 2026</p>
+              </div>
+
+              <div className="appointment-preview-dots">
+                <span>G</span>
+                <span>D</span>
+                <span>▲</span>
+                <span>git</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="appointment-stat-strip">
+          <div>
+            <strong>24/7</strong>
+            <span>Online booking</span>
+          </div>
+
+          <div>
+            <strong>10k+</strong>
+            <span>Reviews</span>
+          </div>
+
+          <div>
+            <strong>30 sec</strong>
+            <span>To book an appointment</span>
+          </div>
+
+          <div>
+            <strong>100%</strong>
+            <span>Clinic focused</span>
+          </div>
+        </section>
+
+        <section
+          id="features"
+          className="appointment-section appointment-features"
+        >
+          <div className="appointment-section-heading">
+            <span className="appointment-section-label">Features</span>
+
+            <h2>Online appointment booking made simple.</h2>
+
+            <p>
+              Everything your clinic needs to organize appointments and give
+              patients a smoother booking experience.
+            </p>
+          </div>
+
+          <div className="appointment-feature-grid">
+            {features.map((feature) => (
+              <article
+                className="appointment-feature-card"
+                key={feature.title}
+              >
+                <div className="appointment-feature-icon">
+                  {feature.icon}
+                </div>
+
+                <h3>{feature.title}</h3>
+                <p>{feature.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section
+          id="pricing"
+          className="appointment-section appointment-pricing"
+        >
+          <div className="appointment-section-heading">
+            <span className="appointment-section-label">Pricing</span>
+
+            <h2>Choose the plan that fits your clinic.</h2>
+
+            <p>
+              Start managing your appointments with a simple and transparent
+              subscription.
+            </p>
+          </div>
+
+          <div className="appointment-pricing-grid">
+            <article className="appointment-price-card">
+              <h3>Monthly</h3>
+              <p>Pay as you go, cancel anytime.</p>
+
+              <div className="appointment-price">
+                $39<span>/ month</span>
+              </div>
+
+              <a href={SNABBB_SIGNUP_URL}>Get Started</a>
+
+              <ul>
+                <li>✓ Uncapped appointments</li>
+                <li>✓ Custom domain integration</li>
+                <li>✓ Automated SMS reminders</li>
+                <li>✓ Standard email support</li>
+              </ul>
+            </article>
+
+            <article className="appointment-price-card appointment-price-featured">
+              <div className="appointment-price-badge">
+                Best Value - Save 50%
+              </div>
+
+              <h3>Annually</h3>
+              <p>Commit for a year and save big.</p>
+
+              <div className="appointment-price">
+                $234<span>/ year</span>
+              </div>
+
+              <a href={SNABBB_SIGNUP_URL}>Get Started</a>
+
+              <ul>
+                <li>✓ Everything in Monthly</li>
+                <li>✓ Priority 24/7 support</li>
+                <li>✓ Advanced real-time analytics</li>
+                <li>✓ Multi-location management</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section id="faq" className="appointment-section appointment-faq">
+          <div className="appointment-section-heading">
+            <span className="appointment-section-label">FAQ</span>
+
+            <h2>Frequently asked questions.</h2>
+
+            <p>
+              Find answers to common questions about appointment scheduling.
+            </p>
+          </div>
+
+          <div className="appointment-faq-list">
+            {faqs.map((faq, index) => {
+              const isOpen = activeFaq === index;
 
               return (
                 <div
-                  key={index}
-                  className={`landing-feature-card ${offset === 0 ? 'active' : ''}`}
-                  style={{
-                    transform: transformStyle,
-                    opacity: opacity,
-                    zIndex: zIndex,
-                    transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
-                  }}
+                  className={`appointment-faq-item ${
+                    isOpen ? "open" : ""
+                  }`}
+                  key={faq.question}
                 >
-                  {/* <div className="landing-feature-icon-wrapper" style={index === 1 ? { background: '#eff6ff', color: '#3b82f6' } : {}}>
-                    {feature.icon}
-                  </div> */}
-                  <h3>{feature.title}</h3>
-                  <p>{feature.desc}</p>
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    onClick={() =>
+                      setActiveFaq(isOpen ? null : index)
+                    }
+                  >
+                    {faq.question}
+                    <span>{isOpen ? "−" : "+"}</span>
+                  </button>
+
+                  {isOpen && (
+                    <div className="appointment-faq-answer">
+                      <p>{faq.answer}</p>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
-          <button className="landing-carousel-btn right" onClick={handleNextFeature}>&#8594;</button>
-        </div>
-      </section>
+        </section>
 
-      {/* PRICING SECTION */}
-      {/* <section id="pricing" className="landing-pricing">
-        <div className="landing-pricing-header">
-          <h2>Your Digital Partner for Success in a Virtual World.</h2>
-        </div> */}
+        <section className="appointment-final-cta">
+          <div>
+            <span className="appointment-section-label">GET STARTED</span>
 
-        {/* <div className="landing-pricing-grid two-cols"> */}
-          {/* Monthly Plan */}
-          {/* <div className="landing-price-card">
-            <h3>Monthly</h3>
-            <p className="price-desc">Pay as you go, cancel anytime.</p>
-            <div className="landing-price-amount">$39<span>/ mo</span></div>
-            <a className="landing-price-btn" href={SNABBB_SIGNUP_URL}>Get Started</a>
-            <ul className="landing-price-features">
-              <li><span className="landing-check-icon">✓</span> Uncapped appointments</li>
-              <li><span className="landing-check-icon">✓</span> Custom domain integration</li>
-              <li><span className="landing-check-icon">✓</span> Automated SMS reminders</li>
-              <li><span className="landing-check-icon">✓</span> Standard email support</li>
-            </ul>
-          </div> */}
+            <h2>Easy access for easy bookings.</h2>
 
-          {/* Annual Plan (Featured) */}
-          {/* <div className="landing-price-card featured">
-            <div className="landing-price-badge">Best Value - Save 50%</div>
-            <h3>Annually</h3>
-            <p className="price-desc">Commit for a year and save big on your clinic.</p>
-            <div className="landing-price-amount">$234<span>/ yr</span></div>
-            <a className="landing-price-btn" href={SNABBB_SIGNUP_URL}>Get Started</a>
-            <ul className="landing-price-features">
-              <li><span className="landing-check-icon">✓</span> Everything in Monthly</li>
-              <li><span className="landing-check-icon">✓</span> Priority 24/7 support</li>
-              <li><span className="landing-check-icon">✓</span> Advanced real-time analytics</li>
-              <li><span className="landing-check-icon">✓</span> Multi-location management</li>
-            </ul>
+            <p>
+              Deliver a better booking experience and take your clinic’s
+              workflow to the next level.
+            </p>
           </div>
-        </div>
-      </section> */}
 
-      {/* FAQ SECTION */}
-      <section id="faq" className="landing-faq">
-        <div className="landing-faq-header">
-          <div className="landing-section-tag">FAQ</div>
-          <h2>Frequently Asked Questions</h2>
-        </div>
-        <div className="landing-faq-list">
-          {faqs.map((faq, index) => (
-            <div key={index} className={`landing-faq-item ${activeFaq === index ? 'active' : ''}`}>
-              <div className="landing-faq-question" onClick={() => toggleFaq(index)}>
-                {faq.q} <span>{activeFaq === index ? '−' : '+'}</span>
-              </div>
-              <div className="landing-faq-answer">
-                {faq.a}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+          <a
+            className="appointment-primary-button appointment-light-button"
+            href={SNABBB_SIGNUP_URL}
+          >
+            Get Started Now
+          </a>
+        </section>
+      </main>
 
-      {/* FOOTER CTA */}
-      <section className="landing-footer-cta">
-        <div className="landing-cta-box">
-          <h2>Easy Access for Easy Bookings.</h2>
-          <p>Deliver the best booking experience today and take your clinic's workflow to the next level.</p>
-          <a className="landing-btn-white" href={SNABBB_SIGNUP_URL}>Get Started Now</a>
-        </div>
-      </section>
+      <footer className="appointment-footer">
+        <p>
+          © 2026 Snabbb Appointment. Smart scheduling for modern clinics.
+        </p>
 
-      {/* FOOTER DIRECTORY */}
-      <footer className="landing-footer">
-        <div className="landing-footer-col">
-          <img src="/assets/Snabbb (Teal).png" alt="Snabbb Logo" style={{ height: '32px', marginBottom: '1rem' }} />
-          <p style={{ color: '#64748b', fontSize: '0.9rem', maxWidth: '250px' }}>
-            Empowering clinics worldwide with smart, easy-to-use scheduling software.
-          </p>
+        <div className="appointment-footer-links">
+          <a href="#features">Features</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
         </div>
-        <div className="landing-footer-col">
-          <h4>Product</h4>
-          <ul>
-            <li><a href="#">Features</a></li>
-            {/* <li><a href="#">Pricing</a></li> */}
-            <li><a href="#">Integrations</a></li>
-            <li><a href="#">Changelog</a></li>
-          </ul>
-        </div>
-        <div className="landing-footer-col">
-          <h4>Company</h4>
-          <ul>
-            <li><a href="#">About Us</a></li>
-            {/* <li><a href="#">Careers</a></li>
-            <li><a href="#">Customers</a></li> */}
-            <li><a href="#">Contact</a></li>
-          </ul>
-        </div>
-        {/* <div className="landing-footer-col">
-          <h4>Resource</h4>
-          <ul>
-            <li><a href="#">Blog</a></li>
-            <li><a href="#">Help Center</a></li>
-            <li><a href="#">Community</a></li>
-            <li><a href="#">Guides</a></li>
-          </ul>
-        </div> */}
-        {/* <div className="landing-footer-col">
-          <h4>Download</h4>
-          <ul>
-            <li><a href="#">iOS App</a></li>
-            <li><a href="#">Android App</a></li>
-            <li><a href="#">Desktop App</a></li>
-          </ul>
-        </div> */}
       </footer>
 
-
-      {/* 🐱 Restricted Mascot & AI for Login View */}
       <CatMascot disabled={true} />
       <MolarAIFloat disabled={true} />
     </div>
