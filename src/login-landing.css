@@ -815,6 +815,19 @@
 }
 
 @media (max-width: 620px) {
+    .appointment-final-cta {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 24px;
+    margin: 40px 16px;
+    padding: 32px 24px;
+  }
+
+  .appointment-final-cta .appointment-light-button {
+    width: 100%;
+    flex: 0 0 auto;
+  }
+  
     .appointment-hero h1 {
     line-height: 1;
     letter-spacing: -0.045em;
