@@ -159,11 +159,11 @@
   justify-content: center;
   gap: 12px;
 
-  min-height: 62px;
-  padding: 14px 38px;
+  min-height: 54px;
+  padding: 14px 18px;
 
-  border-radius: 24px;
-  font-size: 20px;
+  border-radius: 13px;
+  font-size: 15px;
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
