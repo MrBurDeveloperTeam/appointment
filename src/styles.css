@@ -43,6 +43,8 @@
   --danger-light: #FF8F73;
   --danger-dark: #DE350B;
   --danger-bg: #FFEBE6;
+  --field-error: #b91c1c;
+  --field-error-border: #dc2626;
 
   /* Purple - Accent (muted) */
   --purple: #6554C0;
@@ -4194,6 +4196,8 @@ tbody tr:hover {
   --danger-light: #D58C8C;
   --danger-dark: #A85353;
   --danger-bg: #2B1A1A;
+  --field-error: #ff8585;
+  --field-error-border: #ff8585;
 
   --purple: #6C6AA8;
   --purple-light: #8B89C0;
@@ -4254,6 +4258,8 @@ tbody tr:hover {
     --danger-light: #D58C8C;
     --danger-dark: #A85353;
     --danger-bg: #2B1A1A;
+    --field-error: #ff8585;
+    --field-error-border: #ff8585;
 
     --purple: #6C6AA8;
     --purple-light: #8B89C0;
@@ -9107,6 +9113,22 @@ tbody tr:hover {
 }
 /* Patient validation follows charting's inline feedback. */
 .patient-form-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
-.patient-form [aria-invalid="true"] { border-color: #dc2626; background-color: #fff7f7; }
-.patient-form [aria-invalid="true"]:focus { border-color: #dc2626; box-shadow: 0 0 0 3px rgb(220 38 38 / 15%); }
-.patient-form .form-error { color: #b91c1c; font-size: var(--font-size-sm); margin-top: 6px; }
+.patient-form [aria-invalid="true"] {
+  border-color: var(--field-error-border);
+  background-color: var(--surface);
+  color: var(--text-primary);
+}
+.patient-form [aria-invalid="true"]:focus {
+  border-color: var(--field-error-border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--field-error-border) 20%, transparent);
+}
+.patient-form .form-error {
+  color: var(--field-error);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
