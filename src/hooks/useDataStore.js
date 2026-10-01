@@ -192,9 +192,10 @@ export default function useDataStore(activeClinicId, enabled = true) {
     handleAsync(DataStore.getAppointmentRequests(), (data) => setAppointmentRequests(data || []));
 
   const addPatient = (patient) =>
-    handleAsync(DataStore.addPatient(patient), () => {
+    toPromise(DataStore.addPatient(patient)).then((result) => {
       refreshPatients();
       refreshActivity();
+      return result;
     });
 
   // Bulk import must propagate database/RLS errors to the review dialog so it
@@ -207,9 +208,10 @@ export default function useDataStore(activeClinicId, enabled = true) {
     });
 
   const updatePatient = (id, updates) =>
-    handleAsync(DataStore.updatePatient(id, updates), () => {
+    toPromise(DataStore.updatePatient(id, updates)).then((result) => {
       refreshPatients();
       refreshActivity();
+      return result;
     });
 
   // Propagate failures so the flag button can retain its last saved state.
