@@ -962,11 +962,11 @@ useEffect(() => {
     });
   };
 
-  const handleSavePatient = (data) => {
+  const handleSavePatient = async (data) => {
     if (editingPatient) {
-      updatePatient(editingPatient.id, data);
+      await updatePatient(editingPatient.id, data);
     } else {
-      addPatient(data);
+      await addPatient(data);
     }
     setShowPatientModal(false);
     setEditingPatient(null);

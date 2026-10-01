@@ -9105,3 +9105,8 @@ tbody tr:hover {
 #root {
   min-height: 100vh;
 }
+/* Patient validation follows charting's inline feedback. */
+.patient-form-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
+.patient-form [aria-invalid="true"] { border-color: #dc2626; background-color: #fff7f7; }
+.patient-form [aria-invalid="true"]:focus { border-color: #dc2626; box-shadow: 0 0 0 3px rgb(220 38 38 / 15%); }
+.patient-form .form-error { color: #b91c1c; font-size: var(--font-size-sm); margin-top: 6px; }

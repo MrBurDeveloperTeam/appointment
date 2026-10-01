@@ -1,9 +1,18 @@
-﻿import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Modal from './Modal';
-import { useToast } from '../context/ToastProvider';
+import { validatePatient, normalizePatientIdNumber } from '../utils/patientValidation';
 
 export default function PatientModal({ patient, dentists, onSave, onDelete, onClose }) {
-  const { addToast } = useToast();
+  const [touched, setTouched] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const formRef = useRef(null);
+  const [saveError, setSaveError] = useState('');
+  const [rejectedIc, setRejectedIc] = useState(null);
+  useEffect(() => {
+    if (!saving && rejectedIc) formRef.current?.querySelector('#patient-idNumber')?.focus();
+  }, [saving, rejectedIc]);
   const [form, setForm] = useState(() => ({
     name: patient ? patient.name || '' : '',
     idNumber: patient ? patient.idNumber || '' : '',
@@ -33,84 +42,91 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
     notes: patient ? patient.notes || '' : '',
   }));
 
-  const handleChange = (key, value) => setForm((f) => ({ ...f, [key]: value }));
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    if (!form.name.trim()) {
-      addToast('Please enter patient name', 'error');
+  const errors = validatePatient(form);
+  if (rejectedIc && rejectedIc === normalizePatientIdNumber(form.idNumber)) {
+    errors.idNumber = 'A patient with this IC / ID already exists. Search for and select the existing patient instead.';
+  }
+  const handleChange = (key, value) => {
+    setForm((previous) => ({ ...previous, [key]: value }));
+    setTouched((previous) => ({ ...previous, [key]: true }));
+    setSaveError('');
+  };
+  const fieldProps = (key) => ({
+    id: `patient-${key}`,
+    'aria-invalid': Boolean((touched[key] || submitted) && errors[key]),
+    'aria-describedby': (touched[key] || submitted) && errors[key] ? `patient-${key}-error` : undefined,
+    onBlur: () => setTouched((previous) => ({ ...previous, [key]: true })),
+  });
+  const fieldError = (key) => (touched[key] || submitted) && errors[key]
+    ? <div id={`patient-${key}-error`} className="form-error" aria-live="polite">{errors[key]}</div>
+    : null;
+  const focusError = (key) => formRef.current?.querySelector(`#patient-${key}`)?.focus();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (savingRef.current) return;
+    setSubmitted(true);
+    if (Object.keys(errors).length) {
+      focusError(Object.keys(errors)[0]);
       return;
     }
-
-    if (!form.phone.trim()) {
-      addToast('Please enter phone number', 'error');
-      return;
+    savingRef.current = true;
+    setSaving(true);
+    setSaveError('');
+    try {
+      await onSave({
+        ...form,
+        name: form.name.trim(),
+        idNumber: form.idNumber.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim().toLowerCase(),
+        guardianName: form.emailIsGuardian ? form.guardianName.trim() : '',
+        guardianRelationship: form.emailIsGuardian ? form.guardianRelationship : '',
+      });
+    } catch (error) {
+      if (error?.code === '23505' && [error.message, error.details, error.hint].some(value => String(value || '').includes('apt_patients_clinic_normalized_ic_key'))) {
+        setRejectedIc(normalizePatientIdNumber(form.idNumber));
+        focusError('idNumber');
+      } else {
+        setSaveError(error?.message || 'Unable to save patient. Please try again.');
+      }
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
-
-    if (form.emailIsGuardian && !form.email.trim()) {
-      addToast(
-        'Please enter the parent or guardian email',
-        'error'
-      );
-      return;
-    }
-
-    if (form.emailIsGuardian && !form.guardianName.trim()) {
-      addToast('Please enter parent or guardian name', 'error');
-      return;
-    }
-
-    if (
-      form.emailIsGuardian &&
-      !form.guardianRelationship
-    ) {
-      addToast(
-        'Please select the guardian relationship',
-        'error'
-      );
-      return;
-    }
-
-    onSave({
-      ...form,
-      email: form.email.trim().toLowerCase(),
-      guardianName: form.emailIsGuardian
-        ? form.guardianName.trim()
-        : '',
-      guardianRelationship: form.emailIsGuardian
-        ? form.guardianRelationship
-        : '',
-    });
   };
 
   return (
-    <Modal title={patient ? 'Edit Patient' : 'New Patient'} onClose={onClose}>
-      <form onSubmit={handleSubmit}>
+    <Modal title={patient ? 'Edit Patient' : 'New Patient'} onClose={onClose} disableClose={saving}>
+      <form ref={formRef} className="patient-form" noValidate onSubmit={handleSubmit}>
+        <fieldset disabled={saving} className="patient-form-fields">
         <div className="modal-body">
           <div className="form-group">
-            <label className="form-label">Name</label>
-            <input className="form-input" value={form.name} onChange={(e) => handleChange('name', e.target.value)} required />
+            <label className="form-label" htmlFor="patient-name">Name *</label>
+            <input {...fieldProps('name')} className="form-input" value={form.name} onChange={(e) => handleChange('name', e.target.value)} required />
+              {fieldError('name')}
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">IC/ID</label>
-              <input className="form-input" value={form.idNumber} onChange={(e) => handleChange('idNumber', e.target.value)} />
+              <label className="form-label" htmlFor="patient-idNumber">IC/ID *</label>
+              <input {...fieldProps('idNumber')} required className="form-input" value={form.idNumber} onChange={(e) => handleChange('idNumber', e.target.value)} />
+              {fieldError('idNumber')}
             </div>
             <div className="form-group">
-              <label className="form-label">DOB</label>
-              <input className="form-input" type="date" value={form.dob} onChange={(e) => handleChange('dob', e.target.value)} />
+              <label className="form-label" htmlFor="patient-dob">DOB *</label>
+              <input {...fieldProps('dob')} className="form-input" type="date" required value={form.dob} onChange={(e) => handleChange('dob', e.target.value)} />
+              {fieldError('dob')}
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Gender</label>
-              <select className="form-select" value={form.gender} onChange={(e) => handleChange('gender', e.target.value)}>
+              <label className="form-label" htmlFor="patient-gender">Gender *</label>
+              <select {...fieldProps('gender')} className="form-select" required value={form.gender} onChange={(e) => handleChange('gender', e.target.value)}>
                 <option value="">Select</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
                 <option value="other">Other</option>
               </select>
+              {fieldError('gender')}
             </div>
             <div className="form-group">
               <label className="form-label">Tax Number</label>
@@ -120,8 +136,8 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
 
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Phone</label>
-              <input
+              <label className="form-label" htmlFor="patient-phone">Phone *</label>
+              <input {...fieldProps('phone')}
                 className="form-input"
                 value={form.phone}
                 onChange={(e) =>
@@ -129,19 +145,21 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
                 }
                 required
               />
+              {fieldError('phone')}
             </div>
 
             <div className="form-group">
-              <label className="form-label">Email</label>
-              <input
+              <label className="form-label" htmlFor="patient-email">Email *</label>
+              <input {...fieldProps('email')}
                 className="form-input"
                 type="email"
                 value={form.email}
                 onChange={(e) =>
                   handleChange('email', e.target.value)
                 }
-                required={form.emailIsGuardian}
+                required
               />
+              {fieldError('email')}
 
               <label
                 style={{
@@ -190,11 +208,11 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
           {form.emailIsGuardian && (
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">
-                  Parent / Guardian Name
+                <label className="form-label" htmlFor="patient-guardianName">
+                  Parent / Guardian Name *
                 </label>
 
-                <input
+                <input {...fieldProps('guardianName')}
                   className="form-input"
                   value={form.guardianName}
                   onChange={(e) =>
@@ -206,14 +224,15 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
                   placeholder="Enter full name"
                   required
                 />
+              {fieldError('guardianName')}
               </div>
 
               <div className="form-group">
-                <label className="form-label">
-                  Relationship to Patient
+                <label className="form-label" htmlFor="patient-guardianRelationship">
+                  Relationship to Patient *
                 </label>
 
-                <select
+                <select {...fieldProps('guardianRelationship')}
                   className="form-select"
                   value={form.guardianRelationship}
                   onChange={(e) =>
@@ -233,6 +252,7 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
                     Other responsible adult
                   </option>
                 </select>
+              {fieldError('guardianRelationship')}
               </div>
             </div>
           )}
@@ -325,18 +345,20 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
             </div>
           </div>
         </div>
+        </fieldset>
         <div className="modal-footer">
+          {saveError && <p className="form-error" role="alert">{saveError}</p>}
           {patient && (
-            <button type="button" className="btn btn-danger" onClick={onDelete}>
+            <button type="button" disabled={saving} className="btn btn-danger" onClick={onDelete}>
               Delete
             </button>
           )}
           <div className="flex-1"></div>
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
+          <button type="button" disabled={saving} className="btn btn-secondary" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="btn btn-primary">
-            Save
+          <button type="submit" disabled={saving} className="btn btn-primary">
+            {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
       </form>
