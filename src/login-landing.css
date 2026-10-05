@@ -131,16 +131,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  width: 152px;
-  height: 60px;
-  padding: 0 18px;
+  gap: 8px;
+  width: 108px;
+  height: 42px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 15px;
+  border-radius: 12px;
   color: #ffffff !important;
   background: #56a39a;
-  box-shadow: 0 12px 25px rgba(86, 163, 154, 0.2);
-  font-size: 16px;
+  box-shadow: 0 8px 18px rgba(86, 163, 154, 0.2);
+  font-size: 14px;
   font-weight: 500;
   text-decoration: none;
   transition: 0.2s ease;
@@ -727,6 +727,8 @@
 }
 
 .appointment-nav-cta svg {
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
 }
 
