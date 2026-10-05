@@ -1,6 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&display=swap");
 :root {
-  --appointment-teal: #55a39a;
+  --appointment-teal: #56a39a;
   --appointment-teal-dark: #478d85;
   --appointment-teal-soft: #dff7f3;
   --appointment-navy: #102b35;
@@ -132,13 +132,14 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  min-width: 0px;
-  padding: 12px 18px;
+  width: 152px;
+  height: 60px;
+  padding: 0 18px;
   border: 0;
-  border-radius: 13px;
+  border-radius: 15px;
   color: #ffffff !important;
-  background: #55a39a;
-  box-shadow: 0 12px 25px rgba(85, 163, 154, 0.2);
+  background: #56a39a;
+  box-shadow: 0 12px 25px rgba(86, 163, 154, 0.2);
   font-size: 16px;
   font-weight: 500;
   text-decoration: none;
@@ -233,15 +234,21 @@
 .appointment-eyebrow {
   display: flex;
   align-items: center;
-  gap: 9px;
+  width: fit-content;
+  gap: 16px;
+  padding: 14px 20px;
+  border: 2px solid #d2ebe8;
+  border-radius: 999px;
+  background: #eff9f7;
 }
 
 .appointment-live-dot {
-  width: 8px;
-  height: 8px;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
   border-radius: 50%;
   background: var(--appointment-teal);
-  box-shadow: 0 0 0 5px var(--appointment-teal-soft);
+  box-shadow: 0 0 0 8px #dcefeb;
 }
 
 .appointment-hero h1 {
@@ -249,7 +256,7 @@
   margin: 22px 0 24px;
   color: var(--appointment-navy);
   font-size: clamp(42px, 5.2vw, 76px);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.055em;
   line-height: 1.0;
 }
