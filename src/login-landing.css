@@ -646,7 +646,7 @@
   margin: 70px auto;
   padding: 55px;
   border-radius: 28px;
-  background: #598580;
+  background: #58827d;
   color: #ffffff;
 }
 
@@ -665,7 +665,7 @@
 
 .appointment-final-cta .appointment-light-button {
   flex: 0 0 auto;
-  color: #598580 !important;
+  color: #58827d !important;
   background: #ffffff !important;
   box-shadow: none;
 }
