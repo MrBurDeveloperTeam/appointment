@@ -1,5 +1,7 @@
 const DEFAULT_SNABBB_SIGNUP_URL = 'https://app.snabbb.com/signup';
 
+export const SNABBB_APP_URL = 'https://app.snabbb.com/';
+
 export const SNABBB_SIGNUP_URL = (() => {
   const configuredUrl = import.meta.env.VITE_SNABBB_SIGNUP_URL?.trim();
 

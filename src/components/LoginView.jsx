@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import CatMascot from "./CatMascot";
 import MolarAIFloat from "./MolarAIFloat";
-import { SNABBB_SIGNUP_URL } from "../constants/authLinks";
+import { SNABBB_APP_URL, SNABBB_SIGNUP_URL } from "../constants/authLinks";
 import {
   ArrowRight,
 } from "lucide-react";
@@ -61,7 +61,7 @@ export default function LoginView() {
   return (
     <div className="appointment-landing">
       <nav className="appointment-nav">
-        <a className="appointment-brand" href="/" aria-label="Snabbb Appointment">
+        <a className="appointment-brand" href={SNABBB_APP_URL} aria-label="Snabbb">
           <img src="/assets/Snabbb (Teal).png" alt="Snabbb" />
           <span>Appointment</span>
         </a>
@@ -384,8 +384,8 @@ export default function LoginView() {
       <footer className="appointment-footer">
         <a
           className="appointment-brand"
-          href="#top"
-          aria-label="Snabbb Appointment home"
+          href={SNABBB_APP_URL}
+          aria-label="Snabbb"
         >
           <img src="/assets/Snabbb (Teal).png" alt="Snabbb" />
           <span>Appointment</span>
