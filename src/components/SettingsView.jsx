@@ -4,7 +4,7 @@ import { getColorBg, getContrastText } from '../utils/colors';
 import { getInitials } from '../utils/people';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
-import AutocompleteInput from './AutocompleteInput';
+import ConsumablesField, { stockLimit } from './ConsumablesField';
 import { PRODUCT_NAMES } from '../constants/productNames';
 import DataStore from '../data';
 import { useToast } from '../context/ToastProvider';
@@ -73,7 +73,7 @@ export default function SettingsView({
       : 'other'
   );
   const [roomForm, setRoomForm] = useState({ id: '', name: '', color: '#4A90A4' });
-  const [treatmentForm, setTreatmentForm] = useState({ id: '', name: '', duration: 30, color: '#7CB798', suppliesNeeded: '', suppliesDisposable: false });
+  const [treatmentForm, setTreatmentForm] = useState({ id: '', name: '', duration: 30, color: '#7CB798', supplies: [] });
   const [
     treatmentDurationOption,
     setTreatmentDurationOption
@@ -165,11 +165,7 @@ export default function SettingsView({
         name: treatment.name,
         duration,
         color: treatment.color,
-        suppliesNeeded:
-          treatment.suppliesNeeded
-            ? treatment.suppliesNeeded.join(', ')
-            : '',
-        suppliesDisposable: Boolean(treatment.suppliesDisposable),
+        supplies: (treatment.suppliesDetail || []).map((r) => ({ ...r })),
       });
 
       /*
@@ -197,8 +193,7 @@ export default function SettingsView({
       name: '',
       duration: 30,
       color: '#7CB798',
-      suppliesNeeded: '',
-      suppliesDisposable: false
+      supplies: []
     });
 
     setTreatmentDurationOption('30');
@@ -301,6 +296,28 @@ export default function SettingsView({
       return;
     }
 
+    // Clean the consumables rows and never allow more than inventory holds.
+    const supplies = (treatmentForm.supplies || [])
+      .map((r) => ({
+        name: String(r.name || '').trim(),
+        qty: Math.max(1, Math.floor(Number(r.qty)) || 1),
+        disposable: Boolean(r.disposable),
+      }))
+      .filter((r) => r.name);
+
+    const overStock = supplies.find((r) => {
+      const max = stockLimit(stockMap, r.name);
+      return Number.isFinite(max) && max > 0 && r.qty > max;
+    });
+    if (overStock) {
+      addToast(
+        `Only ${stockLimit(stockMap, overStock.name)} of "${overStock.name}" in inventory`,
+        'error'
+      );
+
+      return;
+    }
+
     const payload = {
       name:
         treatmentForm.name.trim(),
@@ -310,16 +327,11 @@ export default function SettingsView({
       color:
         treatmentForm.color,
 
-      suppliesNeeded:
-        treatmentForm.suppliesNeeded
-          ? treatmentForm.suppliesNeeded
-              .split(',')
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : [],
+      suppliesNeeded: supplies.map((r) => r.name),
 
-      suppliesDisposable:
-        Boolean(treatmentForm.suppliesDisposable),
+      suppliesDetail: supplies,
+
+      suppliesDisposable: supplies.some((r) => r.disposable),
     };
 
     if (treatmentForm.id) {
@@ -449,15 +461,30 @@ export default function SettingsView({
     saveHolidays(merged);
   };
 
-  // Item names that already exist in the clinic's inventory.
+  // Inventory stock per item name ([{ name, qty }]); null = could not be loaded.
+  const [inventoryStock, setInventoryStock] = useState(null);
+  // Fallback suggestions (names only) if the stock lookup is unavailable.
   const [inventoryNames, setInventoryNames] = useState([]);
   useEffect(() => {
     let cancelled = false;
-    DataStore.getInventoryItemNames()
-      .then((names) => { if (!cancelled) setInventoryNames(names || []); })
-      .catch(() => {});
+    (async () => {
+      const stock = await DataStore.getInventoryStock();
+      if (cancelled) return;
+      if (stock) {
+        setInventoryStock(stock);
+        return;
+      }
+      const names = await DataStore.getInventoryItemNames();
+      if (!cancelled) setInventoryNames(names || []);
+    })().catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  // lowercased item name -> quantity in inventory (null = unknown, no limit).
+  const stockMap = useMemo(
+    () => (inventoryStock ? new Map(inventoryStock.map((r) => [r.name.trim().toLowerCase(), r.qty])) : null),
+    [inventoryStock]
+  );
 
   // Suggestions: standard names, then inventory item names, then any custom
   // consumables already saved on treatments (all de-duplicated, case-insensitive).
@@ -468,10 +495,10 @@ export default function SettingsView({
       const n = (raw || '').trim();
       if (n && !seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); extra.push(n); }
     };
-    inventoryNames.forEach(add);
+    (inventoryStock ? inventoryStock.map((r) => r.name) : inventoryNames).forEach(add);
     treatments.forEach((t) => (t.suppliesNeeded || []).forEach(add));
     return [...PRODUCT_NAMES, ...extra];
-  }, [inventoryNames, treatments]);
+  }, [inventoryStock, inventoryNames, treatments]);
 
   const isUnconfigured = !form.workingHoursStart || dentists.length === 0 || rooms.length === 0 || treatments.length === 0;
 
@@ -1103,24 +1130,15 @@ export default function SettingsView({
                   <span className="color-picker-hint">Click to pick</span>
                 </label>
               </div>
-              <div className="form-group">
-                <label className="form-label">Consumables</label>
-                <AutocompleteInput
-                  multiple
-                  value={treatmentForm.suppliesNeeded}
-                  onChange={(suppliesNeeded) => setTreatmentForm({ ...treatmentForm, suppliesNeeded })}
-                  options={consumableOptions}
-                  placeholder="Search or add consumables..."
-                />
-                <label className="checkbox-field">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(treatmentForm.suppliesDisposable)}
-                    onChange={(e) => setTreatmentForm({ ...treatmentForm, suppliesDisposable: e.target.checked })}
-                  />
-                  <span>Disposable (single-use)</span>
-                </label>
-              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Consumables</label>
+              <ConsumablesField
+                rows={treatmentForm.supplies}
+                onChange={(supplies) => setTreatmentForm({ ...treatmentForm, supplies })}
+                options={consumableOptions}
+                stock={stockMap}
+              />
             </div>
           </div>
           <div className="modal-footer">

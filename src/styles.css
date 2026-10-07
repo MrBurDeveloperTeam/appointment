@@ -9295,3 +9295,116 @@ tbody tr:hover {
   accent-color: var(--primary);
   cursor: pointer;
 }
+
+/* ===== Treatment consumables rows ===== */
+.ac-meta {
+  margin-left: auto;
+  padding-left: 12px;
+  font-size: var(--font-size-xs, 12px);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.cons-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cons-rows {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.cons-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px 72px 28px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border-light, var(--border));
+}
+
+.cons-row:first-child { border-top: 0; }
+
+.cons-head {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  font-size: var(--font-size-xs, 12px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+}
+
+.cons-head span:nth-child(3) { text-align: center; }
+
+.cons-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cons-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.cons-stock {
+  font-size: var(--font-size-xs, 12px);
+  color: var(--text-muted);
+}
+
+.cons-stock.warn { color: #D9534F; }
+
+.form-input.cons-qty {
+  min-height: 34px;
+  padding: 4px 8px;
+  text-align: center;
+}
+
+.form-input.cons-qty:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cons-disposable {
+  display: flex;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.cons-disposable input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.cons-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.cons-remove:hover {
+  background: var(--bg-hover);
+  color: #D9534F;
+}

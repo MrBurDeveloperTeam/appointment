@@ -7,52 +7,45 @@ const LIST_MAX_HEIGHT = 240;
 /**
  * Text input with a styled suggestion list.
  *
- * With `multiple`, `value` is a comma-separated string (e.g. "Glove, Mask");
- * suggestions apply to the item being typed after the last comma, items that
- * are already in the list are hidden, and picking one appends ", " so the next
- * item can be typed straight away. Free text is always accepted: typing a name
- * that isn't in `options` offers an "Add “…”" row.
+ * Two modes:
+ *  - value mode (default): `value` / `onChange` hold the text; picking an
+ *    option fills the field and closes the list.
+ *  - picker mode (`picker`): the field is only a search box. Picking an option
+ *    calls `onPick(name)`, clears the search and keeps the list open so several
+ *    options can be added in a row. Names in `exclude` are hidden.
  *
- * Keys: ↑/↓ move, Enter picks, Esc closes.
+ * Typing a name that isn't in `options` offers an "Add “…”" row, so free text
+ * is always possible. Opening the list shows every option; filtering starts
+ * once the user types. `renderMeta(name)` can return a small right-aligned hint
+ * (e.g. stock). Keys: ↑/↓ move, Enter picks, Esc closes.
  */
 export default function AutocompleteInput({
-  value,
+  value = '',
   onChange,
   options,
   placeholder,
-  multiple = false,
+  picker = false,
+  onPick,
+  exclude = [],
+  renderMeta,
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const [navigated, setNavigated] = useState(false);
   const [pos, setPos] = useState(null);
-  // Filtering only starts once the user types in this open session. Just opening
-  // a field that already has a value must list every option, not only matches.
-  const [dirty, setDirty] = useState(false);
+  const [dirty, setDirty] = useState(false); // value mode: has the user typed since opening?
+  const [query, setQuery] = useState('');    // picker mode search text
   const wrapRef = useRef(null);
   const inputRef = useRef(null);
   const listRef = useRef(null);
 
-  // Split the field into the already-chosen items and the one being typed.
-  const { head, typed, chosen } = useMemo(() => {
-    if (!multiple) return { head: '', typed: dirty ? value.trim() : '', chosen: [] };
-    const trimmed = value.trim();
-    // Not typing yet: everything in the field counts as chosen and the next
-    // pick is appended after it (instead of replacing the last item).
-    if (!dirty) {
-      return {
-        head: trimmed && !trimmed.endsWith(',') ? `${trimmed},` : trimmed,
-        typed: '',
-        chosen: trimmed.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
-      };
-    }
-    const i = value.lastIndexOf(',');
-    const headPart = i >= 0 ? value.slice(0, i + 1) : '';
-    return {
-      head: headPart,
-      typed: (i >= 0 ? value.slice(i + 1) : value).trim(),
-      chosen: headPart.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
-    };
-  }, [value, multiple, dirty]);
+  const text = picker ? query : value;
+  const typed = picker ? query.trim() : (dirty ? value.trim() : '');
+  const excludeKey = exclude.join('\u0000').toLowerCase();
+  const chosen = useMemo(
+    () => (excludeKey ? excludeKey.split('\u0000') : []),
+    [excludeKey]
+  );
 
   const filtered = useMemo(() => {
     const q = typed.toLowerCase();
@@ -74,7 +67,7 @@ export default function AutocompleteInput({
     !chosen.includes(typed.toLowerCase());
   const rowCount = filtered.length + (canCreate ? 1 : 0);
 
-  useEffect(() => { setActive(0); }, [typed, open]);
+  useEffect(() => { setActive(0); setNavigated(false); }, [typed, open]);
 
   // The modal has a transform + overflow:hidden (which would re-anchor and
   // clip a fixed child), so the list is portaled to <body> and positioned from
@@ -123,14 +116,13 @@ export default function AutocompleteInput({
   };
 
   const pick = (name) => {
-    if (multiple) {
-      const prefix = head ? `${head.replace(/\s+$/, '')} ` : '';
-      setDirty(true);
-      onChange(`${prefix}${name}, `);
+    if (picker) {
+      onPick?.(name);
+      setQuery('');
       setOpen(true);
       inputRef.current?.focus();
     } else {
-      onChange(name);
+      onChange?.(name);
       setOpen(false);
     }
   };
@@ -139,11 +131,13 @@ export default function AutocompleteInput({
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       openList();
+      setNavigated(true);
       setActive((a) => Math.min(a + 1, rowCount - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
+      setNavigated(true);
       setActive((a) => Math.max(a - 1, 0));
-    } else if (e.key === 'Enter' && open && rowCount > 0 && typed) {
+    } else if (e.key === 'Enter' && open && rowCount > 0 && (typed || navigated)) {
       e.preventDefault();
       pick(active < filtered.length ? filtered[active] : typed);
     } else if (e.key === 'Escape' && open) {
@@ -174,11 +168,15 @@ export default function AutocompleteInput({
         aria-expanded={open}
         autoComplete="off"
         className="form-input ac-input"
-        value={value}
+        value={text}
         placeholder={placeholder}
         onFocus={openList}
         onClick={openList}
-        onChange={(e) => { setDirty(true); onChange(e.target.value); setOpen(true); }}
+        onChange={(e) => {
+          if (picker) setQuery(e.target.value);
+          else { setDirty(true); onChange?.(e.target.value); }
+          setOpen(true);
+        }}
         onKeyDown={onKeyDown}
       />
       <ChevronDown className={`ac-icon ac-icon-right ${open ? 'open' : ''}`} size={16} />
@@ -186,7 +184,8 @@ export default function AutocompleteInput({
       {open && rowCount > 0 && pos && createPortal(
         <div ref={listRef} className="ac-list" style={pos} role="listbox">
           {filtered.map((opt, idx) => {
-            const selected = chosen.includes(opt.toLowerCase()) || opt === value;
+            const selected = !picker && opt === value;
+            const meta = renderMeta ? renderMeta(opt) : null;
             return (
               <button
                 key={opt}
@@ -200,6 +199,7 @@ export default function AutocompleteInput({
                 onClick={() => pick(opt)}
               >
                 <span className="ac-option-label">{renderLabel(opt)}</span>
+                {meta && <span className="ac-meta">{meta}</span>}
                 {selected && <Check size={16} className="ac-check" />}
               </button>
             );

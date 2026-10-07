@@ -375,6 +375,12 @@ const DataStore = {
     return Treatments.getTreatments(activeClinic);
   },
 
+  async getInventoryStock(clinicId) {
+    const activeClinic = getClinicId(clinicId);
+    if (!activeClinic) return null;
+    return Treatments.getInventoryStock(activeClinic);
+  },
+
   async getInventoryItemNames(clinicId) {
     const activeClinic = getClinicId(clinicId);
     if (!activeClinic) return [];
@@ -641,6 +647,7 @@ const DataStore = {
         duration: t.duration || null,
         color: t.color || null,
         supplies_needed: t.suppliesNeeded || [],
+        supplies_detail: t.suppliesDetail || [],
         supplies_disposable: Boolean(t.suppliesDisposable),
       }))
     );
