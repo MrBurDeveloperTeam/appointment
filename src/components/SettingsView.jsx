@@ -4,6 +4,8 @@ import { getColorBg, getContrastText } from '../utils/colors';
 import { getInitials } from '../utils/people';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
+import AutocompleteInput from './AutocompleteInput';
+import { PRODUCT_NAMES } from '../constants/productNames';
 import { useToast } from '../context/ToastProvider';
 
 const TREATMENT_DURATION_OPTIONS = [
@@ -440,6 +442,18 @@ export default function SettingsView({
     const merged = [...existing, ...base.filter((h) => !existingKeys.has(keyOf(h)))];
     saveHolidays(merged);
   };
+
+  // Standard names first, then any custom consumables already saved on treatments.
+  const consumableOptions = useMemo(() => {
+    const seen = new Set(PRODUCT_NAMES.map((n) => n.toLowerCase()));
+    const custom = [];
+    treatments.forEach((t) => (t.suppliesNeeded || []).forEach((raw) => {
+      const n = (raw || '').trim();
+      if (n && !seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); custom.push(n); }
+    }));
+    custom.sort((a, b) => a.localeCompare(b));
+    return [...PRODUCT_NAMES, ...custom];
+  }, [treatments]);
 
   const isUnconfigured = !form.workingHoursStart || dentists.length === 0 || rooms.length === 0 || treatments.length === 0;
 
@@ -976,7 +990,7 @@ export default function SettingsView({
           <div className="modal-body">
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Name</label>
+                <label className="form-label">Treatment Name</label>
                 <input className="form-input" value={treatmentForm.name} onChange={(e) => setTreatmentForm({ ...treatmentForm, name: e.target.value })} />
               </div>
               <div className="form-group">
@@ -1073,8 +1087,14 @@ export default function SettingsView({
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Supplies (comma separated)</label>
-                <input className="form-input" value={treatmentForm.suppliesNeeded} onChange={(e) => setTreatmentForm({ ...treatmentForm, suppliesNeeded: e.target.value })} />
+                <label className="form-label">Consumables</label>
+                <AutocompleteInput
+                  multiple
+                  value={treatmentForm.suppliesNeeded}
+                  onChange={(suppliesNeeded) => setTreatmentForm({ ...treatmentForm, suppliesNeeded })}
+                  options={consumableOptions}
+                  placeholder="Search or add consumables..."
+                />
               </div>
             </div>
           </div>

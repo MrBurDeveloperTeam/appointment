@@ -9132,3 +9132,87 @@ tbody tr:hover {
   border-radius: 0;
   background: transparent;
 }
+
+/* ===== AutocompleteInput (Settings > Treatments > Consumables) ===== */
+.ac-wrap {
+  position: relative;
+}
+
+.ac-input.form-input {
+  padding-left: 36px;
+  padding-right: 36px;
+}
+
+.ac-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+  transition: transform var(--transition-fast, 0.15s ease);
+}
+
+.ac-icon-left { left: 12px; }
+.ac-icon-right { right: 12px; }
+.ac-icon-right.open { transform: translateY(-50%) rotate(180deg); }
+
+.ac-list {
+  position: fixed;
+  z-index: 10000;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.25), 0 4px 10px -4px rgba(0, 0, 0, 0.12);
+}
+
+.ac-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ac-option.active {
+  background: var(--primary-bg, var(--bg-hover));
+}
+
+.ac-option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-match {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.ac-check {
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.ac-create {
+  justify-content: flex-start;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.ac-create.with-divider {
+  margin-top: 4px;
+  border-top: 1px solid var(--border-light, var(--border));
+  border-radius: 0 0 8px 8px;
+  padding-top: 10px;
+}
