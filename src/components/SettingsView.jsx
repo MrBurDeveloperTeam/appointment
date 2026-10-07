@@ -863,6 +863,221 @@ export default function SettingsView({
               </div>
               <div className="form-group">
                 <label className="form-label">Color</label>
+                <div className="color-swatch-list">
+                  {colorOptions.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={`color-swatch ${staffForm.color === color ? 'selected' : ''}`}
+                      style={{ background: color }}
+                      onClick={() => setStaffForm({ ...staffForm, color })}
+                      aria-label={`Select ${color}`}
+                    ></button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {staffForm.role === 'dentist' && (
+              <div className="form-group">
+                <label className="form-label">Specialty</label>
+                <select className="form-select" value={staffForm.specialty} onChange={(e) => setStaffForm({ ...staffForm, specialty: e.target.value })}>
+                  <option value="">Select specialty</option>
+                  {specialtyOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {staffForm.role === 'nurse' && (
+              <div className="form-group">
+                <label className="form-label">Assists</label>
+                <select className="form-select" value={staffForm.assignedTo} onChange={(e) => setStaffForm({ ...staffForm, assignedTo: e.target.value })}>
+                  <option value="">None</option>
+                  {dentists.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Start</label>
+                <input className="form-input" type="time" value={staffForm.startTime} onChange={(e) => setStaffForm({ ...staffForm, startTime: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">End</label>
+                <input className="form-input" type="time" value={staffForm.endTime} onChange={(e) => setStaffForm({ ...staffForm, endTime: e.target.value })} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Working Days</label>
+              <div className="day-selector">
+                {dayNames.map((d, idx) => (
+                  <label key={d} className="day-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={staffForm.workingDays.indexOf(idx) !== -1}
+                      onChange={() => {
+                        const has = staffForm.workingDays.indexOf(idx) !== -1;
+                        setStaffForm((f) => ({
+                          ...f,
+                          workingDays: has ? f.workingDays.filter((x) => x !== idx) : [...f.workingDays, idx],
+                        }));
+                      }}
+                    />
+                    <span>{d}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="modal-footer">
+            {modalState.mode === 'edit' && (
+              <button type="button" className="btn btn-danger" onClick={handleDelete}>
+                Delete
+              </button>
+            )}
+            <div className="flex-1"></div>
+            <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
+            <button type="button" className="btn btn-primary" style={lightPrimaryButtonStyle} onClick={handleStaffSubmit}>
+              {modalState.mode === 'edit' ? 'Save Staff' : 'Add Staff'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {modalState.type === 'room' && (
+        <Modal title={modalState.mode === 'edit' ? 'Edit Room' : 'Add Room'} onClose={closeModal}>
+          <div className="modal-body">
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Name</label>
+                <input className="form-input" value={roomForm.name} onChange={(e) => setRoomForm({ ...roomForm, name: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Color</label>
+                <div className="color-swatch-list">
+                  {colorOptions.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={`color-swatch ${roomForm.color === color ? 'selected' : ''}`}
+                      style={{ background: color }}
+                      onClick={() => setRoomForm({ ...roomForm, color })}
+                      aria-label={`Select ${color}`}
+                    ></button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-footer">
+            {modalState.mode === 'edit' && (
+              <button type="button" className="btn btn-danger" onClick={handleDelete}>
+                Delete
+              </button>
+            )}
+            <div className="flex-1"></div>
+            <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
+            <button type="button" className="btn btn-primary" style={lightPrimaryButtonStyle} onClick={handleRoomSubmit}>
+              {modalState.mode === 'edit' ? 'Save Room' : 'Add Room'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {modalState.type === 'treatment' && (
+        <Modal title={modalState.mode === 'edit' ? 'Edit Treatment' : 'Add Treatment'} onClose={closeModal}>
+          <div className="modal-body">
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Treatment Name</label>
+                <input className="form-input" value={treatmentForm.name} onChange={(e) => setTreatmentForm({ ...treatmentForm, name: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  Duration (mins)
+                </label>
+
+                <select
+                  className="form-select"
+                  value={treatmentDurationOption}
+                  onChange={(event) => {
+                    const selectedValue = event.target.value;
+                    setTreatmentDurationOption(selectedValue);
+
+                    if (selectedValue === 'other') {
+                      setTreatmentForm((current) => ({
+                        ...current,
+                        duration: '',
+                      }));
+                      return;
+                    }
+
+                    setTreatmentForm((current) => ({
+                      ...current,
+                      duration: Number(selectedValue),
+                    }));
+                  }}
+                >
+                  {TREATMENT_DURATION_OPTIONS.map(
+                    (duration) => (
+                      <option
+                        key={duration}
+                        value={String(duration)}
+                      >
+                        {duration}
+                      </option>
+                    )
+                  )}
+
+                  <option value="other">
+                    Others
+                  </option>
+                </select>
+
+                {treatmentDurationOption ===
+                  'other' && (
+                  <input
+                    className="form-input mt-2"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    placeholder="Enter duration in minutes"
+                    value={treatmentForm.duration}
+                    onChange={(event) => {
+                      const customDuration =
+                        event.target.value;
+
+                      setTreatmentForm(
+                        (current) => ({
+                          ...current,
+
+                          /*
+                          * Keep the field empty while the user is
+                          * deleting or replacing its value.
+                          */
+                          duration:
+                            customDuration === ''
+                              ? ''
+                              : Number(
+                                  customDuration
+                                ),
+                        })
+                      );
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Color</label>
                 <label className="color-picker-field">
                   <input
                     type="color"
@@ -890,7 +1105,7 @@ export default function SettingsView({
                     checked={Boolean(treatmentForm.suppliesDisposable)}
                     onChange={(e) => setTreatmentForm({ ...treatmentForm, suppliesDisposable: e.target.checked })}
                   />
-                  <span>Disposable</span>
+                  <span>Disposable (single-use)</span>
                 </label>
               </div>
             </div>
