@@ -168,3 +168,45 @@ $$;
 
 REVOKE ALL ON FUNCTION public.apt_deduct_disposables(uuid) FROM public;
 GRANT EXECUTE ON FUNCTION public.apt_deduct_disposables(uuid) TO authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Inventory item names for the Consumables suggestions in Settings > Treatments.
+-- Returns the distinct names of the clinic's inventory items (everything except
+-- category 'equipment'), sorted A-Z.  Only members of the clinic may call it.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.apt_inventory_item_names(p_clinic_id uuid)
+RETURNS text[]
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_names text[];
+BEGIN
+  IF NOT (
+    EXISTS (SELECT 1 FROM apt_clinic_members m
+             WHERE m.clinic_id = p_clinic_id AND m.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM profiles p
+             WHERE p.clinic_id = p_clinic_id AND p.user_id = auth.uid())
+  ) THEN
+    RAISE EXCEPTION 'not allowed';
+  END IF;
+
+  SELECT COALESCE(array_agg(n ORDER BY lower(n)), '{}')
+    INTO v_names
+    FROM (
+      SELECT DISTINCT ON (lower(btrim(i.name))) btrim(i.name) AS n
+        FROM inventory_items i
+       WHERE i.user_id IN (SELECT user_id FROM profiles WHERE clinic_id = p_clinic_id)
+         AND btrim(COALESCE(i.name, '')) <> ''
+         AND COALESCE(i.category, '') <> 'equipment'
+       ORDER BY lower(btrim(i.name)), btrim(i.name)
+    ) t;
+
+  RETURN v_names;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.apt_inventory_item_names(uuid) FROM public;
+GRANT EXECUTE ON FUNCTION public.apt_inventory_item_names(uuid) TO authenticated;

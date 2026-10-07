@@ -1,11 +1,12 @@
 
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { getColorBg, getContrastText } from '../utils/colors';
 import { getInitials } from '../utils/people';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import AutocompleteInput from './AutocompleteInput';
 import { PRODUCT_NAMES } from '../constants/productNames';
+import DataStore from '../data';
 import { useToast } from '../context/ToastProvider';
 
 const TREATMENT_DURATION_OPTIONS = [
@@ -448,17 +449,29 @@ export default function SettingsView({
     saveHolidays(merged);
   };
 
-  // Standard names first, then any custom consumables already saved on treatments.
+  // Item names that already exist in the clinic's inventory.
+  const [inventoryNames, setInventoryNames] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    DataStore.getInventoryItemNames()
+      .then((names) => { if (!cancelled) setInventoryNames(names || []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // Suggestions: standard names, then inventory item names, then any custom
+  // consumables already saved on treatments (all de-duplicated, case-insensitive).
   const consumableOptions = useMemo(() => {
     const seen = new Set(PRODUCT_NAMES.map((n) => n.toLowerCase()));
-    const custom = [];
-    treatments.forEach((t) => (t.suppliesNeeded || []).forEach((raw) => {
+    const extra = [];
+    const add = (raw) => {
       const n = (raw || '').trim();
-      if (n && !seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); custom.push(n); }
-    }));
-    custom.sort((a, b) => a.localeCompare(b));
-    return [...PRODUCT_NAMES, ...custom];
-  }, [treatments]);
+      if (n && !seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); extra.push(n); }
+    };
+    inventoryNames.forEach(add);
+    treatments.forEach((t) => (t.suppliesNeeded || []).forEach(add));
+    return [...PRODUCT_NAMES, ...extra];
+  }, [inventoryNames, treatments]);
 
   const isUnconfigured = !form.workingHoursStart || dentists.length === 0 || rooms.length === 0 || treatments.length === 0;
 

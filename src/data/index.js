@@ -375,6 +375,12 @@ const DataStore = {
     return Treatments.getTreatments(activeClinic);
   },
 
+  async getInventoryItemNames(clinicId) {
+    const activeClinic = getClinicId(clinicId);
+    if (!activeClinic) return [];
+    return Treatments.getInventoryItemNames(activeClinic);
+  },
+
   async addTreatment(treatment) {
     const activeClinic = requireActiveClinic(getClinicId());
     const created = await Treatments.addTreatment(activeClinic, treatment);

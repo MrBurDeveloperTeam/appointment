@@ -74,3 +74,22 @@ export async function deleteTreatment(id) {
   if (error) throw error;
   return true;
 }
+
+// Names of the clinic's inventory items, used as Consumables suggestions.
+// Backed by supabase/disposable_inventory_deduction.sql; if that function has
+// not been created yet this returns [] so the form keeps working.
+export async function getInventoryItemNames(clinicId) {
+  try {
+    const { data, error } = await supabase.rpc("apt_inventory_item_names", {
+      p_clinic_id: clinicId,
+    });
+    if (error) {
+      console.warn("[Inventory] Could not load item names:", error.message);
+      return [];
+    }
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn("[Inventory] Could not load item names:", err?.message || err);
+    return [];
+  }
+}
