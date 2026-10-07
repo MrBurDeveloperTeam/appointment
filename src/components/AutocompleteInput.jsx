@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ChevronDown, Plus, Search } from 'lucide-react';
 
 const LIST_MAX_HEIGHT = 240;
@@ -62,8 +63,9 @@ export default function AutocompleteInput({
 
   useEffect(() => { setActive(0); }, [typed, open]);
 
-  // The modal body scrolls/clips, so the list is position:fixed and flips
-  // upward when there isn't room below the input.
+  // The modal has a transform + overflow:hidden (which would re-anchor and
+  // clip a fixed child), so the list is portaled to <body> and positioned from
+  // the input's screen rect, flipping upward when there isn't room below.
   useLayoutEffect(() => {
     if (!open) return undefined;
     const place = () => {
@@ -92,7 +94,7 @@ export default function AutocompleteInput({
   useEffect(() => {
     if (!open) return undefined;
     const onDown = (e) => {
-      if (!wrapRef.current?.contains(e.target)) setOpen(false);
+      if (!wrapRef.current?.contains(e.target) && !listRef.current?.contains(e.target)) setOpen(false);
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
@@ -162,7 +164,7 @@ export default function AutocompleteInput({
       />
       <ChevronDown className={`ac-icon ac-icon-right ${open ? 'open' : ''}`} size={16} />
 
-      {open && rowCount > 0 && pos && (
+      {open && rowCount > 0 && pos && createPortal(
         <div ref={listRef} className="ac-list" style={pos} role="listbox">
           {filtered.map((opt, idx) => {
             const selected = chosen.includes(opt.toLowerCase()) || opt === value;
@@ -197,7 +199,8 @@ export default function AutocompleteInput({
               <span className="ac-option-label">Add “{typed}”</span>
             </button>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
