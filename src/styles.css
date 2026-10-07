@@ -9322,7 +9322,7 @@ tbody tr:hover {
 
 .cons-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 76px 72px 28px;
+  grid-template-columns: minmax(0, 1fr) 70px 92px 72px 28px;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
@@ -9342,7 +9342,7 @@ tbody tr:hover {
   background: var(--bg-secondary);
 }
 
-.cons-head span:nth-child(3) { text-align: center; }
+.cons-head span:nth-child(4) { text-align: center; }
 
 .cons-name {
   display: flex;
@@ -9407,4 +9407,11 @@ tbody tr:hover {
 .cons-remove:hover {
   background: var(--bg-hover);
   color: #D9534F;
+}
+
+.form-select.cons-uom {
+  min-height: 34px;
+  padding: 4px 24px 4px 10px;
+  background-position: right 8px center;
+  font-size: var(--font-size-sm);
 }

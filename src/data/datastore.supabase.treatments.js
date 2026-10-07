@@ -1,11 +1,13 @@
 import { supabase } from "../lib/supabaseClient";
 
-// A treatment's consumables: [{ name, qty, disposable }].
+// A treatment's consumables: [{ name, qty, uom, disposable }].
+// uom is a lowercase unit (e.g. "pcs", "box") or "" for rows saved before units existed.
 const cleanSupplies = (rows) =>
   (Array.isArray(rows) ? rows : [])
     .map((r) => ({
       name: String(r?.name || "").trim(),
       qty: Math.max(1, Math.floor(Number(r?.qty)) || 1),
+      uom: String(r?.uom || "").trim().toLowerCase(),
       disposable: Boolean(r?.disposable),
     }))
     .filter((r) => r.name);
@@ -19,6 +21,7 @@ const mapTreatment = (row) => {
     detail = names.map((name) => ({
       name,
       qty: 1,
+      uom: "",
       disposable: Boolean(row.supplies_disposable),
     }));
   }
@@ -134,7 +137,7 @@ export async function getInventoryItemNames(clinicId) {
   }
 }
 
-// Stock per inventory item name: [{ name, qty }] (qty summed across rooms).
+// Stock per inventory item name + unit: [{ name, uom, qty }] (qty summed across rooms).
 // Returns null when it cannot be loaded, so the form can tell "unknown" (no
 // limit enforced) apart from "not in inventory" (stock 0).
 export async function getInventoryStock(clinicId) {
@@ -147,7 +150,11 @@ export async function getInventoryStock(clinicId) {
       return null;
     }
     return Array.isArray(data)
-      ? data.map((r) => ({ name: r.name, qty: Number(r.qty) || 0 }))
+      ? data.map((r) => ({
+          name: r.name,
+          uom: String(r.uom || "").trim().toLowerCase(),
+          qty: Number(r.qty) || 0,
+        }))
       : null;
   } catch (err) {
     console.warn("[Inventory] Could not load stock:", err?.message || err);

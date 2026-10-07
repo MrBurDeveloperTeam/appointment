@@ -451,7 +451,7 @@ export default function AppointmentForm({
                 {selectedTreatment.suppliesNeeded && selectedTreatment.suppliesNeeded.length > 0 && (
                   <span className="patient-source-badge">
                     Supplies: {(selectedTreatment.suppliesDetail?.length
-                      ? selectedTreatment.suppliesDetail.map((r) => (r.qty > 1 ? `${r.name} ×${r.qty}` : r.name))
+                      ? selectedTreatment.suppliesDetail.map((r) => (r.qty > 1 || r.uom ? `${r.name} ×${r.qty}${r.uom ? ` ${r.uom.toUpperCase()}` : ''}` : r.name))
                       : selectedTreatment.suppliesNeeded
                     ).join(', ')}
                   </span>

@@ -4,7 +4,7 @@ import { getColorBg, getContrastText } from '../utils/colors';
 import { getInitials } from '../utils/people';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
-import ConsumablesField, { stockLimit } from './ConsumablesField';
+import ConsumablesField, { buildStock, stockLimit } from './ConsumablesField';
 import { PRODUCT_NAMES } from '../constants/productNames';
 import DataStore from '../data';
 import { useToast } from '../context/ToastProvider';
@@ -301,17 +301,18 @@ export default function SettingsView({
       .map((r) => ({
         name: String(r.name || '').trim(),
         qty: Math.max(1, Math.floor(Number(r.qty)) || 1),
+        uom: String(r.uom || '').trim().toLowerCase(),
         disposable: Boolean(r.disposable),
       }))
       .filter((r) => r.name);
 
     const overStock = supplies.find((r) => {
-      const max = stockLimit(stockMap, r.name);
+      const max = stockLimit(stock, r.name, r.uom);
       return Number.isFinite(max) && max > 0 && r.qty > max;
     });
     if (overStock) {
       addToast(
-        `Only ${stockLimit(stockMap, overStock.name)} of "${overStock.name}" in inventory`,
+        `Only ${stockLimit(stock, overStock.name, overStock.uom)} ${overStock.uom ? overStock.uom.toUpperCase() + ' of ' : 'of '}"${overStock.name}" in inventory`,
         'error'
       );
 
@@ -461,17 +462,17 @@ export default function SettingsView({
     saveHolidays(merged);
   };
 
-  // Inventory stock per item name ([{ name, qty }]); null = could not be loaded.
+  // Inventory stock per item name + unit ([{ name, uom, qty }]); null = could not be loaded.
   const [inventoryStock, setInventoryStock] = useState(null);
   // Fallback suggestions (names only) if the stock lookup is unavailable.
   const [inventoryNames, setInventoryNames] = useState([]);
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const stock = await DataStore.getInventoryStock();
+      const loaded = await DataStore.getInventoryStock();
       if (cancelled) return;
-      if (stock) {
-        setInventoryStock(stock);
+      if (loaded) {
+        setInventoryStock(loaded);
         return;
       }
       const names = await DataStore.getInventoryItemNames();
@@ -480,11 +481,14 @@ export default function SettingsView({
     return () => { cancelled = true; };
   }, []);
 
-  // lowercased item name -> quantity in inventory (null = unknown, no limit).
-  const stockMap = useMemo(
-    () => (inventoryStock ? new Map(inventoryStock.map((r) => [r.name.trim().toLowerCase(), r.qty])) : null),
-    [inventoryStock]
-  );
+  // Stock lookup + unit choices built from inventory (null = unknown, no limit).
+  const stock = useMemo(() => buildStock(inventoryStock), [inventoryStock]);
+  // Units offered per consumable row: whatever units inventory uses, plus PCS/BOX.
+  const uomOptions = useMemo(() => {
+    const set = new Set(['pcs', 'box']);
+    (inventoryStock || []).forEach((r) => { if (r.uom) set.add(r.uom); });
+    return [...set];
+  }, [inventoryStock]);
 
   // Suggestions: standard names, then inventory item names, then any custom
   // consumables already saved on treatments (all de-duplicated, case-insensitive).
@@ -1137,7 +1141,8 @@ export default function SettingsView({
                 rows={treatmentForm.supplies}
                 onChange={(supplies) => setTreatmentForm({ ...treatmentForm, supplies })}
                 options={consumableOptions}
-                stock={stockMap}
+                stock={stock}
+                uomOptions={uomOptions}
               />
             </div>
           </div>

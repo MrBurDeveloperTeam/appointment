@@ -2,14 +2,16 @@
 -- (safe to re-run; everything is CREATE OR REPLACE / IF NOT EXISTS).
 --
 -- What this sets up
---   1. apt_treatments.supplies_detail  jsonb  [{name, qty, disposable}, ...]
---      One entry per consumable on a treatment (quantity + disposable flag).
+--   1. apt_treatments.supplies_detail  jsonb  [{name, qty, uom, disposable}, ...]
+--      One entry per consumable on a treatment (quantity, unit of measure and
+--      disposable flag).
 --   2. apt_inventory_item_names(clinic)  -> text[]  item names for suggestions.
---   3. apt_inventory_stock(clinic)       -> jsonb   [{name, qty}] stock per name,
---      used to cap the quantity a treatment can ask for.
+--   3. apt_inventory_stock(clinic)       -> jsonb   [{name, uom, qty}] stock per
+--      name + unit, used to cap quantities and to offer the UOM choices
+--      (the distinct units found in inventory).
 --   4. apt_deduct_disposables(appointment) -> deducts, once per completed
 --      appointment, every DISPOSABLE consumable of its treatment from inventory
---      (qty units each, earliest-expiry batch first, spilling into the next
+--      (qty units each in the row's UOM, earliest-expiry batch first, spilling into the next
 --      batch/item if one runs out), recalculates the item, removes items that
 --      hit 0 and writes an inventory activity-log row per deduction.
 --      appointments.supplies_deducted_at makes it idempotent.  Consumables
@@ -89,15 +91,18 @@ BEGIN
     RAISE EXCEPTION 'not allowed';
   END IF;
 
-  SELECT COALESCE(jsonb_agg(jsonb_build_object('name', t.n, 'qty', t.q) ORDER BY lower(t.n)), '[]'::jsonb)
+  SELECT COALESCE(jsonb_agg(jsonb_build_object('name', t.n, 'uom', t.u, 'qty', t.q)
+                            ORDER BY lower(t.n), t.u), '[]'::jsonb)
     INTO v_stock
     FROM (
-      SELECT min(btrim(i.name)) AS n, SUM(i.quantity) AS q
+      SELECT min(btrim(i.name)) AS n,
+             lower(btrim(COALESCE(i.uom, ''))) AS u,
+             SUM(i.quantity) AS q
         FROM inventory_items i
        WHERE i.user_id IN (SELECT user_id FROM profiles WHERE clinic_id = p_clinic_id)
          AND btrim(COALESCE(i.name, '')) <> ''
          AND COALESCE(i.category, '') <> 'equipment'
-       GROUP BY lower(btrim(i.name))
+       GROUP BY lower(btrim(i.name)), lower(btrim(COALESCE(i.uom, '')))
     ) t;
 
   RETURN v_stock;
@@ -123,6 +128,7 @@ DECLARE
   v_need        jsonb;
   v_row         jsonb;
   v_name        text;
+  v_uom         text;
   v_remaining   numeric;
   v_taken_total numeric;
   v_take        numeric;
@@ -175,6 +181,7 @@ BEGIN
      AND jsonb_array_length(v_treat.supplies_detail) > 0 THEN
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
              'name', e->>'name',
+             'uom',  lower(btrim(COALESCE(e->>'uom', ''))),
              'qty',  GREATEST(COALESCE(NULLIF(e->>'qty', '')::numeric, 1), 1))), '[]'::jsonb)
       INTO v_need
       FROM jsonb_array_elements(v_treat.supplies_detail) e
@@ -198,6 +205,7 @@ BEGIN
   FOR v_row IN SELECT * FROM jsonb_array_elements(v_need) LOOP
     v_name := lower(btrim(COALESCE(v_row->>'name', '')));
     CONTINUE WHEN v_name = '';
+    v_uom         := lower(btrim(COALESCE(v_row->>'uom', '')));
     v_remaining   := (v_row->>'qty')::numeric;
     v_taken_total := 0;
 
@@ -210,6 +218,7 @@ BEGIN
         JOIN inventory_items i ON i.id = b.item_id
        WHERE i.user_id = ANY (v_owners)
          AND lower(btrim(i.name)) = v_name
+         AND (v_uom = '' OR lower(btrim(COALESCE(i.uom, ''))) = v_uom)
          AND b.qty > 0
        ORDER BY b.expiry_date ASC NULLS LAST, i.id
        LIMIT 1
@@ -247,6 +256,7 @@ BEGIN
           FROM inventory_items i
          WHERE i.user_id = ANY (v_owners)
            AND lower(btrim(i.name)) = v_name
+           AND (v_uom = '' OR lower(btrim(COALESCE(i.uom, ''))) = v_uom)
            AND i.quantity > 0
            AND NOT EXISTS (SELECT 1 FROM inventory_item_batches b WHERE b.item_id = i.id)
          ORDER BY i.expiry_date ASC NULLS LAST, i.id
@@ -285,10 +295,10 @@ BEGIN
     END LOOP;
 
     IF v_taken_total > 0 THEN
-      v_deducted := v_deducted || jsonb_build_object('name', v_row->>'name', 'qty', v_taken_total);
+      v_deducted := v_deducted || jsonb_build_object('name', v_row->>'name', 'uom', v_uom, 'qty', v_taken_total);
     END IF;
     IF v_remaining > 0 THEN
-      v_missing := v_missing || jsonb_build_object('name', v_row->>'name', 'short', v_remaining);
+      v_missing := v_missing || jsonb_build_object('name', v_row->>'name', 'uom', v_uom, 'short', v_remaining);
     END IF;
   END LOOP;
 
