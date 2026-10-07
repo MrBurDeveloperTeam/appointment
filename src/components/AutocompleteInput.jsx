@@ -25,13 +25,26 @@ export default function AutocompleteInput({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [pos, setPos] = useState(null);
+  // Filtering only starts once the user types in this open session. Just opening
+  // a field that already has a value must list every option, not only matches.
+  const [dirty, setDirty] = useState(false);
   const wrapRef = useRef(null);
   const inputRef = useRef(null);
   const listRef = useRef(null);
 
   // Split the field into the already-chosen items and the one being typed.
   const { head, typed, chosen } = useMemo(() => {
-    if (!multiple) return { head: '', typed: value.trim(), chosen: [] };
+    if (!multiple) return { head: '', typed: dirty ? value.trim() : '', chosen: [] };
+    const trimmed = value.trim();
+    // Not typing yet: everything in the field counts as chosen and the next
+    // pick is appended after it (instead of replacing the last item).
+    if (!dirty) {
+      return {
+        head: trimmed && !trimmed.endsWith(',') ? `${trimmed},` : trimmed,
+        typed: '',
+        chosen: trimmed.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
+      };
+    }
     const i = value.lastIndexOf(',');
     const headPart = i >= 0 ? value.slice(0, i + 1) : '';
     return {
@@ -39,7 +52,7 @@ export default function AutocompleteInput({
       typed: (i >= 0 ? value.slice(i + 1) : value).trim(),
       chosen: headPart.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
     };
-  }, [value, multiple]);
+  }, [value, multiple, dirty]);
 
   const filtered = useMemo(() => {
     const q = typed.toLowerCase();
@@ -104,9 +117,15 @@ export default function AutocompleteInput({
     listRef.current?.querySelector(`[data-idx="${active}"]`)?.scrollIntoView({ block: 'nearest' });
   }, [active]);
 
+  const openList = () => {
+    if (!open) setDirty(false);
+    setOpen(true);
+  };
+
   const pick = (name) => {
     if (multiple) {
       const prefix = head ? `${head.replace(/\s+$/, '')} ` : '';
+      setDirty(true);
       onChange(`${prefix}${name}, `);
       setOpen(true);
       inputRef.current?.focus();
@@ -119,7 +138,7 @@ export default function AutocompleteInput({
   const onKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setOpen(true);
+      openList();
       setActive((a) => Math.min(a + 1, rowCount - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
@@ -157,9 +176,9 @@ export default function AutocompleteInput({
         className="form-input ac-input"
         value={value}
         placeholder={placeholder}
-        onFocus={() => setOpen(true)}
-        onClick={() => setOpen(true)}
-        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={openList}
+        onClick={openList}
+        onChange={(e) => { setDirty(true); onChange(e.target.value); setOpen(true); }}
         onKeyDown={onKeyDown}
       />
       <ChevronDown className={`ac-icon ac-icon-right ${open ? 'open' : ''}`} size={16} />
