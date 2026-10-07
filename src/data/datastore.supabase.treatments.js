@@ -172,3 +172,19 @@ export async function getInventoryStock(clinicId) {
     return null;
   }
 }
+
+// Is this treatment referenced by any appointment or booking request?
+// true / false, or null when it could not be determined (callers should then
+// play safe and archive instead of delete).
+export async function isTreatmentInUse(id) {
+  try {
+    const [appts, requests] = await Promise.all([
+      supabase.from("appointments").select("id", { count: "exact", head: true }).eq("treatment_id", id),
+      supabase.from("appointment_requests").select("id", { count: "exact", head: true }).eq("appointment_treatment_id", id),
+    ]);
+    if (appts.error || requests.error) return null;
+    return (appts.count || 0) + (requests.count || 0) > 0;
+  } catch {
+    return null;
+  }
+}

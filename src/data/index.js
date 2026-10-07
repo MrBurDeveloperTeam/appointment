@@ -375,6 +375,10 @@ const DataStore = {
     return Treatments.getTreatments(activeClinic);
   },
 
+  async isTreatmentInUse(id) {
+    return Treatments.isTreatmentInUse(id);
+  },
+
   async getInventoryStock(clinicId) {
     const activeClinic = getClinicId(clinicId);
     if (!activeClinic) return null;

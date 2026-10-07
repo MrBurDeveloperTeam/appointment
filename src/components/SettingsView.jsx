@@ -99,6 +99,9 @@ export default function SettingsView({
   });
   const [confirmDialog, setConfirmDialog] = useState({ open: false, type: '', payload: null });
   const [showArchivedTreatments, setShowArchivedTreatments] = useState(false);
+  // Whether the treatment open in the edit form is referenced by appointments /
+  // booking requests: null = still checking or unknown, true / false = known.
+  const [treatmentInUse, setTreatmentInUse] = useState(null);
 
   const dentists = useMemo(() => staff.filter((s) => s.role === 'dentist'), [staff]);
   const nurses = useMemo(() => staff.filter((s) => s.role === 'nurse'), [staff]);
@@ -390,8 +393,12 @@ export default function SettingsView({
       setConfirmDialog({ open: true, type: 'room', payload: { id: roomForm.id, name: roomForm.name } });
     }
     if (modalState.type === 'treatment' && treatmentForm.id) {
-      // Treatments that appointments reference cannot be deleted, so they are archived.
-      setConfirmDialog({ open: true, type: 'treatment-archive', payload: { id: treatmentForm.id, name: treatmentForm.name } });
+      // Unused treatments can be deleted; ones appointments reference are archived instead.
+      setConfirmDialog({
+        open: true,
+        type: treatmentInUse === false ? 'treatment' : 'treatment-archive',
+        payload: { id: treatmentForm.id, name: treatmentForm.name },
+      });
     }
     if (modalState.type === 'staff' && staffForm.id) {
       setConfirmDialog({ open: true, type: 'staff', payload: { id: staffForm.id, name: staffForm.name } });
@@ -404,6 +411,13 @@ export default function SettingsView({
   const handleConfirmDelete = () => {
     if (confirmDialog.type === 'room' && confirmDialog.payload?.id) {
       deleteRoom(confirmDialog.payload.id);
+    }
+    if (confirmDialog.type === 'treatment' && confirmDialog.payload?.id) {
+      // The data hook resolves to null when the request failed (e.g. it is in use).
+      Promise.resolve(deleteTreatment(confirmDialog.payload.id))
+        .then((result) => (result
+          ? addToast('Treatment deleted', 'success')
+          : addToast('Could not delete the treatment. It may be in use, so archive it instead.', 'error')));
     }
     if (confirmDialog.type === 'treatment-archive' && confirmDialog.payload?.id) {
       // The data hook resolves to null when the request failed.
@@ -517,6 +531,20 @@ export default function SettingsView({
     treatments.forEach((t) => (t.suppliesNeeded || []).forEach(add));
     return [...PRODUCT_NAMES, ...extra];
   }, [inventoryStock, inventoryNames, treatments]);
+
+  // Check usage whenever a saved treatment's edit form opens.
+  useEffect(() => {
+    if (modalState.type !== 'treatment' || !treatmentForm.id) {
+      setTreatmentInUse(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setTreatmentInUse(null);
+    DataStore.isTreatmentInUse(treatmentForm.id)
+      .then((used) => { if (!cancelled) setTreatmentInUse(used); })
+      .catch(() => { if (!cancelled) setTreatmentInUse(null); });
+    return () => { cancelled = true; };
+  }, [modalState.type, treatmentForm.id]);
 
   const activeTreatments = treatments.filter((t) => !t.archived);
   const archivedTreatments = treatments.filter((t) => t.archived);
@@ -1177,15 +1205,30 @@ export default function SettingsView({
           </div>
           <div className="modal-footer">
             {modalState.mode === 'edit' && (
-              treatments.find((t) => t.id === treatmentForm.id)?.archived ? (
-                <button type="button" className="btn btn-secondary" onClick={() => handleRestoreTreatment(treatmentForm.id)}>
-                  Restore
-                </button>
-              ) : (
-                <button type="button" className="btn btn-danger" onClick={handleDelete}>
-                  Archive
-                </button>
-              )
+              <>
+                {treatments.find((t) => t.id === treatmentForm.id)?.archived ? (
+                  <button type="button" className="btn btn-secondary" onClick={() => handleRestoreTreatment(treatmentForm.id)}>
+                    Restore
+                  </button>
+                ) : treatmentInUse === null ? (
+                  <button type="button" className="btn btn-secondary" disabled>
+                    Checking…
+                  </button>
+                ) : treatmentInUse === false ? (
+                  <button type="button" className="btn btn-danger" onClick={handleDelete}>
+                    Delete
+                  </button>
+                ) : (
+                  <button type="button" className="btn btn-danger" onClick={handleDelete}>
+                    Archive
+                  </button>
+                )}
+                {treatments.find((t) => t.id === treatmentForm.id)?.archived && treatmentInUse === false && (
+                  <button type="button" className="btn btn-danger" onClick={handleDelete}>
+                    Delete
+                  </button>
+                )}
+              </>
             )}
             <div className="flex-1"></div>
             <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
