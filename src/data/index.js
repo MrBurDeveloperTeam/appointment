@@ -635,6 +635,7 @@ const DataStore = {
         duration: t.duration || null,
         color: t.color || null,
         supplies_needed: t.suppliesNeeded || [],
+        supplies_disposable: Boolean(t.suppliesDisposable),
       }))
     );
 

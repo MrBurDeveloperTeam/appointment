@@ -10,6 +10,29 @@ async function assertAppointmentEditable(id) {
   }
 }
 
+// When an appointment is completed, deduct its treatment's disposable
+// consumables from inventory (see supabase/disposable_inventory_deduction.sql).
+// The database function is idempotent and checks the treatment's flags, so this
+// is safe to call on every save of a completed appointment. It must never make
+// saving the appointment fail, so all errors are swallowed and logged.
+async function deductDisposableSupplies(appointment) {
+  if (!appointment || appointment.status !== 'completed' || !appointment.treatment_id) return;
+  try {
+    const { data, error } = await supabase.rpc('apt_deduct_disposables', {
+      p_appointment_id: appointment.id,
+    });
+    if (error) {
+      console.warn('[Inventory] Disposable deduction failed:', error.message);
+      return;
+    }
+    if (data?.missing?.length) {
+      console.warn('[Inventory] No stock found for:', data.missing.join(', '));
+    }
+  } catch (err) {
+    console.warn('[Inventory] Disposable deduction failed:', err?.message || err);
+  }
+}
+
 const mapAppointment = (row) => ({
   id: row.id,
   clinicId: row.clinic_id,
@@ -67,6 +90,7 @@ export async function addAppointment(clinicId, appointment) {
     .select("*")
     .single();
   if (error) throw error;
+  await deductDisposableSupplies(data);
   return mapAppointment(data);
 }
 
@@ -91,6 +115,7 @@ export async function updateAppointment(id, updates) {
     .select("*")
     .single();
   if (error) throw error;
+  await deductDisposableSupplies(data);
   return mapAppointment(data);
 }
 
