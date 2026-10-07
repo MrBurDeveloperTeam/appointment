@@ -156,6 +156,7 @@ CREATE TABLE public.apt_treatments (
   supplies_needed ARRAY NOT NULL DEFAULT '{}'::text[],
   supplies_disposable boolean NOT NULL DEFAULT false,
   supplies_detail jsonb NOT NULL DEFAULT '[]'::jsonb,
+  archived_at timestamp with time zone,
   CONSTRAINT treatments_pkey PRIMARY KEY (id),
   CONSTRAINT treatments_clinic_id_fkey FOREIGN KEY (clinic_id) REFERENCES public.apt_clinics(id)
 );

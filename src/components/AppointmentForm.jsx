@@ -31,11 +31,14 @@ export default function AppointmentForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Overlap warning: holds the conflicting appointments after a first save attempt;
   // a second submit while this is set proceeds (deliberate overbook).
+  // Archived treatments are hidden from new bookings (but still shown, marked,
+  // when an existing appointment already uses one).
+  const activeTreatments = treatments.filter((t) => !t.archived);
   const [pendingConflicts, setPendingConflicts] = useState(null);
   const [form, setForm] = useState({
     patientId: patients[0] ? patients[0].id : '',
     roomId: rooms[0] ? rooms[0].id : '',
-    treatmentId: treatments[0] ? treatments[0].id : '',
+    treatmentId: activeTreatments[0] ? activeTreatments[0].id : '',
     dentistId: dentists[0] ? dentists[0].id : '',
     date: todayISO(),
     startTime: '09:00',
@@ -90,7 +93,7 @@ export default function AppointmentForm({
         id: initialData.id || null,
         patientId: initialData.patientId || prev.patientId || (patients[0] ? patients[0].id : ''),
         roomId: initialData.roomId || prev.roomId || (rooms[0] ? rooms[0].id : ''),
-        treatmentId: initialData.treatmentId || prev.treatmentId || (treatments[0] ? treatments[0].id : ''),
+        treatmentId: initialData.treatmentId || prev.treatmentId || (activeTreatments[0] ? activeTreatments[0].id : ''),
         dentistId: initialData.dentistId || prev.dentistId || (dentists[0] ? dentists[0].id : ''),
         status: initialData.status || prev.status || 'confirmed',
         notes: initialData.notes ?? prev.notes ?? '',
@@ -423,9 +426,11 @@ export default function AppointmentForm({
                 onChange={(e) => handleTreatmentChange(e.target.value)}
               >
                 <option value="">None</option>
-                {treatments.map((t) => (
+                {treatments
+                  .filter((t) => !t.archived || String(t.id) === String(form.treatmentId))
+                  .map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.name}
+                    {t.name}{t.archived ? ' (archived)' : ''}
                   </option>
                 ))}
               </select>

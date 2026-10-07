@@ -160,11 +160,23 @@ export default function PublicBookingView({ clinicSlug }) {
           .eq('clinic_id', clinic.id)
           .eq('role', 'dentist')
           .order('name', { ascending: true }),
-        supabase
-          .from('apt_treatments')
-          .select('id, name, duration')
-          .eq('clinic_id', clinic.id)
-          .order('name', { ascending: true }),
+        (async () => {
+          // archived_at hides archived treatments from patients; fall back to
+          // the plain query if that column has not been added yet.
+          const withArchive = await supabase
+            .from('apt_treatments')
+            .select('id, name, duration, archived_at')
+            .eq('clinic_id', clinic.id)
+            .order('name', { ascending: true });
+          if (!withArchive.error) {
+            return { data: (withArchive.data || []).filter((t) => !t.archived_at) };
+          }
+          return supabase
+            .from('apt_treatments')
+            .select('id, name, duration')
+            .eq('clinic_id', clinic.id)
+            .order('name', { ascending: true });
+        })(),
         supabase.rpc('booking_clinic_availability_text', {
           p_clinic_id: clinic.id,
         }),

@@ -9415,3 +9415,19 @@ tbody tr:hover {
   background-position: right 8px center;
   font-size: var(--font-size-sm);
 }
+
+/* ===== Archived treatments ===== */
+.settings-list-item.is-archived {
+  opacity: 0.6;
+}
+
+.archived-tag {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs, 12px);
+  font-weight: 600;
+  vertical-align: middle;
+}

@@ -2,6 +2,7 @@
 -- (safe to re-run; everything is CREATE OR REPLACE / IF NOT EXISTS).
 --
 -- What this sets up
+--   0. apt_treatments.archived_at  timestamptz  (set = archived, NULL = active)
 --   1. apt_treatments.supplies_detail  jsonb  [{name, qty, uom, disposable}, ...]
 --      One entry per consumable on a treatment (quantity, unit of measure and
 --      disposable flag).
@@ -28,6 +29,12 @@ ALTER TABLE public.apt_treatments
 
 ALTER TABLE public.appointments
   ADD COLUMN IF NOT EXISTS supplies_deducted_at timestamptz;
+
+-- Archiving: a treatment that appointments already reference can't be deleted
+-- (foreign key), so it is archived instead. Archived treatments stay available
+-- to existing appointments/reports but are hidden from new bookings.
+ALTER TABLE public.apt_treatments
+  ADD COLUMN IF NOT EXISTS archived_at timestamptz;
 
 -- ---------------------------------------------------------------------------
 -- 2. Item names

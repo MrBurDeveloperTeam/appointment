@@ -402,7 +402,12 @@ const DataStore = {
     const updated = await Treatments.updateTreatment(id, updates);
     await Activity.addActivityLog(activeClinic, {
       type: "treatment_updated",
-      description: `Updated treatment: ${updated.name}`,
+      description:
+        updates.archived === true
+          ? `Archived treatment: ${updated.name}`
+          : updates.archived === false
+            ? `Restored treatment: ${updated.name}`
+            : `Updated treatment: ${updated.name}`,
     });
     return updated;
   },

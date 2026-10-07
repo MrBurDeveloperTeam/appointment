@@ -33,13 +33,15 @@ const mapTreatment = (row) => {
     suppliesNeeded: names,
     suppliesDetail: detail,
     suppliesDisposable: detail.some((r) => r.disposable),
+    archived: Boolean(row.archived_at),
+    archivedAt: row.archived_at || null,
   };
 };
 
 // Columns added by supabase/disposable_inventory_deduction.sql. If that script
 // has not been run yet, saving retries without them so treatments still save
 // (the per-consumable quantity / disposable flags just are not persisted).
-const OPTIONAL_COLUMNS = ["supplies_detail", "supplies_disposable"];
+const OPTIONAL_COLUMNS = ["supplies_detail", "supplies_disposable", "archived_at"];
 const isMissingOptionalColumn = (error) =>
   error &&
   (error.code === "42703" ||
@@ -100,12 +102,21 @@ export async function updateTreatment(id, updates) {
     ...(updates.color !== undefined ? { color: updates.color } : {}),
     ...(updates.suppliesNeeded !== undefined ? { supplies_needed: updates.suppliesNeeded } : {}),
     ...(updates.suppliesDetail !== undefined ? supplyColumns(updates) : {}),
+    ...(updates.archived !== undefined
+      ? { archived_at: updates.archived ? new Date().toISOString() : null }
+      : {}),
   };
   const update = (body) =>
     supabase.from("apt_treatments").update(body).eq("id", id).select("*").single();
 
   let { data, error } = await update(payload);
   if (isMissingOptionalColumn(error)) {
+    if (updates.archived !== undefined) {
+      // Archiving cannot be faked: tell the user the database needs updating.
+      throw new Error(
+        "Archiving needs a database update. Run supabase/disposable_inventory_deduction.sql in the Supabase SQL editor."
+      );
+    }
     ({ data, error } = await update(withoutOptionalColumns(payload)));
   }
   if (error) throw error;

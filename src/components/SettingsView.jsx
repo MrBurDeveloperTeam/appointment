@@ -98,6 +98,7 @@ export default function SettingsView({
     isPublic: true,
   });
   const [confirmDialog, setConfirmDialog] = useState({ open: false, type: '', payload: null });
+  const [showArchivedTreatments, setShowArchivedTreatments] = useState(false);
 
   const dentists = useMemo(() => staff.filter((s) => s.role === 'dentist'), [staff]);
   const nurses = useMemo(() => staff.filter((s) => s.role === 'nurse'), [staff]);
@@ -389,7 +390,8 @@ export default function SettingsView({
       setConfirmDialog({ open: true, type: 'room', payload: { id: roomForm.id, name: roomForm.name } });
     }
     if (modalState.type === 'treatment' && treatmentForm.id) {
-      setConfirmDialog({ open: true, type: 'treatment', payload: { id: treatmentForm.id, name: treatmentForm.name } });
+      // Treatments that appointments reference cannot be deleted, so they are archived.
+      setConfirmDialog({ open: true, type: 'treatment-archive', payload: { id: treatmentForm.id, name: treatmentForm.name } });
     }
     if (modalState.type === 'staff' && staffForm.id) {
       setConfirmDialog({ open: true, type: 'staff', payload: { id: staffForm.id, name: staffForm.name } });
@@ -403,8 +405,12 @@ export default function SettingsView({
     if (confirmDialog.type === 'room' && confirmDialog.payload?.id) {
       deleteRoom(confirmDialog.payload.id);
     }
-    if (confirmDialog.type === 'treatment' && confirmDialog.payload?.id) {
-      deleteTreatment(confirmDialog.payload.id);
+    if (confirmDialog.type === 'treatment-archive' && confirmDialog.payload?.id) {
+      // The data hook resolves to null when the request failed.
+      Promise.resolve(updateTreatment(confirmDialog.payload.id, { archived: true }))
+        .then((result) => (result
+          ? addToast('Treatment archived', 'success')
+          : addToast('Could not archive the treatment. Run the latest Supabase SQL (archived_at column) and try again.', 'error')));
     }
     if (confirmDialog.type === 'staff' && confirmDialog.payload?.id) {
       deleteStaff(confirmDialog.payload.id);
@@ -414,6 +420,14 @@ export default function SettingsView({
     }
     closeModal();
     setConfirmDialog({ open: false, type: '', payload: null });
+  };
+
+  const handleRestoreTreatment = (id) => {
+    Promise.resolve(updateTreatment(id, { archived: false }))
+      .then((result) => (result
+        ? addToast('Treatment restored', 'success')
+        : addToast('Could not restore the treatment. Please try again.', 'error')));
+    closeModal();
   };
 
   const renderDayChips = (workingDays) => (
@@ -504,7 +518,10 @@ export default function SettingsView({
     return [...PRODUCT_NAMES, ...extra];
   }, [inventoryStock, inventoryNames, treatments]);
 
-  const isUnconfigured = !form.workingHoursStart || dentists.length === 0 || rooms.length === 0 || treatments.length === 0;
+  const activeTreatments = treatments.filter((t) => !t.archived);
+  const archivedTreatments = treatments.filter((t) => t.archived);
+
+  const isUnconfigured = !form.workingHoursStart || dentists.length === 0 || rooms.length === 0 || activeTreatments.length === 0;
 
   // Keep the existing btn-primary hover/active behavior while using the lighter Snabbb teal.
   const lightPrimaryButtonStyle = {
@@ -686,7 +703,16 @@ export default function SettingsView({
             <div className="settings-card-header">
               <div className="settings-card-title">Treatments</div>
               <div className="settings-card-actions">
-                <span className="settings-card-subtitle">{treatments.length} total</span>
+                <span className="settings-card-subtitle">{activeTreatments.length} total</span>
+                {archivedTreatments.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setShowArchivedTreatments((v) => !v)}
+                  >
+                    {showArchivedTreatments ? 'Hide' : 'Show'} archived ({archivedTreatments.length})
+                  </button>
+                )}
                 <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openTreatmentModal()}>
                   + Add Treatment
                 </button>
@@ -694,15 +720,18 @@ export default function SettingsView({
             </div>
             <div className="settings-card-body">
               <div className="settings-list">
-                {treatments.map((t) => (
+                {(showArchivedTreatments ? [...activeTreatments, ...archivedTreatments] : activeTreatments).map((t) => (
                   <button
                     key={t.id}
                     type="button"
-                    className="settings-list-item clickable"
+                    className={`settings-list-item clickable ${t.archived ? 'is-archived' : ''}`}
                     onClick={() => openTreatmentModal(t)}
                   >
                     <div>
-                      <div className="settings-list-title">{t.name}</div>
+                      <div className="settings-list-title">
+                        {t.name}
+                        {t.archived && <span className="archived-tag">Archived</span>}
+                      </div>
                       <div className="settings-list-meta">
                         {t.duration} mins{' '}
                         <span style={{ background: t.color, color: getContrastText(t.color), padding: '2px 6px', borderRadius: 6 }}>{t.color}</span>
@@ -711,7 +740,7 @@ export default function SettingsView({
                     <span className="settings-cta">View</span>
                   </button>
                 ))}
-                {treatments.length === 0 && <div className="empty-state">No treatments</div>}
+                {activeTreatments.length === 0 && !showArchivedTreatments && <div className="empty-state">No treatments</div>}
               </div>
             </div>
           </div>
@@ -1148,9 +1177,15 @@ export default function SettingsView({
           </div>
           <div className="modal-footer">
             {modalState.mode === 'edit' && (
-              <button type="button" className="btn btn-danger" onClick={handleDelete}>
-                Delete
-              </button>
+              treatments.find((t) => t.id === treatmentForm.id)?.archived ? (
+                <button type="button" className="btn btn-secondary" onClick={() => handleRestoreTreatment(treatmentForm.id)}>
+                  Restore
+                </button>
+              ) : (
+                <button type="button" className="btn btn-danger" onClick={handleDelete}>
+                  Archive
+                </button>
+              )
             )}
             <div className="flex-1"></div>
             <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
@@ -1204,9 +1239,13 @@ export default function SettingsView({
       )}
       <ConfirmDialog
         open={confirmDialog.open}
-        title={`Delete ${confirmDialog.type}`}
-        description={`This will permanently remove the ${confirmDialog.type}. This action cannot be undone.`}
-        confirmLabel={`Delete ${confirmDialog.type}`}
+        title={confirmDialog.type === 'treatment-archive' ? 'Archive treatment' : `Delete ${confirmDialog.type}`}
+        description={
+          confirmDialog.type === 'treatment-archive'
+            ? `"${confirmDialog.payload?.name || 'This treatment'}" will be hidden from new appointments and online booking. Existing appointments and reports keep it, and you can restore it anytime from "Show archived".`
+            : `This will permanently remove the ${confirmDialog.type}. This action cannot be undone.`
+        }
+        confirmLabel={confirmDialog.type === 'treatment-archive' ? 'Archive treatment' : `Delete ${confirmDialog.type}`}
         confirmVariant="danger"
         onClose={() => setConfirmDialog({ open: false, type: '', payload: null })}
         onConfirm={handleConfirmDelete}
