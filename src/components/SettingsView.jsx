@@ -277,7 +277,7 @@ export default function SettingsView({
     }
   };
 
-  const handleTreatmentSubmit = () => {
+  const handleTreatmentSubmit = async () => {
     if (!treatmentForm.name.trim()) {
       addToast(
         'Enter treatment name',
@@ -344,16 +344,18 @@ export default function SettingsView({
       suppliesDisposable: supplies.some((r) => r.disposable),
     };
 
-    if (treatmentForm.id) {
-      updateTreatment(
-        treatmentForm.id,
-        payload
-      );
-    } else {
-      addTreatment(payload);
+    try {
+      if (treatmentForm.id) {
+        await updateTreatment(treatmentForm.id, payload);
+        addToast('Treatment updated successfully.', 'success');
+      } else {
+        await addTreatment(payload);
+        addToast('Treatment added successfully.', 'success');
+      }
+      closeModal();
+    } catch (error) {
+      addToast(error?.message || 'Unable to save treatment. Please try again.', 'error');
     }
-
-    closeModal();
   };
 
   const handleStaffSubmit = async () => {
@@ -431,18 +433,27 @@ export default function SettingsView({
       return;
     }
     if (confirmDialog.type === 'treatment' && confirmDialog.payload?.id) {
-      // The data hook resolves to null when the request failed (e.g. it is in use).
-      Promise.resolve(deleteTreatment(confirmDialog.payload.id))
-        .then((result) => (result
-          ? addToast('Treatment deleted', 'success')
-          : addToast('Could not delete the treatment. It may be in use, so archive it instead.', 'error')));
+      try {
+        const result = await deleteTreatment(confirmDialog.payload.id);
+        if (!result) throw new Error('Could not delete the treatment. It may be in use, so archive it instead.');
+        addToast('Treatment deleted successfully.', 'success');
+        closeModal();
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Could not delete the treatment. It may be in use, so archive it instead.', 'error');
+      }
+      return;
     }
     if (confirmDialog.type === 'treatment-archive' && confirmDialog.payload?.id) {
-      // The data hook resolves to null when the request failed.
-      Promise.resolve(updateTreatment(confirmDialog.payload.id, { archived: true }))
-        .then((result) => (result
-          ? addToast('Treatment archived', 'success')
-          : addToast('Could not archive the treatment. Run the latest Supabase SQL (archived_at column) and try again.', 'error')));
+      try {
+        await updateTreatment(confirmDialog.payload.id, { archived: true });
+        addToast('Treatment archived successfully.', 'success');
+        closeModal();
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Could not archive the treatment. Run the latest Supabase SQL (archived_at column) and try again.', 'error');
+      }
+      return;
     }
     if (confirmDialog.type === 'staff' && confirmDialog.payload?.id) {
       try {
@@ -466,7 +477,8 @@ export default function SettingsView({
     Promise.resolve(updateTreatment(id, { archived: false }))
       .then((result) => (result
         ? addToast('Treatment restored', 'success')
-        : addToast('Could not restore the treatment. Please try again.', 'error')));
+        : addToast('Could not restore the treatment. Please try again.', 'error')))
+      .catch((error) => addToast(error?.message || 'Could not restore the treatment. Please try again.', 'error'));
     closeModal();
   };
 
