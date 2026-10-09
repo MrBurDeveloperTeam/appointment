@@ -293,17 +293,19 @@ export default function useDataStore(activeClinicId, enabled = true) {
       refreshActivity();
     });
 
-  const addStaff = (member) =>
-    handleAsync(DataStore.addStaff(member), () => {
-      refreshStaff();
-      refreshActivity();
-    });
+  const addStaff = async (member) => {
+    const result = await DataStore.addStaff(member);
+    refreshStaff();
+    refreshActivity();
+    return result;
+  };
 
-  const updateStaff = (id, updates) =>
-    handleAsync(DataStore.updateStaff(id, updates), () => {
-      refreshStaff();
-      refreshActivity();
-    });
+  const updateStaff = async (id, updates) => {
+    const result = await DataStore.updateStaff(id, updates);
+    refreshStaff();
+    refreshActivity();
+    return result;
+  };
 
   const deleteStaff = (id) =>
     handleAsync(DataStore.deleteStaff(id), () => {

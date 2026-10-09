@@ -351,7 +351,7 @@ export default function SettingsView({
     closeModal();
   };
 
-  const handleStaffSubmit = () => {
+  const handleStaffSubmit = async () => {
     if (!staffForm.name.trim()) {
       addToast('Enter staff name', 'error');
       return;
@@ -367,12 +367,17 @@ export default function SettingsView({
       endTime: staffForm.endTime,
       assignedTo: staffForm.role === 'nurse' ? staffForm.assignedTo : '',
     };
-    if (staffForm.id) {
-      updateStaff(staffForm.id, payload);
-    } else {
-      addStaff(payload);
+    try {
+      if (staffForm.id) {
+        await updateStaff(staffForm.id, payload);
+      } else {
+        await addStaff(payload);
+      }
+      addToast(staffForm.id ? 'Staff member updated successfully.' : 'Staff member added successfully.', 'success');
+      closeModal();
+    } catch (error) {
+      addToast(error?.message || 'Unable to save staff member. Please try again.', 'error');
     }
-    closeModal();
   };
 
   const handleHolidaySubmit = () => {
