@@ -934,20 +934,19 @@ useEffect(() => {
   const handleSaveAppointment = (data) => {
     if (data.id) {
       return updateAppointment(data.id, data).then(() => {
+        addToast('Appointment updated successfully.', 'success');
         setShowAppointmentModal(false);
         setAppointmentDefaults(null);
       });
     } else {
-      // Logic is now inside useDataStore.addAppointment
       return addAppointment(data)
         .then(() => {
+          addToast('Appointment added successfully.', 'success');
           setShowAppointmentModal(false);
           setAppointmentDefaults(null);
         })
         .catch((err) => {
-          // If we want to show the specific error (like "Insufficient credits"), re-throw or handle here
-          addToast(err.message || "Failed to create appointment", 'error');
-          // Important: re-throw so form knows it failed!
+          addToast(err.message || 'Failed to add appointment.', 'error');
           throw err;
         });
     }

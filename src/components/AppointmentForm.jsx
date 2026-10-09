@@ -303,7 +303,7 @@ export default function AppointmentForm({
 
   return (
     <Modal title={isReadOnly ? 'Appointment Details' : isEditing ? 'Edit Appointment' : 'New Appointment'} onClose={onClose}>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <div className="modal-body">
           {isReadOnly && <p role="status">{PAST_APPOINTMENT_MESSAGE}</p>}
           <fieldset disabled={isReadOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
@@ -556,6 +556,7 @@ export default function AppointmentForm({
             <textarea
               className="form-textarea"
               rows="3"
+              style={{ resize: 'none' }}
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />

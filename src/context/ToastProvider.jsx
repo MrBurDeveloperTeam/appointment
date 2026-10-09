@@ -55,7 +55,12 @@ function ToastItem({ toast, onRemove }) {
     }, [duration, onRemove]);
 
     return (
-        <div className={`toast toast-${type}`} onClick={onRemove}>
+        <div
+            className={`toast toast-${type}`}
+            role={type === 'error' ? 'alert' : 'status'}
+            aria-live={type === 'error' ? 'assertive' : 'polite'}
+            onClick={onRemove}
+        >
             <div className="toast-icon">
                 {type === 'success' && '✓'}
                 {type === 'error' && '✕'}

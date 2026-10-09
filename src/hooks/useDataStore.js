@@ -344,27 +344,32 @@ export default function useDataStore(activeClinicId, enabled = true) {
     });
 
   // Encapsulated Appointment Creation
-  const handleAddAppointment = (appointment) => {
-    return handleAsync((async () => {
-      // 1. Credit Check (Mock Logic)
-      if (credits < 1) {
-        throw new Error("Insufficient credits. Please top up.");
-      }
+  const handleAddAppointment = async (appointment) => {
+    // Keep this mutation promise rejecting so the create flow can distinguish
+    // a confirmed write from a failed write and show the correct feedback.
+    if (credits < 1) {
+      throw new Error("Insufficient credits. Please top up.");
+    }
 
-      // 2. Decrement (Mock Logic)
-      setCredits(c => c - 1);
-      setCreditHistory(prev => [{
-        date: new Date().toISOString(),
-        description: 'Appointment Created',
-        amount: -1
-      }, ...prev]);
+    setCredits(c => c - 1);
+    setCreditHistory(prev => [{
+      date: new Date().toISOString(),
+      description: 'Appointment Created',
+      amount: -1
+    }, ...prev]);
 
-      // 3. Proceed with DataStore call
-      return await DataStore.addAppointment(appointment);
-    })(), () => {
+    try {
+      const result = await DataStore.addAppointment(appointment);
       refreshAppointments();
       refreshActivity();
-    });
+      return result;
+    } catch (error) {
+      // The appointment was not recorded, so restore the mock credit balance.
+      setCredits(c => c + 1);
+      setCreditHistory(prev => prev.slice(1));
+      console.error('DataStore error:', error);
+      throw error;
+    }
   };
 
   // Async Credit Top-up
