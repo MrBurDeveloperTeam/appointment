@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Plus, Upload, Users, X } from 'lucide-react';
 import Modal from './Modal';
+import { useToast } from '../context/ToastProvider';
 import { mapPatientRows, PATIENT_IMPORT_FIELDS, PATIENT_IMPORT_NAME_FIELDS, readPatientFile, suggestNameOrder, suggestPatientMapping } from '../utils/patientImport';
 
 const hasMapping = (value) => Array.isArray(value) ? value.some(Boolean) : Boolean(value);
@@ -23,10 +24,11 @@ function MultiColumnMapping({ field, headers, value, onChange }) {
 }
 
 export default function PatientImportModal({ dentists, onImport, onClose }) {
+  const { addToast } = useToast();
   const inputRef = useRef(null); const [step, setStep] = useState('upload'); const [fileName, setFileName] = useState('');
   const [headers, setHeaders] = useState([]); const [rows, setRows] = useState([]); const [mapping, setMapping] = useState({});
   const [nameOrder, setNameOrder] = useState('given-family');
-  const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [result, setResult] = useState(null);
+  const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [downloadBusy, setDownloadBusy] = useState(false); const [result, setResult] = useState(null);
   const mappedRows = useMemo(() => mapPatientRows(rows, mapping, dentists, nameOrder), [rows, mapping, dentists, nameOrder]);
   const importableRows =
     mappedRows.filter(
@@ -45,8 +47,31 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
     try {
       const parsed = await readPatientFile(file); setFileName(file.name); setHeaders(parsed.headers); setRows(parsed.rows);
       setMapping(suggestPatientMapping(parsed.headers)); setNameOrder(suggestNameOrder(parsed.headers)); setStep('map');
-    } catch (caught) { setError(caught.message || 'Could not read this file.'); }
+      addToast(`File "${file.name}" uploaded successfully.`, 'success');
+    } catch (caught) { setError(caught.message || 'Could not read this file.'); addToast(caught.message || 'Could not read this file.', 'error'); }
     finally { setBusy(false); }
+  };
+
+  const downloadTemplate = async () => {
+    setDownloadBusy(true);
+    try {
+      const response = await fetch('/templates/patient-import-template.xlsx');
+      if (!response.ok) throw new Error('Could not download the Excel template.');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'patient-import-template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      addToast('Excel template downloaded successfully.', 'success');
+    } catch (caught) {
+      addToast(caught.message || 'Could not download the Excel template.', 'error');
+    } finally {
+      setDownloadBusy(false);
+    }
   };
 
   const startImport = async () => {
@@ -61,8 +86,9 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
 
       setResult(imported);
       setStep('done');
+      addToast('Patients imported successfully.', 'success');
     }
-    catch (caught) { setError(caught.message || 'Patient import stopped. Please check the file and try again.'); }
+    catch (caught) { setError(caught.message || 'Patient import stopped. Please check the file and try again.'); addToast(caught.message || 'Patient import stopped. Please try again.', 'error'); }
     finally { setBusy(false); }
   };
 
@@ -79,9 +105,9 @@ export default function PatientImportModal({ dentists, onImport, onClose }) {
           <p>Choose a .xlsx or .csv file. The file stays in this browser while you match and review its columns.</p>
           <input ref={inputRef} type="file" accept=".xlsx,.csv" hidden onChange={(event) => chooseFile(event.target.files?.[0])} />
           <button type="button" className="btn btn-primary" disabled={busy} onClick={() => inputRef.current?.click()}><Upload size={17} />{busy ? 'Reading file…' : 'Choose file'}</button>
-          <a className="btn btn-secondary" href="/templates/patient-import-template.xlsx" download="patient-import-template.xlsx">
+          <button type="button" className="btn btn-secondary" disabled={busy || downloadBusy} onClick={downloadTemplate}>
             <Download size={17} />Download Excel template
-          </a>
+          </button>
           <small>Old .xls files should be saved as .xlsx or CSV first.</small>
         </div>}
         {step === 'map' && <>
