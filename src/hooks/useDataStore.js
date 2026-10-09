@@ -257,23 +257,26 @@ export default function useDataStore(activeClinicId, enabled = true) {
       refreshActivity();
     });
 
-  const addRoom = (room) =>
-    handleAsync(DataStore.addRoom(room), () => {
-      refreshRooms();
-      refreshActivity();
-    });
+  const addRoom = async (room) => {
+    const result = await DataStore.addRoom(room);
+    refreshRooms();
+    refreshActivity();
+    return result;
+  };
 
-  const updateRoom = (id, updates) =>
-    handleAsync(DataStore.updateRoom(id, updates), () => {
-      refreshRooms();
-      refreshActivity();
-    });
+  const updateRoom = async (id, updates) => {
+    const result = await DataStore.updateRoom(id, updates);
+    refreshRooms();
+    refreshActivity();
+    return result;
+  };
 
-  const deleteRoom = (id) =>
-    handleAsync(DataStore.deleteRoom(id), () => {
-      refreshRooms();
-      refreshActivity();
-    });
+  const deleteRoom = async (id) => {
+    const result = await DataStore.deleteRoom(id);
+    refreshRooms();
+    refreshActivity();
+    return result;
+  };
 
   const addTreatment = (treatment) =>
     handleAsync(DataStore.addTreatment(treatment), () => {
@@ -307,11 +310,12 @@ export default function useDataStore(activeClinicId, enabled = true) {
     return result;
   };
 
-  const deleteStaff = (id) =>
-    handleAsync(DataStore.deleteStaff(id), () => {
-      refreshStaff();
-      refreshActivity();
-    });
+  const deleteStaff = async (id) => {
+    const result = await DataStore.deleteStaff(id);
+    refreshStaff();
+    refreshActivity();
+    return result;
+  };
 
   const saveHolidays = (list) =>
     handleAsync(DataStore.saveHolidays(list), () => {

@@ -259,17 +259,22 @@ export default function SettingsView({
 
   const closeModal = () => setModalState({ type: null, mode: 'new' });
 
-  const handleRoomSubmit = () => {
+  const handleRoomSubmit = async () => {
     if (!roomForm.name.trim()) {
       addToast('Enter room name', 'error');
       return;
     }
-    if (roomForm.id) {
-      updateRoom(roomForm.id, { name: roomForm.name, color: roomForm.color });
-    } else {
-      addRoom({ name: roomForm.name, color: roomForm.color });
+    try {
+      if (roomForm.id) {
+        await updateRoom(roomForm.id, { name: roomForm.name, color: roomForm.color });
+      } else {
+        await addRoom({ name: roomForm.name, color: roomForm.color });
+      }
+      addToast(roomForm.id ? 'Room updated successfully.' : 'Room added successfully.', 'success');
+      closeModal();
+    } catch (error) {
+      addToast(error?.message || 'Unable to save room. Please try again.', 'error');
     }
-    closeModal();
   };
 
   const handleTreatmentSubmit = () => {
@@ -413,9 +418,17 @@ export default function SettingsView({
     }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (confirmDialog.type === 'room' && confirmDialog.payload?.id) {
-      deleteRoom(confirmDialog.payload.id);
+      try {
+        await deleteRoom(confirmDialog.payload.id);
+        addToast('Room deleted successfully.', 'success');
+        closeModal();
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Unable to delete room. Please try again.', 'error');
+      }
+      return;
     }
     if (confirmDialog.type === 'treatment' && confirmDialog.payload?.id) {
       // The data hook resolves to null when the request failed (e.g. it is in use).
@@ -432,7 +445,15 @@ export default function SettingsView({
           : addToast('Could not archive the treatment. Run the latest Supabase SQL (archived_at column) and try again.', 'error')));
     }
     if (confirmDialog.type === 'staff' && confirmDialog.payload?.id) {
-      deleteStaff(confirmDialog.payload.id);
+      try {
+        await deleteStaff(confirmDialog.payload.id);
+        addToast('Staff member deleted successfully.', 'success');
+        closeModal();
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Unable to delete staff member. Please try again.', 'error');
+      }
+      return;
     }
     if (confirmDialog.type === 'holiday' && confirmDialog.payload?.id) {
       deleteHoliday(confirmDialog.payload.id);
