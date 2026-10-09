@@ -933,11 +933,16 @@ useEffect(() => {
 
   const handleSaveAppointment = (data) => {
     if (data.id) {
-      return updateAppointment(data.id, data).then(() => {
-        addToast('Appointment updated successfully.', 'success');
-        setShowAppointmentModal(false);
-        setAppointmentDefaults(null);
-      });
+      return updateAppointment(data.id, data)
+        .then(() => {
+          addToast('Appointment updated successfully.', 'success');
+          setShowAppointmentModal(false);
+          setAppointmentDefaults(null);
+        })
+        .catch((err) => {
+          addToast(err.message || 'Failed to update appointment.', 'error');
+          throw err;
+        });
     } else {
       return addAppointment(data)
         .then(() => {

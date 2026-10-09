@@ -234,11 +234,14 @@ export default function useDataStore(activeClinicId, enabled = true) {
       refreshActivity();
     });
 
-  const updateAppointment = (id, updates) =>
-    handleAsync(DataStore.updateAppointment(id, updates), () => {
-      refreshAppointments();
-      refreshActivity();
-    });
+  const updateAppointment = async (id, updates) => {
+    // Preserve the rejection so the edit flow can distinguish a saved update
+    // from a backend failure and show the correct feedback.
+    const result = await DataStore.updateAppointment(id, updates);
+    refreshAppointments();
+    refreshActivity();
+    return result;
+  };
 
   const deleteAppointment = (id) =>
     handleAsync(DataStore.deleteAppointment(id), () => {
