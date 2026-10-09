@@ -243,11 +243,13 @@ export default function useDataStore(activeClinicId, enabled = true) {
     return result;
   };
 
-  const deleteAppointment = (id) =>
-    handleAsync(DataStore.deleteAppointment(id), () => {
-      refreshAppointments();
-      refreshActivity();
-    });
+  const deleteAppointment = async (id) => {
+    // Preserve failures so the confirmation flow can report the real outcome.
+    const result = await DataStore.deleteAppointment(id);
+    refreshAppointments();
+    refreshActivity();
+    return result;
+  };
 
   const saveSettings = (data) =>
     handleAsync(DataStore.saveSettings(data), () => {

@@ -990,11 +990,18 @@ useEffect(() => {
     });
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (confirmDialog.type === 'appointment' && confirmDialog.payload?.id) {
-      deleteAppointment(confirmDialog.payload.id);
-      setShowAppointmentModal(false);
-      setAppointmentDefaults(null);
+      try {
+        await deleteAppointment(confirmDialog.payload.id);
+        addToast('Appointment deleted successfully.', 'success');
+        setShowAppointmentModal(false);
+        setAppointmentDefaults(null);
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (err) {
+        addToast(err.message || 'Failed to delete appointment.', 'error');
+      }
+      return;
     }
     if (confirmDialog.type === 'patient' && confirmDialog.payload?.id) {
       deletePatient(confirmDialog.payload.id);
