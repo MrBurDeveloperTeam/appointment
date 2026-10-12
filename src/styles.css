@@ -833,6 +833,35 @@ textarea:focus-visible,
   flex-wrap: wrap;
 }
 
+/* Dropdown version of the status filter; only shown on mobile. */
+.requests-filter-select {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .requests-filters {
+    display: none;
+  }
+
+  .requests-filter-select {
+    display: block;
+    width: 100%;
+  }
+
+  /* Mobile: no font-size configuration on the requests page; text inherits. */
+  .request-title,
+  .request-name,
+  .request-meta,
+  .request-status,
+  .request-detail-row,
+  .request-detail-notes,
+  .request-match,
+  .request-footer-note,
+  .requests-filter-select {
+    font-size: inherit;
+  }
+}
+
 .requests-grid {
   display: grid;
   gap: var(--space-lg);

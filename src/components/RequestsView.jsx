@@ -62,6 +62,8 @@ const getEffectiveStatus = (request) => {
   return request.status;
 };
 
+const REQUEST_FILTERS = ['pending', 'accepted', 'declined', 'expired', 'all'];
+
 export default function RequestsView({
   appointmentRequests,
   patients,
@@ -506,18 +508,26 @@ export default function RequestsView({
           </p>
         </div>
 
+        {/* Mobile: status filter as a dropdown (chips are hidden there). */}
+        <select
+          className="form-select requests-filter-select"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          aria-label="Filter requests by status"
+        >
+          {REQUEST_FILTERS.map((status) => (
+            <option key={status} value={status}>
+              {status.charAt(0).toUpperCase() + status.slice(1)} ({counts[status] || 0})
+            </option>
+          ))}
+        </select>
+
         <div
           className="requests-filters"
           role="tablist"
           aria-label="Request status filters"
         >
-          {[
-            'pending',
-            'accepted',
-            'declined',
-            'expired',
-            'all',
-          ].map((status) => (
+          {REQUEST_FILTERS.map((status) => (
             <button
               key={status}
               type="button"
