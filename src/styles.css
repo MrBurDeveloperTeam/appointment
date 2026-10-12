@@ -5122,17 +5122,27 @@ tbody tr:hover {
   font-weight: var(--font-weight-normal, 400);
 }
 
-.patient-history-treatment {
+/* Treatment + dentist share one column (stacked). */
+.patient-history-detail {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.patient-history-treatment {
   color: var(--text-secondary);
 }
 
 .patient-history-dentist {
   color: var(--text-muted);
-  min-width: 80px;
 }
 
+/* Status chip always sits at the end of the row. */
 .patient-history-status {
+  flex-shrink: 0;
+  margin-left: auto;
   padding: 2px 6px;
   border-radius: var(--radius-full);
   font-weight: var(--font-weight-medium);

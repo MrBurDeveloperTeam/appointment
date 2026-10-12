@@ -303,8 +303,10 @@ export default function PatientsView({
                                 {new Date(apt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 <span className="patient-history-time">{formatTime(apt.startTime)}</span>
                               </span>
-                              <span className="patient-history-treatment">{treatmentName(apt.treatmentId || apt.treatmentType) || '-'}</span>
-                              <span className="patient-history-dentist">{dentistName(apt.dentistId)}</span>
+                              <div className="patient-history-detail">
+                                <span className="patient-history-treatment">{treatmentName(apt.treatmentId || apt.treatmentType) || '-'}</span>
+                                <span className="patient-history-dentist">{dentistName(apt.dentistId)}</span>
+                              </div>
                               <span className={`patient-history-status ${apt.status}`}>{apt.status}</span>
                             </div>
                             {apt.notes ? <div className="patient-history-notes">{apt.notes}</div> : null}
@@ -322,8 +324,10 @@ export default function PatientsView({
                               <span className="patient-history-date">
                                 {new Date(apt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                               </span>
-                              <span className="patient-history-treatment">{treatmentName(apt.treatmentId || apt.treatmentType) || '-'}</span>
-                              <span className="patient-history-dentist">{dentistName(apt.dentistId)}</span>
+                              <div className="patient-history-detail">
+                                <span className="patient-history-treatment">{treatmentName(apt.treatmentId || apt.treatmentType) || '-'}</span>
+                                <span className="patient-history-dentist">{dentistName(apt.dentistId)}</span>
+                              </div>
                               <span className={`patient-history-status ${apt.status}`}>{apt.status}</span>
                             </div>
                             {apt.notes ? <div className="patient-history-notes">{apt.notes}</div> : null}
