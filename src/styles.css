@@ -7313,7 +7313,6 @@ tbody tr:hover {
     flex-direction: row !important;
     /* Force row for horizontal scroll */
     overflow-x: auto;
-    padding-bottom: var(--space-xs);
     /* Add slight padding for scrollbar */
     gap: var(--space-xs);
   }
