@@ -4910,7 +4910,7 @@ tbody tr:hover {
 .patient-row {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
   cursor: pointer;
   transition: background var(--transition-fast);
