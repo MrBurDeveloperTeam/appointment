@@ -46,6 +46,12 @@ function ToastContainer({ toasts, removeToast }) {
 
 function ToastItem({ toast, onRemove }) {
     const { message, type, duration } = toast;
+    const title = {
+        success: 'Success',
+        error: 'Something went wrong',
+        warning: 'Please check this',
+        info: 'Information',
+    }[type] || 'Notification';
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -59,7 +65,6 @@ function ToastItem({ toast, onRemove }) {
             className={`toast toast-${type}`}
             role={type === 'error' ? 'alert' : 'status'}
             aria-live={type === 'error' ? 'assertive' : 'polite'}
-            onClick={onRemove}
         >
             <div className="toast-icon">
                 {type === 'success' && '✓'}
@@ -67,7 +72,11 @@ function ToastItem({ toast, onRemove }) {
                 {type === 'info' && 'ℹ'}
                 {type === 'warning' && '⚠'}
             </div>
-            <div className="toast-message">{message}</div>
+            <div className="toast-content">
+                <div className="toast-title">{title}</div>
+                <div className="toast-message">{message}</div>
+            </div>
+            <button type="button" className="toast-close" onClick={onRemove} aria-label="Dismiss notification">×</button>
         </div>
     );
 }
