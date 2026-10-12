@@ -7774,6 +7774,8 @@ tbody tr:hover {
     flex-wrap: wrap;
     align-items: flex-start;
     gap: var(--space-sm);
+    /* Floating look */
+    box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.06);
   }
 
   .staff-avatar {
@@ -9619,10 +9621,5 @@ tbody tr:hover {
   .settings-card {
     border: none;
     box-shadow: none;
-  }
-
-  /* Staff items float above the flat card. */
-  .staff-item {
-    box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.06);
   }
 }
