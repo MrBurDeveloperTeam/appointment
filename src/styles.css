@@ -9537,3 +9537,11 @@ tbody tr:hover {
   font-weight: 600;
   vertical-align: middle;
 }
+
+/* Mobile: never use the extra-small text size. Anything styled with
+   var(--font-size-xs) renders at the small size instead (app-wide). */
+@media (max-width: 720px) {
+  :root {
+    --font-size-xs: var(--font-size-sm);
+  }
+}
