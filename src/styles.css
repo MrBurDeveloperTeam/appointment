@@ -9614,4 +9614,10 @@ tbody tr:hover {
     border: none;
     border-radius: 0;
   }
+
+  /* Cards sit flat: no border or shadow. */
+  .settings-card {
+    border: none;
+    box-shadow: none;
+  }
 }
