@@ -9607,4 +9607,11 @@ tbody tr:hover {
   .settings-content {
     padding: 0;
   }
+
+  /* Nav tabs sit flat on the page: no card background, border or radius. */
+  .settings-nav {
+    background: none;
+    border: none;
+    border-radius: 0;
+  }
 }
