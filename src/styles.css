@@ -843,9 +843,22 @@ textarea:focus-visible,
     display: none;
   }
 
+  /* Obvious dropdown: teal border, bold text, large chevron on a tinted button. */
   .requests-filter-select {
     display: block;
     width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    font-weight: var(--font-weight-semibold);
+    color: var(--primary-dark);
+    border: 1.5px solid var(--primary);
+    background-color: var(--primary-bg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%232A9D8F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 20px 20px;
+    padding-right: 44px;
   }
 
   /* Mobile: no font-size configuration on the requests page; text inherits. */
