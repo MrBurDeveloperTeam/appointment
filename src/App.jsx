@@ -1004,9 +1004,16 @@ useEffect(() => {
       return;
     }
     if (confirmDialog.type === 'patient' && confirmDialog.payload?.id) {
-      deletePatient(confirmDialog.payload.id);
-      setShowPatientModal(false);
-      setEditingPatient(null);
+      try {
+        await deletePatient(confirmDialog.payload.id);
+        addToast('Patient deleted successfully.', 'success');
+        setShowPatientModal(false);
+        setEditingPatient(null);
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (err) {
+        addToast(err.message || 'Failed to delete patient.', 'error');
+      }
+      return;
     }
     setConfirmDialog({ open: false, type: '', payload: null });
   };
