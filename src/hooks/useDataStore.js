@@ -222,11 +222,12 @@ export default function useDataStore(activeClinicId, enabled = true) {
     return updated;
   };
 
-  const deletePatient = (id) =>
-    handleAsync(DataStore.deletePatient(id), () => {
-      refreshPatients();
-      refreshActivity();
-    });
+  const deletePatient = async (id) => {
+    const result = await DataStore.deletePatient(id);
+    refreshPatients();
+    refreshActivity();
+    return result;
+  };
 
   const addAppointment = (appointment) =>
     handleAsync(DataStore.addAppointment(appointment), () => {
