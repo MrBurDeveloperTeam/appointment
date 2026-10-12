@@ -2273,6 +2273,12 @@ p {
   visibility: visible;
 }
 
+@media (max-width: 768px) {
+  .modal-overlay.active {
+    padding: 15px;
+  }
+}
+
 .modal {
   background: var(--bg-card);
   border-radius: var(--radius-xl);
