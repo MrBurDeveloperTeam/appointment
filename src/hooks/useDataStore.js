@@ -326,23 +326,26 @@ export default function useDataStore(activeClinicId, enabled = true) {
       refreshActivity();
     });
 
-  const addHoliday = (holiday) =>
-    handleAsync(DataStore.addHoliday(holiday), () => {
-      refreshHolidays();
-      refreshActivity();
-    });
+  const addHoliday = async (holiday) => {
+    const result = await DataStore.addHoliday(holiday);
+    refreshHolidays();
+    refreshActivity();
+    return result;
+  };
 
-  const updateHoliday = (id, updates) =>
-    handleAsync(DataStore.updateHoliday(id, updates), () => {
-      refreshHolidays();
-      refreshActivity();
-    });
+  const updateHoliday = async (id, updates) => {
+    const result = await DataStore.updateHoliday(id, updates);
+    refreshHolidays();
+    refreshActivity();
+    return result;
+  };
 
-  const deleteHoliday = (id) =>
-    handleAsync(DataStore.deleteHoliday(id), () => {
-      refreshHolidays();
-      refreshActivity();
-    });
+  const deleteHoliday = async (id) => {
+    const result = await DataStore.deleteHoliday(id);
+    refreshHolidays();
+    refreshActivity();
+    return result;
+  };
 
   const clearAll = () =>
     handleAsync(DataStore.clearAllData(), () => {

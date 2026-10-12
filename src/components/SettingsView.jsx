@@ -387,17 +387,23 @@ export default function SettingsView({
     }
   };
 
-  const handleHolidaySubmit = () => {
+  const handleHolidaySubmit = async () => {
     if (!holidayForm.name || !holidayForm.startDate) {
       addToast('Enter holiday name and start date', 'error');
       return;
     }
-    if (holidayForm.id) {
-      updateHoliday(holidayForm.id, holidayForm);
-    } else {
-      addHoliday(holidayForm);
+    try {
+      if (holidayForm.id) {
+        await updateHoliday(holidayForm.id, holidayForm);
+        addToast('Holiday updated successfully.', 'success');
+      } else {
+        await addHoliday(holidayForm);
+        addToast('Holiday added successfully.', 'success');
+      }
+      closeModal();
+    } catch (error) {
+      addToast(error?.message || 'Unable to save holiday. Please try again.', 'error');
     }
-    closeModal();
   };
 
   const handleDelete = () => {
@@ -467,7 +473,15 @@ export default function SettingsView({
       return;
     }
     if (confirmDialog.type === 'holiday' && confirmDialog.payload?.id) {
-      deleteHoliday(confirmDialog.payload.id);
+      try {
+        await deleteHoliday(confirmDialog.payload.id);
+        addToast('Holiday deleted successfully.', 'success');
+        closeModal();
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Unable to delete holiday. Please try again.', 'error');
+      }
+      return;
     }
     closeModal();
     setConfirmDialog({ open: false, type: '', payload: null });
