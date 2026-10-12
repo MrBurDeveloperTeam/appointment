@@ -9598,8 +9598,13 @@ tbody tr:hover {
   }
 }
 
-/* Mobile: settings content has no padding of its own. */
-@media (max-width: 720px) {
+/* Mobile: settings page spacing. The content has no padding of its own and the
+   layout wrapper keeps a small inset, so the nav and cards sit close to the edges. */
+@media (max-width: 768px) {
+  .settings-layout {
+    padding: var(--space-sm);
+  }
+
   .settings-content {
     padding: 0;
   }
