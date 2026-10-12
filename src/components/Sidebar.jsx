@@ -15,6 +15,22 @@ export default function Sidebar({
   permissions = {},
 }) {
   const { addToast } = useToast();
+  const handleCopyBookingLink = async () => {
+    if (!bookingLink) {
+      addToast('Booking link is unavailable.', 'error');
+      return;
+    }
+
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error('Clipboard access is unavailable. Select the link and copy it manually.');
+      }
+      await navigator.clipboard.writeText(bookingLink);
+      addToast('Booking link copied successfully.', 'success');
+    } catch (error) {
+      addToast(error?.message || 'Could not copy the booking link. Please try again.', 'error');
+    }
+  };
   const items = [
     {
       id: "calendar",
@@ -253,15 +269,7 @@ export default function Sidebar({
               className="btn btn-primary btn-sm"
               type="button"
               disabled={!bookingLink || isUnconfigured}
-              onClick={() => {
-                if (!bookingLink) return;
-
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                  navigator.clipboard.writeText(bookingLink);
-                } else {
-                  window.prompt('Copy booking link:', bookingLink);
-                }
-              }}
+              onClick={handleCopyBookingLink}
               style={{
                 flexShrink: 0,
                 gap: '6px',
