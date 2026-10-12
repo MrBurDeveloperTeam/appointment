@@ -133,7 +133,7 @@ export default function PatientsView({
   };
 
   return (
-    <div className="card" style={{ padding: 16 }}>
+    <div className="card patients-card">
       <div className="patient-toolbar">
         <input
           className="search-input"
