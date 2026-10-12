@@ -9603,7 +9603,7 @@ tbody tr:hover {
    layout wrapper keeps a small inset, so the nav and cards sit close to the edges. */
 @media (max-width: 768px) {
   .settings-layout {
-    padding: var(--space-sm);
+    padding: var(--space-xs);
   }
 
   .settings-content {
