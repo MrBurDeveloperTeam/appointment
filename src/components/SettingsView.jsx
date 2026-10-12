@@ -259,20 +259,25 @@ export default function SettingsView({
 
   const closeModal = () => setModalState({ type: null, mode: 'new' });
 
-  const handleRoomSubmit = () => {
+  const handleRoomSubmit = async () => {
     if (!roomForm.name.trim()) {
       addToast('Enter room name', 'error');
       return;
     }
-    if (roomForm.id) {
-      updateRoom(roomForm.id, { name: roomForm.name, color: roomForm.color });
-    } else {
-      addRoom({ name: roomForm.name, color: roomForm.color });
+    try {
+      if (roomForm.id) {
+        await updateRoom(roomForm.id, { name: roomForm.name, color: roomForm.color });
+      } else {
+        await addRoom({ name: roomForm.name, color: roomForm.color });
+      }
+      addToast(roomForm.id ? 'Room updated successfully.' : 'Room added successfully.', 'success');
+      closeModal();
+    } catch (error) {
+      addToast(error?.message || 'Unable to save room. Please try again.', 'error');
     }
-    closeModal();
   };
 
-  const handleTreatmentSubmit = () => {
+  const handleTreatmentSubmit = async () => {
     if (!treatmentForm.name.trim()) {
       addToast(
         'Enter treatment name',
@@ -339,19 +344,21 @@ export default function SettingsView({
       suppliesDisposable: supplies.some((r) => r.disposable),
     };
 
-    if (treatmentForm.id) {
-      updateTreatment(
-        treatmentForm.id,
-        payload
-      );
-    } else {
-      addTreatment(payload);
+    try {
+      if (treatmentForm.id) {
+        await updateTreatment(treatmentForm.id, payload);
+        addToast('Treatment updated successfully.', 'success');
+      } else {
+        await addTreatment(payload);
+        addToast('Treatment added successfully.', 'success');
+      }
+      closeModal();
+    } catch (error) {
+      addToast(error?.message || 'Unable to save treatment. Please try again.', 'error');
     }
-
-    closeModal();
   };
 
-  const handleStaffSubmit = () => {
+  const handleStaffSubmit = async () => {
     if (!staffForm.name.trim()) {
       addToast('Enter staff name', 'error');
       return;
@@ -367,25 +374,36 @@ export default function SettingsView({
       endTime: staffForm.endTime,
       assignedTo: staffForm.role === 'nurse' ? staffForm.assignedTo : '',
     };
-    if (staffForm.id) {
-      updateStaff(staffForm.id, payload);
-    } else {
-      addStaff(payload);
+    try {
+      if (staffForm.id) {
+        await updateStaff(staffForm.id, payload);
+      } else {
+        await addStaff(payload);
+      }
+      addToast(staffForm.id ? 'Staff member updated successfully.' : 'Staff member added successfully.', 'success');
+      closeModal();
+    } catch (error) {
+      addToast(error?.message || 'Unable to save staff member. Please try again.', 'error');
     }
-    closeModal();
   };
 
-  const handleHolidaySubmit = () => {
+  const handleHolidaySubmit = async () => {
     if (!holidayForm.name || !holidayForm.startDate) {
       addToast('Enter holiday name and start date', 'error');
       return;
     }
-    if (holidayForm.id) {
-      updateHoliday(holidayForm.id, holidayForm);
-    } else {
-      addHoliday(holidayForm);
+    try {
+      if (holidayForm.id) {
+        await updateHoliday(holidayForm.id, holidayForm);
+        addToast('Holiday updated successfully.', 'success');
+      } else {
+        await addHoliday(holidayForm);
+        addToast('Holiday added successfully.', 'success');
+      }
+      closeModal();
+    } catch (error) {
+      addToast(error?.message || 'Unable to save holiday. Please try again.', 'error');
     }
-    closeModal();
   };
 
   const handleDelete = () => {
@@ -408,29 +426,62 @@ export default function SettingsView({
     }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (confirmDialog.type === 'room' && confirmDialog.payload?.id) {
-      deleteRoom(confirmDialog.payload.id);
+      try {
+        await deleteRoom(confirmDialog.payload.id);
+        addToast('Room deleted successfully.', 'success');
+        closeModal();
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Unable to delete room. Please try again.', 'error');
+      }
+      return;
     }
     if (confirmDialog.type === 'treatment' && confirmDialog.payload?.id) {
-      // The data hook resolves to null when the request failed (e.g. it is in use).
-      Promise.resolve(deleteTreatment(confirmDialog.payload.id))
-        .then((result) => (result
-          ? addToast('Treatment deleted', 'success')
-          : addToast('Could not delete the treatment. It may be in use, so archive it instead.', 'error')));
+      try {
+        const result = await deleteTreatment(confirmDialog.payload.id);
+        if (!result) throw new Error('Could not delete the treatment. It may be in use, so archive it instead.');
+        addToast('Treatment deleted successfully.', 'success');
+        closeModal();
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Could not delete the treatment. It may be in use, so archive it instead.', 'error');
+      }
+      return;
     }
     if (confirmDialog.type === 'treatment-archive' && confirmDialog.payload?.id) {
-      // The data hook resolves to null when the request failed.
-      Promise.resolve(updateTreatment(confirmDialog.payload.id, { archived: true }))
-        .then((result) => (result
-          ? addToast('Treatment archived', 'success')
-          : addToast('Could not archive the treatment. Run the latest Supabase SQL (archived_at column) and try again.', 'error')));
+      try {
+        await updateTreatment(confirmDialog.payload.id, { archived: true });
+        addToast('Treatment archived successfully.', 'success');
+        closeModal();
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Could not archive the treatment. Run the latest Supabase SQL (archived_at column) and try again.', 'error');
+      }
+      return;
     }
     if (confirmDialog.type === 'staff' && confirmDialog.payload?.id) {
-      deleteStaff(confirmDialog.payload.id);
+      try {
+        await deleteStaff(confirmDialog.payload.id);
+        addToast('Staff member deleted successfully.', 'success');
+        closeModal();
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Unable to delete staff member. Please try again.', 'error');
+      }
+      return;
     }
     if (confirmDialog.type === 'holiday' && confirmDialog.payload?.id) {
-      deleteHoliday(confirmDialog.payload.id);
+      try {
+        await deleteHoliday(confirmDialog.payload.id);
+        addToast('Holiday deleted successfully.', 'success');
+        closeModal();
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Unable to delete holiday. Please try again.', 'error');
+      }
+      return;
     }
     closeModal();
     setConfirmDialog({ open: false, type: '', payload: null });
@@ -440,7 +491,8 @@ export default function SettingsView({
     Promise.resolve(updateTreatment(id, { archived: false }))
       .then((result) => (result
         ? addToast('Treatment restored', 'success')
-        : addToast('Could not restore the treatment. Please try again.', 'error')));
+        : addToast('Could not restore the treatment. Please try again.', 'error')))
+      .catch((error) => addToast(error?.message || 'Could not restore the treatment. Please try again.', 'error'));
     closeModal();
   };
 

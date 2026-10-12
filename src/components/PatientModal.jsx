@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Modal from './Modal';
+import { useToast } from '../context/ToastProvider';
 import { validatePatient, normalizePatientIdNumber } from '../utils/patientValidation';
 
 export default function PatientModal({ patient, dentists, onSave, onDelete, onClose }) {
+  const { addToast } = useToast();
   const [touched, setTouched] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -82,6 +84,7 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
         guardianName: form.emailIsGuardian ? form.guardianName.trim() : '',
         guardianRelationship: form.emailIsGuardian ? form.guardianRelationship : '',
       });
+      addToast(patient ? 'Patient updated successfully.' : 'Patient added successfully.', 'success');
     } catch (error) {
       if (error?.code === '23505' && [error.message, error.details, error.hint].some(value => String(value || '').includes('apt_patients_clinic_normalized_ic_key'))) {
         setRejectedIc(normalizePatientIdNumber(form.idNumber));
@@ -89,6 +92,7 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
       } else {
         setSaveError(error?.message || 'Unable to save patient. Please try again.');
       }
+      addToast(error?.message || 'Unable to save patient. Please try again.', 'error');
     } finally {
       savingRef.current = false;
       setSaving(false);

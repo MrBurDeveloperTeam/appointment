@@ -933,21 +933,25 @@ useEffect(() => {
 
   const handleSaveAppointment = (data) => {
     if (data.id) {
-      return updateAppointment(data.id, data).then(() => {
-        setShowAppointmentModal(false);
-        setAppointmentDefaults(null);
-      });
-    } else {
-      // Logic is now inside useDataStore.addAppointment
-      return addAppointment(data)
+      return updateAppointment(data.id, data)
         .then(() => {
+          addToast('Appointment updated successfully.', 'success');
           setShowAppointmentModal(false);
           setAppointmentDefaults(null);
         })
         .catch((err) => {
-          // If we want to show the specific error (like "Insufficient credits"), re-throw or handle here
-          addToast(err.message || "Failed to create appointment", 'error');
-          // Important: re-throw so form knows it failed!
+          addToast(err.message || 'Failed to update appointment.', 'error');
+          throw err;
+        });
+    } else {
+      return addAppointment(data)
+        .then(() => {
+          addToast('Appointment added successfully.', 'success');
+          setShowAppointmentModal(false);
+          setAppointmentDefaults(null);
+        })
+        .catch((err) => {
+          addToast(err.message || 'Failed to add appointment.', 'error');
           throw err;
         });
     }
@@ -986,11 +990,18 @@ useEffect(() => {
     });
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (confirmDialog.type === 'appointment' && confirmDialog.payload?.id) {
-      deleteAppointment(confirmDialog.payload.id);
-      setShowAppointmentModal(false);
-      setAppointmentDefaults(null);
+      try {
+        await deleteAppointment(confirmDialog.payload.id);
+        addToast('Appointment deleted successfully.', 'success');
+        setShowAppointmentModal(false);
+        setAppointmentDefaults(null);
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (err) {
+        addToast(err.message || 'Failed to delete appointment.', 'error');
+      }
+      return;
     }
     if (confirmDialog.type === 'patient' && confirmDialog.payload?.id) {
       deletePatient(confirmDialog.payload.id);

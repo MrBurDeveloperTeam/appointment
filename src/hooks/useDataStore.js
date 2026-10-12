@@ -234,17 +234,22 @@ export default function useDataStore(activeClinicId, enabled = true) {
       refreshActivity();
     });
 
-  const updateAppointment = (id, updates) =>
-    handleAsync(DataStore.updateAppointment(id, updates), () => {
-      refreshAppointments();
-      refreshActivity();
-    });
+  const updateAppointment = async (id, updates) => {
+    // Preserve the rejection so the edit flow can distinguish a saved update
+    // from a backend failure and show the correct feedback.
+    const result = await DataStore.updateAppointment(id, updates);
+    refreshAppointments();
+    refreshActivity();
+    return result;
+  };
 
-  const deleteAppointment = (id) =>
-    handleAsync(DataStore.deleteAppointment(id), () => {
-      refreshAppointments();
-      refreshActivity();
-    });
+  const deleteAppointment = async (id) => {
+    // Preserve failures so the confirmation flow can report the real outcome.
+    const result = await DataStore.deleteAppointment(id);
+    refreshAppointments();
+    refreshActivity();
+    return result;
+  };
 
   const saveSettings = (data) =>
     handleAsync(DataStore.saveSettings(data), () => {
@@ -252,59 +257,68 @@ export default function useDataStore(activeClinicId, enabled = true) {
       refreshActivity();
     });
 
-  const addRoom = (room) =>
-    handleAsync(DataStore.addRoom(room), () => {
-      refreshRooms();
-      refreshActivity();
-    });
+  const addRoom = async (room) => {
+    const result = await DataStore.addRoom(room);
+    refreshRooms();
+    refreshActivity();
+    return result;
+  };
 
-  const updateRoom = (id, updates) =>
-    handleAsync(DataStore.updateRoom(id, updates), () => {
-      refreshRooms();
-      refreshActivity();
-    });
+  const updateRoom = async (id, updates) => {
+    const result = await DataStore.updateRoom(id, updates);
+    refreshRooms();
+    refreshActivity();
+    return result;
+  };
 
-  const deleteRoom = (id) =>
-    handleAsync(DataStore.deleteRoom(id), () => {
-      refreshRooms();
-      refreshActivity();
-    });
+  const deleteRoom = async (id) => {
+    const result = await DataStore.deleteRoom(id);
+    refreshRooms();
+    refreshActivity();
+    return result;
+  };
 
-  const addTreatment = (treatment) =>
-    handleAsync(DataStore.addTreatment(treatment), () => {
-      refreshTreatments();
-      refreshActivity();
-    });
+  const addTreatment = async (treatment) => {
+    const result = await DataStore.addTreatment(treatment);
+    refreshTreatments();
+    refreshActivity();
+    return result;
+  };
 
-  const updateTreatment = (id, updates) =>
-    handleAsync(DataStore.updateTreatment(id, updates), () => {
-      refreshTreatments();
-      refreshActivity();
-    });
+  const updateTreatment = async (id, updates) => {
+    const result = await DataStore.updateTreatment(id, updates);
+    refreshTreatments();
+    refreshActivity();
+    return result;
+  };
 
-  const deleteTreatment = (id) =>
-    handleAsync(DataStore.deleteTreatment(id), () => {
-      refreshTreatments();
-      refreshActivity();
-    });
+  const deleteTreatment = async (id) => {
+    const result = await DataStore.deleteTreatment(id);
+    refreshTreatments();
+    refreshActivity();
+    return result;
+  };
 
-  const addStaff = (member) =>
-    handleAsync(DataStore.addStaff(member), () => {
-      refreshStaff();
-      refreshActivity();
-    });
+  const addStaff = async (member) => {
+    const result = await DataStore.addStaff(member);
+    refreshStaff();
+    refreshActivity();
+    return result;
+  };
 
-  const updateStaff = (id, updates) =>
-    handleAsync(DataStore.updateStaff(id, updates), () => {
-      refreshStaff();
-      refreshActivity();
-    });
+  const updateStaff = async (id, updates) => {
+    const result = await DataStore.updateStaff(id, updates);
+    refreshStaff();
+    refreshActivity();
+    return result;
+  };
 
-  const deleteStaff = (id) =>
-    handleAsync(DataStore.deleteStaff(id), () => {
-      refreshStaff();
-      refreshActivity();
-    });
+  const deleteStaff = async (id) => {
+    const result = await DataStore.deleteStaff(id);
+    refreshStaff();
+    refreshActivity();
+    return result;
+  };
 
   const saveHolidays = (list) =>
     handleAsync(DataStore.saveHolidays(list), () => {
@@ -312,23 +326,26 @@ export default function useDataStore(activeClinicId, enabled = true) {
       refreshActivity();
     });
 
-  const addHoliday = (holiday) =>
-    handleAsync(DataStore.addHoliday(holiday), () => {
-      refreshHolidays();
-      refreshActivity();
-    });
+  const addHoliday = async (holiday) => {
+    const result = await DataStore.addHoliday(holiday);
+    refreshHolidays();
+    refreshActivity();
+    return result;
+  };
 
-  const updateHoliday = (id, updates) =>
-    handleAsync(DataStore.updateHoliday(id, updates), () => {
-      refreshHolidays();
-      refreshActivity();
-    });
+  const updateHoliday = async (id, updates) => {
+    const result = await DataStore.updateHoliday(id, updates);
+    refreshHolidays();
+    refreshActivity();
+    return result;
+  };
 
-  const deleteHoliday = (id) =>
-    handleAsync(DataStore.deleteHoliday(id), () => {
-      refreshHolidays();
-      refreshActivity();
-    });
+  const deleteHoliday = async (id) => {
+    const result = await DataStore.deleteHoliday(id);
+    refreshHolidays();
+    refreshActivity();
+    return result;
+  };
 
   const clearAll = () =>
     handleAsync(DataStore.clearAllData(), () => {
@@ -344,27 +361,32 @@ export default function useDataStore(activeClinicId, enabled = true) {
     });
 
   // Encapsulated Appointment Creation
-  const handleAddAppointment = (appointment) => {
-    return handleAsync((async () => {
-      // 1. Credit Check (Mock Logic)
-      if (credits < 1) {
-        throw new Error("Insufficient credits. Please top up.");
-      }
+  const handleAddAppointment = async (appointment) => {
+    // Keep this mutation promise rejecting so the create flow can distinguish
+    // a confirmed write from a failed write and show the correct feedback.
+    if (credits < 1) {
+      throw new Error("Insufficient credits. Please top up.");
+    }
 
-      // 2. Decrement (Mock Logic)
-      setCredits(c => c - 1);
-      setCreditHistory(prev => [{
-        date: new Date().toISOString(),
-        description: 'Appointment Created',
-        amount: -1
-      }, ...prev]);
+    setCredits(c => c - 1);
+    setCreditHistory(prev => [{
+      date: new Date().toISOString(),
+      description: 'Appointment Created',
+      amount: -1
+    }, ...prev]);
 
-      // 3. Proceed with DataStore call
-      return await DataStore.addAppointment(appointment);
-    })(), () => {
+    try {
+      const result = await DataStore.addAppointment(appointment);
       refreshAppointments();
       refreshActivity();
-    });
+      return result;
+    } catch (error) {
+      // The appointment was not recorded, so restore the mock credit balance.
+      setCredits(c => c + 1);
+      setCreditHistory(prev => prev.slice(1));
+      console.error('DataStore error:', error);
+      throw error;
+    }
   };
 
   // Async Credit Top-up
