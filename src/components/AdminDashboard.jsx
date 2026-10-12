@@ -392,7 +392,16 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
       await DataStore.deleteClinic(confirmDialog.payload.id);
     }
     if (confirmDialog.type === 'user' && confirmDialog.payload?.id) {
-      await DataStore.deleteUser(confirmDialog.payload.id);
+      try {
+        await DataStore.deleteUser(confirmDialog.payload.id);
+        addToast('User deleted successfully.', 'success');
+        await refresh();
+        closeModal();
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Unable to delete user. Please try again.', 'error');
+      }
+      return;
     }
     await refresh();
     closeModal();
