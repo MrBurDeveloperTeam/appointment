@@ -300,8 +300,8 @@ export default function PatientsView({
                           <div key={apt.id} className="patient-history-item">
                             <div className="patient-history-row">
                               <span className="patient-history-date">
-                                {new Date(apt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}{' '}
-                                {formatTime(apt.startTime)}
+                                {new Date(apt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                <span className="patient-history-time">{formatTime(apt.startTime)}</span>
                               </span>
                               <span className="patient-history-treatment">{treatmentName(apt.treatmentId || apt.treatmentType) || '-'}</span>
                               <span className="patient-history-dentist">{dentistName(apt.dentistId)}</span>
