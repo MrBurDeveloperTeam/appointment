@@ -9597,3 +9597,10 @@ tbody tr:hover {
     --font-size-xs: var(--font-size-sm);
   }
 }
+
+/* Mobile: settings content has no padding of its own. */
+@media (max-width: 720px) {
+  .settings-content {
+    padding: 0;
+  }
+}
