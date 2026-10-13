@@ -4538,6 +4538,7 @@ tbody tr:hover {
 
 .staff-actions {
   display: flex;
+  align-items: flex-end;
   gap: var(--space-sm);
 }
 

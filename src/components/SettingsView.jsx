@@ -688,12 +688,13 @@ export default function SettingsView({
                       <div className="staff-meta-row">
                         {s.phone && <span className="staff-meta">{s.phone}</span>}
                         <span className="staff-meta">{s.startTime || '09:00'}-{s.endTime || '18:00'}</span>
+                        <div className="staff-actions">
+                          <span className="settings-cta">View</span>
+                        </div>
                       </div>
                       {renderDayChips(s.workingDays || [])}
                     </div>
-                    <div className="staff-actions">
-                      <span className="settings-cta">View</span>
-                    </div>
+                    
                   </button>
                 ))}
               </div>
