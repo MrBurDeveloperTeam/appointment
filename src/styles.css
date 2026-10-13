@@ -3974,6 +3974,7 @@ tbody tr:hover {
 .today-summary-card {
   min-width: 0;
   flex: 1;
+  padding: 0.5rem 0.5rem;
   /* padding: var(--space-sm) var(--space-lg); */
   background: var(--bg-card);
   border: 1px solid var(--border-light);
