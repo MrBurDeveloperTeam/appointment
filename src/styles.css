@@ -3944,7 +3944,7 @@ tbody tr:hover {
    ============================================ */
 
 .today-view-container {
-  padding: var(--space-xs);
+  padding: var(--space-lg);
   max-width: 900px;
   margin: 0 auto;
 }
