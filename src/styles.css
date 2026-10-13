@@ -4486,6 +4486,7 @@ tbody tr:hover {
 .staff-name-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-sm);
   flex-wrap: wrap;
 }
