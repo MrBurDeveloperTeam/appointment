@@ -1838,12 +1838,19 @@ p {
 .sidebar-header {
   padding: var(--space-lg);
   border-bottom: 1px solid var(--border);
+  /* Logo on the left, close button (mobile drawer) on the same line, right */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
 }
 
 .sidebar-logo {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .sidebar-logo-icon {
@@ -3944,7 +3951,6 @@ tbody tr:hover {
    ============================================ */
 
 .today-view-container {
-  max-width: 900px;
   margin: 0 auto;
 }
 
@@ -3966,6 +3972,7 @@ tbody tr:hover {
 .today-summary {
   display: flex;
   align-self: center;
+  max-width: 30rem;
   width: 100%;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-md);
