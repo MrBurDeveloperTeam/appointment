@@ -3965,13 +3965,14 @@ tbody tr:hover {
 
 .today-summary {
   display: grid;
+  align-self: center;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-md);
 }
 
 .today-summary-card {
   min-width: 0;
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-lg);
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
