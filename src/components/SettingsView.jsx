@@ -8,6 +8,8 @@ import ConsumablesField, { buildStock, stockLimit } from './ConsumablesField';
 import { PRODUCT_NAMES } from '../constants/productNames';
 import DataStore from '../data';
 import { useToast } from '../context/ToastProvider';
+import { getWorkspaceType } from '../services/workspaceContext';
+import { getCompanyDirectory } from '../services/companyDirectory';
 
 const TREATMENT_DURATION_OPTIONS = [
   10,
@@ -60,6 +62,29 @@ export default function SettingsView({
   const specialtyOptions = ['General', 'Endodontics', 'Pediatric', 'Orthodontics', 'Periodontics', 'Prosthodontics'];
   const [activeSection, setActiveSection] = useState('staff');
   const [modalState, setModalState] = useState({ type: null, mode: 'new' });
+  const isCompanyWorkspace = getWorkspaceType() === 'company';
+  const [staffNameMode, setStaffNameMode] = useState('manual');
+  const [selectedMemberId, setSelectedMemberId] = useState('');
+  const [companyMembers, setCompanyMembers] = useState([]);
+  const [directoryLoading, setDirectoryLoading] = useState(false);
+  const [directoryError, setDirectoryError] = useState('');
+  const [directoryAttempt, setDirectoryAttempt] = useState(0);
+  const isAddingCompanyStaff = isCompanyWorkspace && modalState.type === 'staff' && modalState.mode === 'new';
+
+  useEffect(() => {
+    if (!isAddingCompanyStaff) return;
+    let cancelled = false;
+    setCompanyMembers([]);
+    setDirectoryError('');
+    setDirectoryLoading(true);
+    getCompanyDirectory()
+      .then((members) => { if (!cancelled) setCompanyMembers(members); })
+      .catch((error) => {
+        if (!cancelled) setDirectoryError(error?.message || 'Unable to load company members. Try again or enter a name manually.');
+      })
+      .finally(() => { if (!cancelled) setDirectoryLoading(false); });
+    return () => { cancelled = true; };
+  }, [isAddingCompanyStaff, directoryAttempt]);
   const [form, setForm] = useState(() => ({
     clinicName: (settings && settings.clinicName) || 'Dental Clinic',
     workingHoursStart: (settings && settings.workingHours && settings.workingHours.start) || '09:00',
@@ -209,6 +234,8 @@ export default function SettingsView({
   };
 
   const openStaffModal = (role, staffMember) => {
+    setStaffNameMode(!staffMember && isCompanyWorkspace ? 'directory' : 'manual');
+    setSelectedMemberId('');
     if (staffMember) {
       setStaffForm({
         id: staffMember.id,
@@ -1006,8 +1033,49 @@ export default function SettingsView({
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Name</label>
-                <input className="form-input" value={staffForm.name} onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} />
+                <label className="form-label" htmlFor="staff-name">Name</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {isAddingCompanyStaff && staffNameMode === 'directory' ? (
+                    <select
+                      id="staff-name"
+                      className="form-select"
+                      value={selectedMemberId}
+                      disabled={directoryLoading || Boolean(directoryError) || !companyMembers.length}
+                      onChange={(event) => {
+                        const id = event.target.value;
+                        setSelectedMemberId(id);
+                        setStaffForm((current) => ({ ...current, name: companyMembers.find((member) => member.id === id)?.name || '' }));
+                      }}
+                    >
+                      <option value="">{directoryLoading ? 'Loading company members…' : 'Select company member'}</option>
+                      {companyMembers.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+                    </select>
+                  ) : (
+                    <input id="staff-name" className="form-input" value={staffForm.name} onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} />
+                  )}
+                  {isAddingCompanyStaff && staffNameMode === 'directory' && (
+                    <button type="button" className="btn btn-secondary" aria-label="Enter staff name manually" title="Add staff without a Snabbb account" onClick={() => {
+                      setStaffNameMode('manual');
+                      setSelectedMemberId('');
+                      setStaffForm((current) => ({ ...current, name: '' }));
+                    }}>+</button>
+                  )}
+                </div>
+                {isAddingCompanyStaff && staffNameMode === 'manual' && (
+                  <button type="button" className="btn btn-secondary mt-2" onClick={() => {
+                    setStaffNameMode('directory');
+                    setSelectedMemberId('');
+                    setStaffForm((current) => ({ ...current, name: '' }));
+                  }}>Choose company member</button>
+                )}
+                {isAddingCompanyStaff && staffNameMode === 'directory' && !directoryLoading && (
+                  directoryError ? (
+                    <div role="alert">
+                      <p>{directoryError}</p>
+                      <button type="button" className="btn btn-secondary" onClick={() => setDirectoryAttempt((attempt) => attempt + 1)}>Retry</button>
+                    </div>
+                  ) : !companyMembers.length && <p>No active company members found. Use + to enter a name manually.</p>
+                )}
               </div>
             </div>
             <div className="form-row">
