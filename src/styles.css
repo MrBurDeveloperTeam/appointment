@@ -6947,7 +6947,6 @@ tbody tr:hover {
     -webkit-overflow-scrolling: touch;
     padding: var(--space-xs);
     height: auto;
-    border-right: 1px solid var(--border-light);
     border-bottom: 1px solid var(--border-light);
   }
 
