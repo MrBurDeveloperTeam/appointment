@@ -7342,7 +7342,6 @@ tbody tr:hover {
   }
 
   .settings-card-header {
-    align-items: flex-start;
     gap: var(--space-sm);
   }
 
