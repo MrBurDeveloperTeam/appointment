@@ -6943,6 +6943,7 @@ tbody tr:hover {
     flex-direction: row;
     gap: var(--space-xs);
     overflow-x: auto;
+    border: none;
     -webkit-overflow-scrolling: touch;
     padding: var(--space-xs);
     height: auto;
