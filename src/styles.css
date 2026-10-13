@@ -4460,7 +4460,7 @@ tbody tr:hover {
   gap: var(--space-md);
   align-items: center;
   padding: var(--space-sm);
-  border: 1px solid var(--border-light);
+  /* border: 1px solid var(--border-light); */
   border-radius: var(--radius-md);
   background: var(--bg-card);
   text-align: left;
@@ -7785,6 +7785,7 @@ tbody tr:hover {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
+    border: 1px solid var(--border-light);
     gap: var(--space-sm);
   }
 
