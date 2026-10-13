@@ -763,9 +763,6 @@ export default function SettingsView({
                       </div>
                       {renderDayChips(s.workingDays || [])}
                     </div>
-                    <div className="staff-actions">
-                      <span className="settings-cta">View</span>
-                    </div>
                   </button>
                 ))}
               </div>
