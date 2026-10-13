@@ -506,6 +506,9 @@ export default function SettingsView({
           {d[0]}
         </span>
       ))}
+       <div className="staff-actions">
+          <span className="settings-cta">View</span>
+        </div>
     </div>
   );
 
@@ -690,9 +693,6 @@ export default function SettingsView({
                         <span className="staff-meta">{s.startTime || '09:00'}-{s.endTime || '18:00'}</span>
                       </div>
                       {renderDayChips(s.workingDays || [])}
-                        <div className="staff-actions">
-                          <span className="settings-cta">View</span>
-                        </div>
                     </div>
                     
                   </button>
