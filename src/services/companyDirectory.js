@@ -1,9 +1,10 @@
 import { supabase } from '../lib/supabaseClient';
 import { getWorkspaceHeaders } from './workspaceContext';
 
-export async function getCompanyDirectory() {
+export async function getCompanyDirectory(companyAccountOwnerId) {
   const headers = getWorkspaceHeaders();
-  const ownerId = headers['X-Snabbb-Workspace-User-Id'];
+  // Explicit company selection takes priority over the account's own company.
+  const ownerId = headers['X-Snabbb-Workspace-User-Id'] || companyAccountOwnerId;
   if (!ownerId) return [];
 
   const { data: memberships, error: membershipError } = await supabase

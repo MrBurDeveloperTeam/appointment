@@ -1334,6 +1334,7 @@ useEffect(() => {
           )}
           {view === 'settings' && (
             <SettingsView
+              profile={profile}
               settings={settings}
               rooms={rooms}
               treatments={treatments}
