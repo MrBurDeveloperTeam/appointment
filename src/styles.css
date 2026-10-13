@@ -7851,6 +7851,7 @@ tbody tr:hover {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-sm);
+    border: 1px solid var(--border-light);
   }
 
   .settings-list-item .settings-cta {
