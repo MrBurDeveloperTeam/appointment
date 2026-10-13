@@ -3944,7 +3944,7 @@ tbody tr:hover {
    ============================================ */
 
 .today-view-container {
-  padding: var(--space-lg);
+  padding: var(--space-xs);
   max-width: 900px;
   margin: 0 auto;
 }
@@ -3965,13 +3965,13 @@ tbody tr:hover {
 }
 
 .today-summary {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-md);
-  flex-wrap: wrap;
 }
 
 .today-summary-card {
-  min-width: 120px;
+  min-width: 0;
   padding: var(--space-sm) var(--space-md);
   background: var(--bg-card);
   border: 1px solid var(--border-light);
