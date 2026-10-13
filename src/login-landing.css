@@ -64,8 +64,9 @@
 .appointment-brand span {
   padding-left: 10px;
   border-left: 1px solid var(--appointment-line);
-  color: var(--appointment-teal-dark);
+  color: #087d73;
   font-size: 15px;
+  font-weight: 700;
 }
 
 .appointment-nav-links {
@@ -138,10 +139,10 @@
   border: 0;
   border-radius: 12px;
   color: #ffffff !important;
-  background: #56a39a;
+  background: #087d73;
   box-shadow: 0 8px 18px rgba(86, 163, 154, 0.2);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 700;
   text-decoration: none;
   transition: 0.2s ease;
 }
@@ -782,8 +783,8 @@
     padding: 12px 16px;
     border-radius: 10px;
     color: #ffffff !important;
-    background: #56b4a9 !important;
-    font-weight: 800;
+    background: #087d73 !important;
+    font-weight: 700;
   }
 
   .appointment-mobile-signup:hover {
