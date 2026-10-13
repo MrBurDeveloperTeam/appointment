@@ -7952,6 +7952,10 @@ tbody tr:hover {
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
+  .reports-card {
+    padding: var(--space-sm);
+  }
 }
 
 /* Tablet / Landscape tweaks if needed */
