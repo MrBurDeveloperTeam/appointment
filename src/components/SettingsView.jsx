@@ -34,6 +34,7 @@ const TREATMENT_DURATION_OPTIONS = [
 ];
 
 export default function SettingsView({
+  profile,
   settings,
   rooms,
   treatments,
@@ -62,7 +63,8 @@ export default function SettingsView({
   const specialtyOptions = ['General', 'Endodontics', 'Pediatric', 'Orthodontics', 'Periodontics', 'Prosthodontics'];
   const [activeSection, setActiveSection] = useState('staff');
   const [modalState, setModalState] = useState({ type: null, mode: 'new' });
-  const isCompanyWorkspace = getWorkspaceType() === 'company';
+  const isCompanyWorkspace = getWorkspaceType() === 'company' || profile?.account_type === 'company';
+  const companyAccountOwnerId = profile?.account_type === 'company' ? profile.user_id : undefined;
   const [staffNameMode, setStaffNameMode] = useState('manual');
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [companyMembers, setCompanyMembers] = useState([]);
@@ -77,14 +79,14 @@ export default function SettingsView({
     setCompanyMembers([]);
     setDirectoryError('');
     setDirectoryLoading(true);
-    getCompanyDirectory()
+    getCompanyDirectory(companyAccountOwnerId)
       .then((members) => { if (!cancelled) setCompanyMembers(members); })
       .catch((error) => {
         if (!cancelled) setDirectoryError(error?.message || 'Unable to load company members. Try again or enter a name manually.');
       })
       .finally(() => { if (!cancelled) setDirectoryLoading(false); });
     return () => { cancelled = true; };
-  }, [isAddingCompanyStaff, directoryAttempt]);
+  }, [isAddingCompanyStaff, directoryAttempt, companyAccountOwnerId]);
   const [form, setForm] = useState(() => ({
     clinicName: (settings && settings.clinicName) || 'Dental Clinic',
     workingHoursStart: (settings && settings.workingHours && settings.workingHours.start) || '09:00',
