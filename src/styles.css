@@ -4268,7 +4268,7 @@ tbody tr:hover {
 }
 
 .settings-card-body {
-  padding: var(--space-lg);
+  padding: var(--space-xs);
   display: grid;
   gap: var(--space-md);
 }
