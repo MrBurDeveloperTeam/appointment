@@ -268,7 +268,7 @@ export default function WeekView({
                   <div
                     key={apt.id}
                     className="week-appointment"
-                    draggable={!hasAppointmentPassed(apt)}
+                    draggable={!apt.readOnly && !hasAppointmentPassed(apt)}
                     style={{
                       top,
                       minHeight: height,
@@ -302,7 +302,7 @@ export default function WeekView({
                       <div className="appointment-primary-line">
                         <span className="week-appointment-time">{formatTime(apt.startTime)}</span>
                         {isPatientFlagged(apt.patientId) && <PatientFlag className="calendar-patient-flag" />}
-                        <span className="appointment-patient-name">{patientName(apt.patientId)}</span>
+                        <span className="appointment-patient-name">{(apt.readOnly ? `${apt.companyName} (Company)` : patientName(apt.patientId))}</span>
                       </div>
                       {statusIcon(apt.status)}
                     </div>

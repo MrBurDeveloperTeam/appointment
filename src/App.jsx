@@ -1,3 +1,4 @@
+import useCompanySchedule from './hooks/useCompanySchedule';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import React from 'react';
 import useDataStore from './hooks/useDataStore';
@@ -590,6 +591,41 @@ useEffect(() => {
       end: end.toISOString(),
     });
   }, [currentDate, setDateRange]);
+  const companySchedule = useCompanySchedule(activeClinicId,
+    getLocalDateString(startOfMonth(subMonths(currentDate, 1))),
+    getLocalDateString(endOfMonth(addMonths(currentDate, 1))), dataEnabled);
+  const scheduleAppointments = [...appointments, ...companySchedule.appointments];
+  const [companyAppointment, setCompanyAppointment] = useState(null);
+  const [switchingCompany, setSwitchingCompany] = useState(false);
+  const openCompanyWorkspace = async () => {
+    setSwitchingCompany(true);
+    try {
+      const access = await getAppointmentAccess(companyAppointment.workspaceOwnerUserId);
+      if (access.clinicId !== companyAppointment.clinicId || !access.permissions?.[APPOINTMENT_PERMISSIONS.SCHEDULE]) {
+        throw new Error('You no longer have access to this company schedule.');
+      }
+      sessionStorage.setItem('appointment.pendingWorkspace', JSON.stringify(companyAppointment));
+      const url = new URL(window.location.href);
+      url.searchParams.set('workspace_type', 'company');
+      url.searchParams.set('workspace_owner_id', companyAppointment.workspaceOwnerUserId);
+      url.hash = 'calendar';
+      window.location.assign(url.toString());
+    } catch (error) {
+      addToast(error.message || 'Unable to switch workspace.', 'error');
+      setSwitchingCompany(false);
+    }
+  };
+  useEffect(() => {
+    if (!isReady || appointmentDataStatus !== 'ready') return;
+    const raw = sessionStorage.getItem('appointment.pendingWorkspace');
+    if (!raw) return;
+    let pending;
+    try { pending = JSON.parse(raw); } catch { sessionStorage.removeItem('appointment.pendingWorkspace'); return; }
+    if (pending.clinicId !== activeClinicId || !getWorkspaceCacheKey().startsWith('company:')) return;
+    sessionStorage.removeItem('appointment.pendingWorkspace');
+    setCurrentDate(new Date(`${pending.date}T12:00:00`));
+    addToast(`Successfully switched to ${pending.companyName} company workspace.`, 'success');
+  }, [isReady, appointmentDataStatus, activeClinicId, addToast]);
   const [calendarView, setCalendarView] = useState('month');
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [showPatientModal, setShowPatientModal] = useState(false);
@@ -1031,12 +1067,14 @@ useEffect(() => {
   };
 
   const handleAppointmentClick = (apt) => {
+    if (apt.readOnly) { setCompanyAppointment(apt); return; }
+    if (!canManageAppointments) return;
     setAppointmentDefaults(apt);
     setShowAppointmentModal(true);
   };
 
   const handleRescheduleAppointment = (appointment, updates) => {
-    if (!appointment || !appointment.id) return;
+    if (!appointment || !appointment.id || appointment.readOnly) return;
     // Hard-block moving an appointment onto a clinic holiday.
     if (updates && updates.date && isDateHoliday(updates.date, holidays)) {
       addToast('That date is a clinic holiday. Please choose another date.', 'warning');
@@ -1259,13 +1297,28 @@ useEffect(() => {
           isUnconfigured={isUnconfigured}
         />
         <div className="content">
+          {(view === 'calendar' || view === 'today') && companySchedule.loading && <p role="status">Loading company appointments...</p>}
+          {(view === 'calendar' || view === 'today') && companySchedule.error && <p role="alert">{companySchedule.error}</p>}
+          {companyAppointment && (
+            <div className="modal-overlay">
+              <div className="modal" role="dialog" aria-modal="true" aria-label="Company appointment" style={{ padding: 24 }}>
+                <h2>{companyAppointment.companyName}</h2>
+                <p>{companyAppointment.date} / {companyAppointment.startTime} - {companyAppointment.endTime}</p>
+                <p>This company appointment is read-only here. Switch to its company workspace to view details and edit if permitted.</p>
+                <button className="btn btn-primary" disabled={switchingCompany} onClick={openCompanyWorkspace}>
+                  {switchingCompany ? 'Switching...' : 'Open in company workspace'}
+                </button>
+                <button className="btn btn-secondary" disabled={switchingCompany} onClick={() => setCompanyAppointment(null)}>Close</button>
+              </div>
+            </div>
+          )}
           {view === 'calendar' && (
             <CalendarView
               currentDate={currentDate}
               setCurrentDate={setCurrentDate}
               calendarView={calendarView}
               setCalendarView={setCalendarView}
-              appointments={appointments}
+              appointments={scheduleAppointments}
               patients={patients}
               rooms={rooms}
               treatments={treatments}
@@ -1279,11 +1332,7 @@ useEffect(() => {
                   : undefined
               }
 
-              onAppointmentSelect={
-                canManageAppointments
-                  ? handleAppointmentClick
-                  : undefined
-              }
+              onAppointmentSelect={handleAppointmentClick}
 
               onAppointmentReschedule={
                 canManageAppointments
@@ -1294,15 +1343,11 @@ useEffect(() => {
           )}
           {view === 'today' && (
             <TodayView
-              appointments={appointments}
+              appointments={scheduleAppointments}
               patients={patients}
               rooms={rooms}
               treatments={treatments}
-              onAppointmentSelect={
-                canManageAppointments
-                  ? handleAppointmentClick
-                  : undefined
-              }
+              onAppointmentSelect={handleAppointmentClick}
 
               onNewAppointment={
                 canManageAppointments

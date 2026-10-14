@@ -152,7 +152,7 @@ export default function TodayView({ appointments, patients, rooms, treatments, o
                     <span className="today-appointment-avatar">
                       {patient ? getInitials(patient.name) : 'P'}
                     </span>
-                    <span>{patientName(apt.patientId)}</span>
+                    <span>{(apt.readOnly ? `${apt.companyName} (Company)` : patientName(apt.patientId))}</span>
                     {patient?.is_flagged === true && <PatientFlag className="today-patient-flag" />}
                   </div>
                   <div className="today-appointment-actions">
@@ -162,7 +162,7 @@ export default function TodayView({ appointments, patients, rooms, treatments, o
                     <button
                       type="button"
                       className="today-dental-chart-button"
-                      disabled={!patient}
+                      disabled={apt.readOnly || !patient}
                       onClick={(event) => openDentalChart(event, apt, patient)}
                       aria-label={`Open ${patient?.name || 'patient'} in dental charting`}
                     >
