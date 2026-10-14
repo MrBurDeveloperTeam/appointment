@@ -1107,6 +1107,30 @@ export default function SettingsView({
                 </div>
               </div>
             </div>
+            {!isCompanyWorkspace && staffForm.role === 'dentist' && (
+              <div className="form-group">
+                <label className="form-label" htmlFor="staff-is-me">
+                  <input
+                    id="staff-is-me"
+                    type="checkbox"
+                    checked={Boolean(profile?.user_id && staffForm.userId === profile.user_id)}
+                    disabled={!profile?.user_id || Boolean(staffForm.userId && staffForm.userId !== profile.user_id)}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setStaffForm((current) => ({
+                        ...current,
+                        userId: checked ? profile.user_id : '',
+                      }));
+                    }}
+                  />{' '}This dentist is me
+                </label>
+                <p className="text-muted">
+                  {staffForm.userId && staffForm.userId !== profile?.user_id
+                    ? 'This dentist is already linked to another account.'
+                    : 'Link this dentist to your account so your personal and company schedules can identify you as the same doctor.'}
+                </p>
+              </div>
+            )}
             {staffForm.role === 'dentist' && (
               <div className="form-group">
                 <label className="form-label">Specialty</label>
