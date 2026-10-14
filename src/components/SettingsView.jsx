@@ -37,6 +37,7 @@ export default function SettingsView({
   profile,
   settings,
   rooms,
+  archivedRooms,
   treatments,
   staff,
   holidays,
@@ -45,6 +46,7 @@ export default function SettingsView({
   updateRoom,
   deleteRoom,
   archiveRoom,
+  unarchiveRoom,
   addTreatment,
   updateTreatment,
   deleteTreatment,
@@ -63,6 +65,7 @@ export default function SettingsView({
   const colorOptions = ['#4A90A4', '#7CB798', '#E5C07B', '#9B8AC4', '#E07B7B', '#A8D8EA'];
   const specialtyOptions = ['General', 'Endodontics', 'Pediatric', 'Orthodontics', 'Periodontics', 'Prosthodontics'];
   const [activeSection, setActiveSection] = useState('staff');
+  const [showArchivedRooms, setShowArchivedRooms] = useState(false);
   const [modalState, setModalState] = useState({ type: null, mode: 'new' });
   const isCompanyWorkspace = getWorkspaceType() === 'company' || profile?.account_type === 'company';
   const companyAccountOwnerId = profile?.account_type === 'company' ? profile.user_id : undefined;
@@ -465,6 +468,15 @@ export default function SettingsView({
     }
   };
 
+  const handleUnarchiveRoom = async (room) => {
+    try {
+      await unarchiveRoom(room.id);
+      addToast('Room unarchived successfully.', 'success');
+    } catch (error) {
+      addToast(error?.message || 'Unable to unarchive room. Please try again.', 'error');
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (confirmDialog.type === 'room-delete' && confirmDialog.payload?.id) {
       try {
@@ -797,6 +809,15 @@ export default function SettingsView({
               <div className="settings-card-title">Rooms</div>
               <div className="settings-card-actions">
                 <span className="settings-card-subtitle">{rooms.length} total</span>
+                {archivedRooms.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setShowArchivedRooms((value) => !value)}
+                  >
+                    {showArchivedRooms ? 'Hide' : 'Show'} Archived ({archivedRooms.length})
+                  </button>
+                )}
                 <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openRoomModal()}>
                   + Add Room
                 </button>
@@ -822,6 +843,26 @@ export default function SettingsView({
                 ))}
                 {rooms.length === 0 && <div className="empty-state">No rooms</div>}
               </div>
+              {showArchivedRooms && archivedRooms.length > 0 && (
+                <div className="settings-list" style={{ marginTop: 12 }}>
+                  <div className="settings-card-subtitle" style={{ marginBottom: 8 }}>Archived rooms</div>
+                  {archivedRooms.map((room) => (
+                    <div key={room.id} className="settings-list-item">
+                      <div>
+                        <div className="settings-list-title">{room.name}</div>
+                        <div className="settings-list-meta">Archived room · Appointment history preserved</div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => handleUnarchiveRoom(room)}
+                      >
+                        Unarchive
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

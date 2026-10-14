@@ -37,6 +37,17 @@ export async function getRooms(clinicId) {
   }));
 }
 
+export async function getArchivedRooms(clinicId) {
+  const { data, error } = await supabase
+    .from("apt_rooms")
+    .select("*")
+    .eq("clinic_id", clinicId)
+    .not("archived_at", "is", null)
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return (data || []).map(mapRoom);
+}
+
 export async function addRoom(clinicId, room) {
   // Generate a shared UUID so the same id can be used in inventory_rooms.
   const roomId = crypto.randomUUID();
@@ -126,6 +137,17 @@ export async function archiveRoom(id) {
   const { data, error } = await supabase
     .from("apt_rooms")
     .update({ archived_at: new Date().toISOString(), is_apt_used: true })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return mapRoom(data);
+}
+
+export async function unarchiveRoom(id) {
+  const { data, error } = await supabase
+    .from("apt_rooms")
+    .update({ archived_at: null })
     .eq("id", id)
     .select("*")
     .single();

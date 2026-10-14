@@ -350,6 +350,12 @@ const DataStore = {
     return Rooms.getRooms(activeClinic);
   },
 
+  async getArchivedRooms(clinicId) {
+    const activeClinic = getClinicId(clinicId);
+    if (!activeClinic) return [];
+    return Rooms.getArchivedRooms(activeClinic);
+  },
+
   async addRoom(room) {
     const activeClinic = requireActiveClinic(getClinicId());
     const created = await Rooms.addRoom(activeClinic, room);
@@ -370,6 +376,10 @@ const DataStore = {
 
   async archiveRoom(id) {
     return Rooms.archiveRoom(id);
+  },
+
+  async unarchiveRoom(id) {
+    return Rooms.unarchiveRoom(id);
   },
 
   // ============ TREATMENTS ============
