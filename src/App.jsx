@@ -328,7 +328,10 @@ function AppContent() {
   return () => {
     cancelled = true;
   };
-}, [user, activeClinicId]);
+// Keyed on the stable user id, not the `user` object: Supabase hands out a new
+// User object on every token refresh / SSO re-sync, which re-ran this effect
+// (and its access-context request) even though the identity never changed.
+}, [user?.id, activeClinicId]);
 
 useEffect(() => {
   setExchangeDone(true);

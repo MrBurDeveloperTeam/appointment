@@ -118,9 +118,25 @@ export function AuthProvider({ children }) {
         // with forceCheck=true whenever this tab regains focus closes that
         // gap: it skips the shortcut, hits the exchange endpoint for real,
         // and a 401 there (shared SSO cookie gone) signs this tab out too.
-        const revalidateOnFocus = () => {
-            if (document.visibilityState === 'visible') {
-                initializeAuth(true);
+        //
+        // Throttled + single-flight: a tab switch fires BOTH `visibilitychange`
+        // and `focus`, and every click back into the window can fire `focus`
+        // again. Unthrottled, each one made a full ~1s SSO exchange and then
+        // setSession() -> onAuthStateChange -> a fresh access-context call
+        // (observed: 6 exchanges and 14 access-context calls in one session).
+        let revalidating = false;
+        let lastRevalidateAt = 0;
+        const REVALIDATE_MIN_INTERVAL_MS = 60 * 1000;
+        const revalidateOnFocus = async () => {
+            if (document.visibilityState !== 'visible') return;
+            const now = Date.now();
+            if (revalidating || now - lastRevalidateAt < REVALIDATE_MIN_INTERVAL_MS) return;
+            revalidating = true;
+            lastRevalidateAt = now;
+            try {
+                await initializeAuth(true);
+            } finally {
+                revalidating = false;
             }
         };
         document.addEventListener('visibilitychange', revalidateOnFocus);
