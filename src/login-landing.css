@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&display=swap");
 :root {
+  --appointment-signup-teal: #0B9F91;
   --appointment-teal: #56a39a;
   --appointment-teal-dark: #478d85;
   --appointment-teal-soft: #dff7f3;
@@ -139,7 +140,7 @@
   border: 0;
   border-radius: 12px;
   color: #ffffff !important;
-  background: #087d73;
+  background: var(--appointment-signup-teal);
   box-shadow: 0 8px 18px rgba(86, 163, 154, 0.2);
   font-size: 14px;
   font-weight: 700;
@@ -147,12 +148,6 @@
   transition: 0.2s ease;
 }
 
-
-.appointment-nav-cta:hover {
-  color: #ffffff !important;
-  background: #478d85;
-  transform: translateY(-2px);
-}
 
 .appointment-primary-button,
 .appointment-secondary-button {
@@ -182,7 +177,12 @@
   box-shadow: 0 12px 25px rgba(85, 163, 154, 0.2);
 }
 
-.appointment-nav-cta:hover,
+.appointment-nav-cta:hover {
+  color: #ffffff !important;
+  background: #087D73;
+  transform: translateY(-2px);
+}
+
 .appointment-primary-button:hover {
   color: #ffffff !important;
   background: #478d85;
@@ -783,12 +783,12 @@
     padding: 12px 16px;
     border-radius: 10px;
     color: #ffffff !important;
-    background: #087d73 !important;
+    background: var(--appointment-signup-teal) !important;
     font-weight: 700;
   }
 
   .appointment-mobile-signup:hover {
-  background: #478d85 !important;
+  background: #087D73 !important;
   }
 
   .appointment-hero {
