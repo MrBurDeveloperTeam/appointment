@@ -4,6 +4,9 @@ const mapRoom = (row) => ({
   id: row.id,
   name: row.name,
   color: row.color || "",
+  isAptUsed: Boolean(row.is_apt_used),
+  archived: Boolean(row.archived_at),
+  archivedAt: row.archived_at || null,
 });
 
 export async function getRooms(clinicId) {
@@ -11,9 +14,27 @@ export async function getRooms(clinicId) {
     .from("apt_rooms")
     .select("*")
     .eq("clinic_id", clinicId)
+    .is("archived_at", null)
     .order("name", { ascending: true });
   if (error) throw error;
-  return (data || []).map(mapRoom);
+
+  const rooms = data || [];
+  if (rooms.length === 0) return [];
+
+  // Derive usage from appointment history as well as the flag, so older rooms
+  // are protected even before their flag has been backfilled.
+  const { data: appointmentRooms, error: usageError } = await supabase
+    .from("appointments")
+    .select("room_id")
+    .eq("clinic_id", clinicId)
+    .not("room_id", "is", null);
+  if (usageError) throw usageError;
+
+  const usedIds = new Set((appointmentRooms || []).map((row) => row.room_id));
+  return rooms.map((room) => ({
+    ...mapRoom(room),
+    isAptUsed: Boolean(room.is_apt_used || usedIds.has(room.id)),
+  }));
 }
 
 export async function addRoom(clinicId, room) {
@@ -92,7 +113,36 @@ export async function updateRoom(id, updates) {
   return mapRoom(data);
 }
 
+export async function markRoomUsed(id) {
+  if (!id) return;
+  const { error } = await supabase
+    .from("apt_rooms")
+    .update({ is_apt_used: true })
+    .eq("id", id);
+  if (error) console.warn("[Rooms] Could not mark room as used:", error.message);
+}
+
+export async function archiveRoom(id) {
+  const { data, error } = await supabase
+    .from("apt_rooms")
+    .update({ archived_at: new Date().toISOString(), is_apt_used: true })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return mapRoom(data);
+}
+
 export async function deleteRoom(id) {
+  const { count, error: usageError } = await supabase
+    .from("appointments")
+    .select("id", { count: "exact", head: true })
+    .eq("room_id", id);
+  if (usageError) throw usageError;
+  if ((count || 0) > 0) {
+    throw new Error("This room has appointment history and must be archived instead.");
+  }
+
   const { error } = await supabase.from("apt_rooms").delete().eq("id", id);
   if (error) throw error;
 

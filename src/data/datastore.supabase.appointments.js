@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { markRoomUsed } from "./datastore.supabase.rooms";
 import { hasAppointmentPassed, PAST_APPOINTMENT_MESSAGE } from '../utils/appointmentReadOnly';
 
 async function assertAppointmentEditable(id) {
@@ -90,6 +91,7 @@ export async function addAppointment(clinicId, appointment) {
     .select("*")
     .single();
   if (error) throw error;
+  await markRoomUsed(data.room_id);
   await deductDisposableSupplies(data);
   return mapAppointment(data);
 }
@@ -115,6 +117,7 @@ export async function updateAppointment(id, updates) {
     .select("*")
     .single();
   if (error) throw error;
+  await markRoomUsed(data.room_id);
   await deductDisposableSupplies(data);
   return mapAppointment(data);
 }

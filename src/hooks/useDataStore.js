@@ -279,6 +279,13 @@ export default function useDataStore(activeClinicId, enabled = true) {
     return result;
   };
 
+  const archiveRoom = async (id) => {
+    const result = await DataStore.archiveRoom(id);
+    refreshRooms();
+    refreshActivity();
+    return result;
+  };
+
   const addTreatment = async (treatment) => {
     const result = await DataStore.addTreatment(treatment);
     refreshTreatments();
@@ -430,6 +437,7 @@ export default function useDataStore(activeClinicId, enabled = true) {
     addRoom,
     updateRoom,
     deleteRoom,
+    archiveRoom,
     addTreatment,
     updateTreatment,
     deleteTreatment,

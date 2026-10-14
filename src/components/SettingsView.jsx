@@ -44,6 +44,7 @@ export default function SettingsView({
   addRoom,
   updateRoom,
   deleteRoom,
+  archiveRoom,
   addTreatment,
   updateTreatment,
   deleteTreatment,
@@ -179,11 +180,11 @@ export default function SettingsView({
 
   const openRoomModal = (room) => {
     if (room) {
-      setRoomForm({ id: room.id, name: room.name, color: room.color });
+      setRoomForm({ id: room.id, name: room.name, color: room.color, isAptUsed: room.isAptUsed });
       setModalState({ type: 'room', mode: 'edit' });
       return;
     }
-    setRoomForm({ id: '', name: '', color: '#4A90A4' });
+    setRoomForm({ id: '', name: '', color: '#4A90A4', isAptUsed: false });
     setModalState({ type: 'room', mode: 'new' });
   };
 
@@ -441,7 +442,12 @@ export default function SettingsView({
 
   const handleDelete = () => {
     if (modalState.type === 'room' && roomForm.id) {
-      setConfirmDialog({ open: true, type: 'room', payload: { id: roomForm.id, name: roomForm.name } });
+      const used = Boolean(roomForm.isAptUsed);
+      setConfirmDialog({
+        open: true,
+        type: used ? 'room-archive' : 'room-delete',
+        payload: { id: roomForm.id, name: roomForm.name },
+      });
     }
     if (modalState.type === 'treatment' && treatmentForm.id) {
       // Unused treatments can be deleted; ones appointments reference are archived instead.
@@ -460,7 +466,7 @@ export default function SettingsView({
   };
 
   const handleConfirmDelete = async () => {
-    if (confirmDialog.type === 'room' && confirmDialog.payload?.id) {
+    if (confirmDialog.type === 'room-delete' && confirmDialog.payload?.id) {
       try {
         await deleteRoom(confirmDialog.payload.id);
         addToast('Room deleted successfully.', 'success');
@@ -468,6 +474,17 @@ export default function SettingsView({
         setConfirmDialog({ open: false, type: '', payload: null });
       } catch (error) {
         addToast(error?.message || 'Unable to delete room. Please try again.', 'error');
+      }
+      return;
+    }
+    if (confirmDialog.type === 'room-archive' && confirmDialog.payload?.id) {
+      try {
+        await archiveRoom(confirmDialog.payload.id);
+        addToast('Room archived successfully.', 'success');
+        closeModal();
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Unable to archive room. Please try again.', 'error');
       }
       return;
     }
@@ -1232,7 +1249,7 @@ export default function SettingsView({
           <div className="modal-footer">
             {modalState.mode === 'edit' && (
               <button type="button" className="btn btn-danger" onClick={handleDelete}>
-                Delete
+                {roomForm.isAptUsed ? 'Archive' : 'Delete'}
               </button>
             )}
             <div className="flex-1"></div>
@@ -1435,13 +1452,27 @@ export default function SettingsView({
       )}
       <ConfirmDialog
         open={confirmDialog.open}
-        title={confirmDialog.type === 'treatment-archive' ? 'Archive treatment' : `Delete ${confirmDialog.type}`}
+        title={
+          confirmDialog.type === 'treatment-archive'
+            ? 'Archive treatment'
+            : confirmDialog.type === 'room-archive'
+              ? 'Archive room'
+              : `Delete ${confirmDialog.type.replace('-delete', '')}`
+        }
         description={
           confirmDialog.type === 'treatment-archive'
             ? `"${confirmDialog.payload?.name || 'This treatment'}" will be hidden from new appointments and online booking. Existing appointments and reports keep it, and you can restore it anytime from "Show archived".`
-            : `This will permanently remove the ${confirmDialog.type}. This action cannot be undone.`
+            : confirmDialog.type === 'room-archive'
+              ? `"${confirmDialog.payload?.name || 'This room'}" will be hidden from new appointments while preserving its appointment history.`
+            : `This will permanently remove the ${confirmDialog.type.replace('-delete', '')}. This action cannot be undone.`
         }
-        confirmLabel={confirmDialog.type === 'treatment-archive' ? 'Archive treatment' : `Delete ${confirmDialog.type}`}
+        confirmLabel={
+          confirmDialog.type === 'treatment-archive'
+            ? 'Archive treatment'
+            : confirmDialog.type === 'room-archive'
+              ? 'Archive room'
+              : `Delete ${confirmDialog.type.replace('-delete', '')}`
+        }
         confirmVariant="danger"
         onClose={() => setConfirmDialog({ open: false, type: '', payload: null })}
         onConfirm={handleConfirmDelete}

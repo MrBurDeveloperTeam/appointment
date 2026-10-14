@@ -480,6 +480,7 @@ useEffect(() => {
     addRoom,
     updateRoom,
     deleteRoom,
+    archiveRoom,
     addTreatment,
     updateTreatment,
     deleteTreatment,
@@ -1397,6 +1398,7 @@ useEffect(() => {
               addRoom={addRoom}
               updateRoom={updateRoom}
               deleteRoom={deleteRoom}
+              archiveRoom={archiveRoom}
               addTreatment={addTreatment}
               updateTreatment={updateTreatment}
               deleteTreatment={deleteTreatment}

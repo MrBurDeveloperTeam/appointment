@@ -368,6 +368,10 @@ const DataStore = {
     return Rooms.deleteRoom(id);
   },
 
+  async archiveRoom(id) {
+    return Rooms.archiveRoom(id);
+  },
+
   // ============ TREATMENTS ============
   async getTreatments(clinicId) {
     const activeClinic = getClinicId(clinicId);
