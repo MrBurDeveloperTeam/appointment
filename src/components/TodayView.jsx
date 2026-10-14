@@ -7,7 +7,7 @@ import PatientFlag from './PatientFlag';
 
 const PAGE_SIZE = 4;
 
-export default function TodayView({ appointments, patients, rooms, treatments, onAppointmentSelect, onNewAppointment }) {
+export default function TodayView({ appointments, patients, rooms, treatments, onAppointmentSelect, onNewAppointment, onOpenCompanyWorkspace, switchingCompany = false }) {
   const isoToday = todayISO();
   const [page, setPage] = useState(1);
   const todaysAppointments = useMemo(() => {
@@ -162,11 +162,18 @@ export default function TodayView({ appointments, patients, rooms, treatments, o
                     <button
                       type="button"
                       className="today-dental-chart-button"
-                      disabled={apt.readOnly || !patient}
-                      onClick={(event) => openDentalChart(event, apt, patient)}
-                      aria-label={`Open ${patient?.name || 'patient'} in dental charting`}
+                      disabled={apt.readOnly ? switchingCompany || !onOpenCompanyWorkspace : !patient}
+                      onClick={(event) => {
+                        if (apt.readOnly) {
+                          event.stopPropagation();
+                          onOpenCompanyWorkspace?.(apt);
+                        } else {
+                          openDentalChart(event, apt, patient);
+                        }
+                      }}
+                      aria-label={apt.readOnly ? `Open in ${apt.companyName} company workspace` : `Open ${patient?.name || 'patient'} in dental charting`}
                     >
-                      Open in Dental Charting
+                      {apt.readOnly ? (switchingCompany ? 'Switching...' : 'Open in company workspace') : 'Open in Dental Charting'}
                       <span aria-hidden="true">↗</span>
                     </button>
                   </div>

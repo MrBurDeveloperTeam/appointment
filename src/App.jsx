@@ -597,17 +597,18 @@ useEffect(() => {
   const scheduleAppointments = [...appointments, ...companySchedule.appointments];
   const [companyAppointment, setCompanyAppointment] = useState(null);
   const [switchingCompany, setSwitchingCompany] = useState(false);
-  const openCompanyWorkspace = async () => {
+  const openCompanyWorkspace = async (appointment = companyAppointment) => {
+    if (!appointment || switchingCompany) return;
     setSwitchingCompany(true);
     try {
-      const access = await getAppointmentAccess(companyAppointment.workspaceOwnerUserId);
-      if (access.clinicId !== companyAppointment.clinicId || !access.permissions?.[APPOINTMENT_PERMISSIONS.SCHEDULE]) {
+      const access = await getAppointmentAccess(appointment.workspaceOwnerUserId);
+      if (access.clinicId !== appointment.clinicId || !access.permissions?.[APPOINTMENT_PERMISSIONS.SCHEDULE]) {
         throw new Error('You no longer have access to this company schedule.');
       }
-      sessionStorage.setItem('appointment.pendingWorkspace', JSON.stringify(companyAppointment));
+      sessionStorage.setItem('appointment.pendingWorkspace', JSON.stringify(appointment));
       const url = new URL(window.location.href);
       url.searchParams.set('workspace_type', 'company');
-      url.searchParams.set('workspace_owner_id', companyAppointment.workspaceOwnerUserId);
+      url.searchParams.set('workspace_owner_id', appointment.workspaceOwnerUserId);
       url.hash = 'calendar';
       window.location.assign(url.toString());
     } catch (error) {
@@ -1305,7 +1306,7 @@ useEffect(() => {
                 <h2>{companyAppointment.companyName}</h2>
                 <p>{companyAppointment.date} / {companyAppointment.startTime} - {companyAppointment.endTime}</p>
                 <p>This company appointment is read-only here. Switch to its company workspace to view details and edit if permitted.</p>
-                <button className="btn btn-primary" disabled={switchingCompany} onClick={openCompanyWorkspace}>
+                <button className="btn btn-primary" disabled={switchingCompany} onClick={() => openCompanyWorkspace()}>
                   {switchingCompany ? 'Switching...' : 'Open in company workspace'}
                 </button>
                 <button className="btn btn-secondary" disabled={switchingCompany} onClick={() => setCompanyAppointment(null)}>Close</button>
@@ -1343,6 +1344,8 @@ useEffect(() => {
           )}
           {view === 'today' && (
             <TodayView
+              onOpenCompanyWorkspace={openCompanyWorkspace}
+              switchingCompany={switchingCompany}
               appointments={scheduleAppointments}
               patients={patients}
               rooms={rooms}
