@@ -9677,3 +9677,33 @@ tbody tr:hover {
     box-shadow: none;
   }
 }
+
+
+/* Appointment modal: persistent cross-workspace conflict notice. */
+:root {
+  --doctor-conflict-bg: #fff8eb;
+  --doctor-conflict-text: #704410;
+  --doctor-conflict-border: #c48b30;
+}
+:root[data-theme="dark"] {
+  --doctor-conflict-bg: #302719;
+  --doctor-conflict-text: #ffe0a6;
+  --doctor-conflict-border: #ba914d;
+}
+.doctor-conflict-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-block: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--doctor-conflict-border);
+  border-inline-start-width: 4px;
+  border-radius: var(--radius-md);
+  background: var(--doctor-conflict-bg);
+  color: var(--doctor-conflict-text);
+}
+.doctor-conflict-notice__icon { flex: 0 0 22px; margin-top: 1px; }
+.doctor-conflict-notice__content { min-width: 0; }
+.doctor-conflict-notice__title { display: block; font-size: 14px; line-height: 1.5; }
+.doctor-conflict-notice__time { display: block; margin-top: 3px; font-size: 15px; font-weight: 700; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.doctor-conflict-notice .doctor-conflict-notice__content p { margin: 5px 0 0; color: inherit; font-size: 13px; line-height: 1.6; }

@@ -1,3 +1,4 @@
+import { getExternalBusySlots, externalDoctorConflict, doctorConflictMessage } from '../services/doctorAvailability';
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from './Modal';
 import { addMinutes, formatTime, minutesToTime } from '../utils/time';
@@ -12,6 +13,7 @@ import PatientFlag from './PatientFlag';
 const APPOINTMENT_DURATION_OPTIONS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
 
 export default function AppointmentForm({
+  clinicId,
   patients,
   rooms,
   treatments,
@@ -169,8 +171,29 @@ export default function AppointmentForm({
     return searchResults;
   }, [patients, patientQuery, searchResults]);
 
+  const [externalBusy, setExternalBusy] = useState([]);
+  const [availabilityError, setAvailabilityError] = useState('');
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const availabilityCheckRef = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    setExternalBusy([]);
+    setAvailabilityError('');
+    if (!clinicId || !form.date || isReadOnly) return;
+    setAvailabilityLoading(true);
+    getExternalBusySlots(clinicId, form.date).then(slots => {
+      if (!cancelled) setExternalBusy(slots);
+    }).catch(error => {
+      if (!cancelled) setAvailabilityError(error.message);
+    }).finally(() => { if (!cancelled) setAvailabilityLoading(false); });
+    return () => { cancelled = true; };
+  }, [clinicId, form.date, isReadOnly]);
+  const selectedExternalConflict = externalDoctorConflict(externalBusy, form.dentistId, form.startTime, form.duration);
+
   const isDentistBusy = (dentistId) => {
     if (!dentistId) return false;
+    if (externalDoctorConflict(externalBusy, dentistId, form.startTime, form.duration)) return true;
     return appointments.some((apt) => {
       if (apt.id === form.id) return false;
       if (apt.dentistId !== dentistId) return false;
@@ -187,8 +210,9 @@ export default function AppointmentForm({
     return isDentistBusy(dentist.id) ? 'busy' : 'available';
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting || availabilityCheckRef.current) return;
     if (isEditing && hasAppointmentPassed(initialData)) {
       setClock(new Date());
       addToast(PAST_APPOINTMENT_MESSAGE, 'warning');
@@ -230,13 +254,34 @@ export default function AppointmentForm({
       return;
     }
 
-    // Overlap check (warn + allow override). Same clinic, any dentist; cancelled/no-show ignored.
+    // Refresh external availability on every save, including "Book anyway".
+    // The database constraint remains authoritative for racing writes.
+    if (form.dentistId && !['cancelled', 'no-show'].includes(form.status)) {
+      availabilityCheckRef.current = true;
+      setCheckingAvailability(true);
+      try {
+        const slots = await getExternalBusySlots(clinicId, form.date);
+        setExternalBusy(slots);
+        setAvailabilityError('');
+        const conflict = externalDoctorConflict(slots, form.dentistId, form.startTime, duration);
+        if (conflict) { addToast(doctorConflictMessage(conflict), 'warning', 6000); return; }
+      } catch (error) {
+        setAvailabilityError(error.message);
+        addToast(error.message, 'error');
+        return;
+      } finally {
+        availabilityCheckRef.current = false;
+        setCheckingAvailability(false);
+      }
+    }
+
+    // Overlap check (warn + allow override). Same clinic, selected dentist; cancelled/no-show ignored.
     // First attempt with conflicts shows a centered toast + flips the button to
     // "Book anyway"; a second submit proceeds (deliberate overbook).
     if (!pendingConflicts) {
       const editingId = initialData && initialData.id ? initialData.id : form.id;
       const conflicts = findAppointmentConflicts(
-        { date: form.date, startTime: form.startTime, duration: form.duration },
+        { date: form.date, startTime: form.startTime, duration: form.duration, dentistId: form.dentistId },
         appointments,
         editingId
       );
@@ -306,7 +351,7 @@ export default function AppointmentForm({
       <form onSubmit={handleSubmit} noValidate>
         <div className="modal-body">
           {isReadOnly && <p role="status">{PAST_APPOINTMENT_MESSAGE}</p>}
-          <fieldset disabled={isReadOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+          <fieldset disabled={isReadOnly || checkingAvailability || isSubmitting} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <div className="form-group">
             <label className="form-label">Patient</label>
             <div className="patient-item selected patient-picker-item" style={{ cursor: 'default' }}>
@@ -495,6 +540,21 @@ export default function AppointmentForm({
                 );
               })}
             </div>
+            {availabilityLoading && <p role="status">Checking availability across workspaces...</p>}
+            {availabilityError && <p role="alert">{availabilityError}</p>}
+            {selectedExternalConflict && (
+              <div className="doctor-conflict-notice" role="alert" aria-atomic="true">
+                <svg className="doctor-conflict-notice__icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <div className="doctor-conflict-notice__content">
+                  <strong className="doctor-conflict-notice__title">Doctor unavailable</strong>
+                  <span className="doctor-conflict-notice__time">{formatTime(selectedExternalConflict.start_time)} – {formatTime(selectedExternalConflict.end_time)}</span>
+                  <p>Already booked in another workspace. Choose another time or dentist.</p>
+                </div>
+              </div>
+            )}
             <div className="dentist-availability-hint">
               <div className="availability-legend">
                 <span className="availability-legend-dot available"></span> Available
@@ -610,7 +670,7 @@ export default function AppointmentForm({
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={showCreditWarning || isSubmitting}
+              disabled={showCreditWarning || isSubmitting || checkingAvailability}
               style={{
                 '--primary-dark': '#5AB8AE',
                 '--primary': '#5AB8AE',

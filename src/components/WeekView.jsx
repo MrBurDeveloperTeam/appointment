@@ -192,7 +192,7 @@ export default function WeekView({
               endTime: addMinutes(newStart, duration),
             };
             const conflicts = findAppointmentConflicts(
-              { date: iso, startTime: newStart, duration },
+              { date: iso, startTime: newStart, duration, dentistId: dragged.dentistId || null },
               appointments,
               dragged.id
             );
