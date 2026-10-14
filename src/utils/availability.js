@@ -36,7 +36,7 @@ const NON_BLOCKING_STATUSES = new Set(['cancelled', 'no-show']);
 /**
  * Find existing appointments (app-shaped: camelCase startTime/endTime/duration/date/status/id)
  * whose time overlaps the candidate on the same date, in the same clinic.
- * @param {{date:string,startTime:string,duration:number}} candidate
+ * @param {{date:string,startTime:string,duration:number,dentistId?:string|null}} candidate
  * @param {Array} appointments - existing appointments already scoped to the active clinic
  * @param {string|null} [ignoreId] - appointment id to skip (the one being edited)
  * @returns {Array} the conflicting appointments
@@ -48,6 +48,10 @@ export const findAppointmentConflicts = (candidate, appointments, ignoreId = nul
   const end = start + Number(candidate.duration || 0);
   return (appointments || []).filter((a) => {
     if (!a) return false;
+    if (Object.prototype.hasOwnProperty.call(candidate, 'dentistId')) {
+      if (!candidate.dentistId || String(a.dentistId) !== String(candidate.dentistId)) return false;
+    }
+    if (a.readOnly) return false;
     if (ignoreId && a.id === ignoreId) return false;
     if (a.date !== candidate.date) return false;
     if (NON_BLOCKING_STATUSES.has(a.status)) return false;

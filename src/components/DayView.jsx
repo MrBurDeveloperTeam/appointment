@@ -176,7 +176,7 @@ export default function DayView({
       dentistId: dentistId || null,
     };
     const conflicts = findAppointmentConflicts(
-      { date: dateStrLocal, startTime: newStart, duration },
+      { date: dateStrLocal, startTime: newStart, duration, dentistId: dentistId || null },
       appointments,
       dragged.id
     );

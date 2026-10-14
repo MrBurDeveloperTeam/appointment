@@ -275,13 +275,13 @@ export default function AppointmentForm({
       }
     }
 
-    // Overlap check (warn + allow override). Same clinic, any dentist; cancelled/no-show ignored.
+    // Overlap check (warn + allow override). Same clinic, selected dentist; cancelled/no-show ignored.
     // First attempt with conflicts shows a centered toast + flips the button to
     // "Book anyway"; a second submit proceeds (deliberate overbook).
     if (!pendingConflicts) {
       const editingId = initialData && initialData.id ? initialData.id : form.id;
       const conflicts = findAppointmentConflicts(
-        { date: form.date, startTime: form.startTime, duration: form.duration },
+        { date: form.date, startTime: form.startTime, duration: form.duration, dentistId: form.dentistId },
         appointments,
         editingId
       );
