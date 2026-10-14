@@ -41,7 +41,7 @@ function getAccessContextUrl() {
   );
 }
 
-export async function getAppointmentAccess() {
+export async function getAppointmentAccess(workspaceOwnerUserId) {
   const {
     data: { session },
     error: sessionError,
@@ -68,7 +68,7 @@ export async function getAppointmentAccess() {
       method: "GET",
       credentials: "include",
       headers: {
-        ...getWorkspaceHeaders(),
+        ...(workspaceOwnerUserId ? { 'X-Snabbb-Workspace-Type': 'company', 'X-Snabbb-Workspace-User-Id': workspaceOwnerUserId } : getWorkspaceHeaders()),
         Accept: "application/json",
         Authorization:
           `Bearer ${accessToken}`,
