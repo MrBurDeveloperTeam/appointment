@@ -1,3 +1,4 @@
+import CompanyAppointmentLabel from './CompanyAppointmentLabel';
 import { hasAppointmentPassed } from '../utils/appointmentReadOnly';
 import { useMemo, useRef, useState } from 'react';
 import { buildHolidayMap } from '../utils/calendar';
@@ -302,7 +303,7 @@ export default function WeekView({
                       <div className="appointment-primary-line">
                         <span className="week-appointment-time">{formatTime(apt.startTime)}</span>
                         {isPatientFlagged(apt.patientId) && <PatientFlag className="calendar-patient-flag" />}
-                        <span className="appointment-patient-name">{(apt.readOnly ? `${apt.companyName} (Company)` : patientName(apt.patientId))}</span>
+                        <span className="appointment-patient-name">{apt.readOnly ? <CompanyAppointmentLabel appointment={apt} /> : patientName(apt.patientId)}</span>
                       </div>
                       {statusIcon(apt.status)}
                     </div>

@@ -1,3 +1,4 @@
+import CompanyAppointmentLabel from './CompanyAppointmentLabel';
 import { useEffect, useMemo, useState } from 'react';
 import { todayISO, formatDayLong } from '../utils/date';
 import { addMinutes, formatTime } from '../utils/time';
@@ -152,7 +153,7 @@ export default function TodayView({ appointments, patients, rooms, treatments, o
                     <span className="today-appointment-avatar">
                       {patient ? getInitials(patient.name) : 'P'}
                     </span>
-                    <span>{(apt.readOnly ? `${apt.companyName} (Company)` : patientName(apt.patientId))}</span>
+                    <span>{apt.readOnly ? <CompanyAppointmentLabel appointment={apt} /> : patientName(apt.patientId)}</span>
                     {patient?.is_flagged === true && <PatientFlag className="today-patient-flag" />}
                   </div>
                   <div className="today-appointment-actions">

@@ -9707,3 +9707,39 @@ tbody tr:hover {
 .doctor-conflict-notice__title { display: block; font-size: 14px; line-height: 1.5; }
 .doctor-conflict-notice__time { display: block; margin-top: 3px; font-size: 15px; font-weight: 700; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .doctor-conflict-notice .doctor-conflict-notice__content p { margin: 5px 0 0; color: inherit; font-size: 13px; line-height: 1.6; }
+
+
+/* Company identity: stable palette per owner, shared by every schedule view. */
+.company-appointment-label {
+  --company-label-bg: #d9f3ee;
+  --company-label-fg: #15574d;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-width: 0;
+  vertical-align: middle;
+}
+.company-appointment-label--1 { --company-label-bg: #e4ecff; --company-label-fg: #254a85; }
+.company-appointment-label--2 { --company-label-bg: #efe5ff; --company-label-fg: #603785; }
+.company-appointment-label--3 { --company-label-bg: #ffe8d5; --company-label-fg: #814315; }
+.company-appointment-label--4 { --company-label-bg: #fbe2ec; --company-label-fg: #843451; }
+.company-appointment-label__badge {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: var(--company-label-bg);
+  color: var(--company-label-fg);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.company-appointment-label__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-theme="dark"] .company-appointment-label { --company-label-bg: #183e38; --company-label-fg: #b2eee0; }
+:root[data-theme="dark"] .company-appointment-label--1 { --company-label-bg: #223653; --company-label-fg: #c5dbff; }
+:root[data-theme="dark"] .company-appointment-label--2 { --company-label-bg: #3b2b50; --company-label-fg: #e2c9ff; }
+:root[data-theme="dark"] .company-appointment-label--3 { --company-label-bg: #49321e; --company-label-fg: #ffd6b0; }
+:root[data-theme="dark"] .company-appointment-label--4 { --company-label-bg: #482936; --company-label-fg: #ffc9de; }
+.today-appointment-patient > span:has(.company-appointment-label) { min-width: 0; }
+.today-appointment-patient .company-appointment-label { flex-wrap: wrap; }
+.today-appointment-patient .company-appointment-label__name { white-space: normal; overflow-wrap: anywhere; }

@@ -1,3 +1,4 @@
+import CompanyAppointmentLabel from './CompanyAppointmentLabel';
 import { hasAppointmentPassed } from '../utils/appointmentReadOnly';
 import { useRef, useState } from 'react';
 import { toISODate, todayISO, sameDate } from '../utils/date';
@@ -401,7 +402,7 @@ export default function DayView({
                           <div className="appointment-primary-line">
                             <span className="week-appointment-time">{formatTime(apt.startTime)}</span>
                             {isPatientFlagged(apt.patientId) && <PatientFlag className="calendar-patient-flag" />}
-                            <span className="appointment-patient-name">{(apt.readOnly ? `${apt.companyName} (Company)` : patientName(apt.patientId))}</span>
+                            <span className="appointment-patient-name">{apt.readOnly ? <CompanyAppointmentLabel appointment={apt} /> : patientName(apt.patientId)}</span>
                           </div>
                           {statusIcon(apt.status)}
                         </div>
@@ -496,7 +497,7 @@ export default function DayView({
                         <div className="appointment-primary-line">
                           <span className="week-appointment-time">{formatTime(apt.startTime)}</span>
                           {isPatientFlagged(apt.patientId) && <PatientFlag className="calendar-patient-flag" />}
-                          <span className="appointment-patient-name">{(apt.readOnly ? `${apt.companyName} (Company)` : patientName(apt.patientId))}</span>
+                          <span className="appointment-patient-name">{apt.readOnly ? <CompanyAppointmentLabel appointment={apt} /> : patientName(apt.patientId)}</span>
                         </div>
                         {statusIcon(apt.status)}
                       </div>
