@@ -1,3 +1,4 @@
+import CompanyAppointmentLabel from './CompanyAppointmentLabel';
 ﻿import { useMemo } from 'react';
 import WeekView from './WeekView';
 import DayView from './DayView';
@@ -158,17 +159,13 @@ export default function CalendarView({
                         e.stopPropagation();
                         if (onAppointmentSelect) onAppointmentSelect(apt);
                       }}
-                      title={`${(apt.readOnly ? `${apt.companyName} (Company)` : patientName(apt.patientId))} - ${formatTime(apt.startTime)}${apt.roomId ? ` - ${roomName(apt.roomId)}` : ''}`}
+                      title={`${apt.readOnly ? <CompanyAppointmentLabel appointment={apt} /> : patientName(apt.patientId)} - ${formatTime(apt.startTime)}${apt.roomId ? ` - ${roomName(apt.roomId)}` : ''}`}
                     >
                       <span className={`day-appointment-dot status-${statusClass(apt.status)}`} />
                       <span className="day-appointment-time">{formatTime(apt.startTime)}</span>
                       {isPatientFlagged(apt.patientId) && <PatientFlag className="calendar-patient-flag" />}
                       <span className="day-appointment-title">
-                        {(() => {
-                          const name = (apt.readOnly ? `${apt.companyName} (Company)` : patientName(apt.patientId));
-                          // Truncate name to ~10-12 chars for cleaner month view
-                          return name.length > 12 ? name.substring(0, 12) + '...' : name;
-                        })()}
+                        {apt.readOnly ? <CompanyAppointmentLabel appointment={apt} /> : patientName(apt.patientId)}
                       </span>
                     </div>
                   ))}
