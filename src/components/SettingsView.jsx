@@ -1108,12 +1108,11 @@ export default function SettingsView({
               </div>
             </div>
             {!isCompanyWorkspace && staffForm.role === 'dentist' && (
-              <div className="form-group staff-account-link">
-                <label className="staff-account-link__choice" htmlFor="staff-is-me">
+              <div className="form-group">
+                <label className="staff-self-checkbox" htmlFor="staff-is-me">
                   <input
                     id="staff-is-me"
                     type="checkbox"
-                    aria-describedby="staff-account-link-hint"
                     checked={Boolean(profile?.user_id && staffForm.userId === profile.user_id)}
                     disabled={!profile?.user_id || Boolean(staffForm.userId && staffForm.userId !== profile.user_id)}
                     onChange={(event) => {
@@ -1124,17 +1123,8 @@ export default function SettingsView({
                       }));
                     }}
                   />
-                  <span className="staff-account-link__title">This dentist is me</span>
-                  <svg className="staff-account-link__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                    <circle cx="12" cy="8" r="3" />
-                    <path d="M5 21v-2a7 7 0 0 1 14 0v2" strokeLinecap="round" />
-                  </svg>
+                  <span>This dentist is me</span>
                 </label>
-                <p id="staff-account-link-hint" className="staff-account-link__hint">
-                  {staffForm.userId && staffForm.userId !== profile?.user_id
-                    ? 'This dentist is already linked to another account.'
-                    : 'Select this if you are the dentist. Link your account to connect your personal and company schedules.'}
-                </p>
               </div>
             )}
             {staffForm.role === 'dentist' && (

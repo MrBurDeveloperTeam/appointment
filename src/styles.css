@@ -9745,34 +9745,8 @@ tbody tr:hover {
 .today-appointment-patient .company-appointment-label__name { white-space: normal; overflow-wrap: anywhere; }
 
 
-/* Staff account identity choice: readable in both application themes. */
-:root {
-  --staff-link-bg: #f1f8f7;
-  --staff-link-selected-bg: #e1f3ef;
-  --staff-link-title: #174c43;
-  --staff-link-hint: #3d625b;
-  --staff-link-border: #719b92;
-  --staff-link-focus: #176c5c;
-}
-:root[data-theme="dark"] {
-  --staff-link-bg: #192e2b;
-  --staff-link-selected-bg: #203e37;
-  --staff-link-title: #d5f5e9;
-  --staff-link-hint: #b2cec4;
-  --staff-link-border: #648f81;
-  --staff-link-focus: #8de1be;
-}
-.staff-account-link {
-  padding: 16px;
-  border: 1px solid var(--staff-link-border);
-  border-radius: var(--radius-md);
-  background: var(--staff-link-bg);
-}
-.staff-account-link:has(input:checked) { background: var(--staff-link-selected-bg); border-color: var(--staff-link-focus); }
-.staff-account-link:has(input:focus-visible) { outline: 2px solid var(--staff-link-focus); outline-offset: 3px; }
-.staff-account-link__choice { display: flex; align-items: center; gap: 10px; min-height: 32px; cursor: pointer; }
-.staff-account-link__choice input { width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: var(--staff-link-focus); }
-.staff-account-link__title { color: var(--staff-link-title); font-weight: 600; font-size: 14px; line-height: 1.5; }
-.staff-account-link__icon { margin-inline-start: auto; flex-shrink: 0; color: var(--staff-link-title); }
-.staff-account-link .staff-account-link__hint { margin: 5px 0 0 28px; color: var(--staff-link-hint); font-size: 13px; line-height: 1.6; }
-.staff-account-link:has(input:disabled) .staff-account-link__choice { cursor: not-allowed; }
+/* Simple account-link checkbox; inherit the application's theme text. */
+.staff-self-checkbox { display: flex; align-items: center; gap: 10px; color: var(--text-primary); cursor: pointer; line-height: 1.5; }
+.staff-self-checkbox input { width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: var(--primary); }
+.staff-self-checkbox input:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.staff-self-checkbox:has(input:disabled) { cursor: not-allowed; }
