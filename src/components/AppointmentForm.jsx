@@ -542,7 +542,19 @@ export default function AppointmentForm({
             </div>
             {availabilityLoading && <p role="status">Checking availability across workspaces...</p>}
             {availabilityError && <p role="alert">{availabilityError}</p>}
-            {selectedExternalConflict && <p role="alert">{doctorConflictMessage(selectedExternalConflict)}</p>}
+            {selectedExternalConflict && (
+              <div className="doctor-conflict-notice" role="alert" aria-atomic="true">
+                <svg className="doctor-conflict-notice__icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <div className="doctor-conflict-notice__content">
+                  <strong className="doctor-conflict-notice__title">Doctor unavailable</strong>
+                  <span className="doctor-conflict-notice__time">{formatTime(selectedExternalConflict.start_time)} – {formatTime(selectedExternalConflict.end_time)}</span>
+                  <p>Already booked in another workspace. Choose another time or dentist.</p>
+                </div>
+              </div>
+            )}
             <div className="dentist-availability-hint">
               <div className="availability-legend">
                 <span className="availability-legend-dot available"></span> Available

@@ -1127,7 +1127,7 @@ export default function SettingsView({
                 <p className="text-muted">
                   {staffForm.userId && staffForm.userId !== profile?.user_id
                     ? 'This dentist is already linked to another account.'
-                    : 'Link this dentist to your account so your personal and company schedules can identify you as the same doctor.'}
+                    : 'Link this dentist to your account to sync your personal and company schedules.'}
                 </p>
               </div>
             )}
