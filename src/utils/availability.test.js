@@ -184,3 +184,22 @@ describe('isDateHoliday', () => {
     expect(isDateHoliday('2026-09-17', camel)).toBe(false);
   });
 });
+
+
+it('Any dentist remains available when duplicate external ranges belong to one doctor', () => {
+  const busy = [
+    { dentist_id: 'd1', start_time: '09:00', end_time: '09:15' },
+    { dentist_id: 'd1', start_time: '09:15', end_time: '09:30' },
+  ];
+  expect(filterAvailableSlotsByDentist(['09:00'], 30, busy, 2, null)).toEqual(['09:00']);
+});
+it('does not offer Any when no doctor is free for the whole interval', () => {
+  const busy = [
+    { dentist_id: 'd1', start_time: '09:00', end_time: '09:15' },
+    { dentist_id: 'd2', start_time: '09:15', end_time: '09:30' },
+  ];
+  expect(filterAvailableSlotsByDentist(['09:00'], 30, busy, 2, null)).toEqual([]);
+});
+it('does not offer slots for a clinic with no dentists', () => {
+  expect(filterAvailableSlotsByDentist(['09:00'], 30, [], 0, null)).toEqual([]);
+});
