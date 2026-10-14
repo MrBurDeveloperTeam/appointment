@@ -12,6 +12,7 @@ const mapStaff = (row) => ({
   endTime: row.end_time || "",
   assignedTo: row.assigned_to || "",
   createdAt: row.created_at,
+  userId: row.user_id || "",
 });
 
 export async function getStaff(clinicId) {
@@ -36,6 +37,7 @@ export async function addStaff(clinicId, staffMember) {
     start_time: staffMember.startTime || null,
     end_time: staffMember.endTime || null,
     assigned_to: staffMember.assignedTo || null,
+    user_id: staffMember.userId || null,
   };
   const { data, error } = await supabase
     .from("apt_staff")
@@ -57,6 +59,7 @@ export async function updateStaff(id, updates) {
     ...(updates.startTime !== undefined ? { start_time: updates.startTime } : {}),
     ...(updates.endTime !== undefined ? { end_time: updates.endTime } : {}),
     ...(updates.assignedTo !== undefined ? { assigned_to: updates.assignedTo || null } : {}),
+    ...(updates.userId !== undefined? { user_id: updates.userId || null }: {}),
   };
   const { data, error } = await supabase
     .from("apt_staff")

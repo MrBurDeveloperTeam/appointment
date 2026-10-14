@@ -107,6 +107,7 @@ export default function SettingsView({
   ] = useState('30');
   const [staffForm, setStaffForm] = useState({
     id: '',
+    userId: '',
     role: 'dentist',
     name: '',
     phone: '',
@@ -241,6 +242,7 @@ export default function SettingsView({
     if (staffMember) {
       setStaffForm({
         id: staffMember.id,
+        userId: staffMember.userId || '',
         role: staffMember.role,
         name: staffMember.name,
         phone: staffMember.phone || '',
@@ -256,6 +258,7 @@ export default function SettingsView({
     }
     setStaffForm({
       id: '',
+      userId: '',
       role: role || 'dentist',
       name: '',
       phone: '',
@@ -394,6 +397,7 @@ export default function SettingsView({
     }
     const payload = {
       role: staffForm.role,
+      userId: staffForm.userId || null,
       name: staffForm.name,
       phone: staffForm.phone,
       color: staffForm.color,
@@ -1042,8 +1046,13 @@ export default function SettingsView({
                       disabled={directoryLoading || Boolean(directoryError) || !companyMembers.length}
                       onChange={(event) => {
                         const id = event.target.value;
+                        const member = companyMembers.find((item) => item.id === id);
                         setSelectedMemberId(id);
-                        setStaffForm((current) => ({ ...current, name: companyMembers.find((member) => member.id === id)?.name || '' }));
+                        setStaffForm((current) => ({
+                          ...current,
+                          name: member?.name || '',
+                          userId: member?.id || '',
+                        }));
                       }}
                     >
                       <option value="">{directoryLoading ? 'Loading company members…' : 'Select company member'}</option>
@@ -1056,7 +1065,7 @@ export default function SettingsView({
                     <button type="button" className="btn btn-secondary" aria-label="Enter staff name manually" title="Add staff without a Snabbb account" onClick={() => {
                       setStaffNameMode('manual');
                       setSelectedMemberId('');
-                      setStaffForm((current) => ({ ...current, name: '' }));
+                      setStaffForm((current) => ({ ...current, name: '', userId: '' }));
                     }}>+</button>
                   )}
                 </div>
@@ -1064,7 +1073,7 @@ export default function SettingsView({
                   <button type="button" className="btn btn-secondary mt-2" onClick={() => {
                     setStaffNameMode('directory');
                     setSelectedMemberId('');
-                    setStaffForm((current) => ({ ...current, name: '' }));
+                    setStaffForm((current) => ({ ...current, name: '', userId: '' }));
                   }}>Choose company member</button>
                 )}
                 {isAddingCompanyStaff && staffNameMode === 'directory' && !directoryLoading && (
