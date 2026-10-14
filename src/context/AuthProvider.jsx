@@ -125,7 +125,8 @@ export function AuthProvider({ children }) {
         // setSession() -> onAuthStateChange -> a fresh access-context call
         // (observed: 6 exchanges and 14 access-context calls in one session).
         let revalidating = false;
-        let lastRevalidateAt = 0;
+        // Starts at "now": the initial initializeAuth() on mount already counts as a check.
+        let lastRevalidateAt = Date.now();
         const REVALIDATE_MIN_INTERVAL_MS = 60 * 1000;
         const revalidateOnFocus = async () => {
             if (document.visibilityState !== 'visible') return;
