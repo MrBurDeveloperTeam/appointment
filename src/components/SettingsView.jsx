@@ -812,10 +812,14 @@ export default function SettingsView({
                 {archivedRooms.length > 0 && (
                   <button
                     type="button"
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-secondary btn-sm archived-rooms-toggle-btn"
+                    aria-pressed={showArchivedRooms}
+                    aria-label={`${showArchivedRooms ? 'Hide' : 'Show'} archived rooms`}
                     onClick={() => setShowArchivedRooms((value) => !value)}
                   >
-                    {showArchivedRooms ? 'Hide' : 'Show'} Archived ({archivedRooms.length})
+                    <span className="archived-rooms-toggle-icon" aria-hidden="true">▣</span>
+                    <span>{showArchivedRooms ? 'Hide' : 'Show'} Archived</span>
+                    <span className="archived-rooms-toggle-count">{archivedRooms.length}</span>
                   </button>
                 )}
                 <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openRoomModal()}>
@@ -845,7 +849,16 @@ export default function SettingsView({
               </div>
               {showArchivedRooms && archivedRooms.length > 0 && (
                 <div className="settings-list" style={{ marginTop: 12 }}>
-                  <div className="settings-card-subtitle" style={{ marginBottom: 8 }}>Archived rooms</div>
+                  <div className="archived-rooms-heading">
+                    <div className="archived-rooms-eyebrow">ROOM ARCHIVE</div>
+                    <div className="archived-rooms-title-row">
+                      <h3 className="archived-rooms-title">Archived rooms</h3>
+                      <span className="archived-rooms-count">{archivedRooms.length}</span>
+                    </div>
+                    <p className="archived-rooms-description">
+                      Hidden from new appointments while preserving appointment history.
+                    </p>
+                  </div>
                   {archivedRooms.map((room) => (
                     <div key={room.id} className="settings-list-item">
                       <div>
@@ -854,10 +867,13 @@ export default function SettingsView({
                       </div>
                       <button
                         type="button"
-                        className="btn btn-secondary btn-sm"
+                        className="btn btn-primary btn-sm archived-room-unarchive-btn"
+                        style={lightPrimaryButtonStyle}
+                        aria-label={`Unarchive ${room.name}`}
                         onClick={() => handleUnarchiveRoom(room)}
                       >
-                        Unarchive
+                        <span aria-hidden="true">↶</span>
+                        <span>Unarchive</span>
                       </button>
                     </div>
                   ))}
