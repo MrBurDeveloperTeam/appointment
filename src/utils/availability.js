@@ -74,7 +74,8 @@ export const filterAvailableSlotsByDentist = (
   dentistCount,
   selectedDentistId,
 ) => {
-  const cap = Math.max(1, Number(dentistCount) || 1);
+  const cap = Math.max(0, Number(dentistCount) || 0);
+  if (!cap) return [];
   const specific = selectedDentistId != null && selectedDentistId !== '';
   return (candidates || []).filter((slot) => {
     const start = toMinutes(slot);
@@ -91,8 +92,12 @@ export const filterAvailableSlotsByDentist = (
       }
       return true;
     }
-    // "Any": full when overlapping count reaches dentist capacity.
-    return countOverlapping(start, durationMin, busy) < cap;
+    // Count unavailable doctors, not rows: one doctor may have several
+    // external/adjacent appointments while another remains free throughout.
+    const overlapping = (busy || []).filter(b => intervalsOverlap(start, end, toMinutes(b.start_time), toMinutes(b.end_time)));
+    const busyDentists = new Set(overlapping.filter(b => b.dentist_id).map(b => String(b.dentist_id)));
+    const unassigned = overlapping.filter(b => !b.dentist_id).length;
+    return busyDentists.size + unassigned < cap;
   });
 };
 

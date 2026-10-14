@@ -107,6 +107,7 @@ export default function PublicBookingView({ clinicSlug }) {
   });
 
   const [busySlots, setBusySlots] = useState([]);
+  const [busyStatus, setBusyStatus] = useState('loading');
   const [clinicCapacity, setClinicCapacity] = useState(1);
 
   // -----------------------------
@@ -327,6 +328,7 @@ export default function PublicBookingView({ clinicSlug }) {
       return;
     }
     let isActive = true;
+    setBusyStatus('loading');
     (async () => {
       const { data, error: rpcError } = await supabase.rpc('booking_busy_slots_text', {
         p_clinic_id: clinic.id,
@@ -334,14 +336,16 @@ export default function PublicBookingView({ clinicSlug }) {
       });
       if (!isActive) return;
       if (rpcError || !data) {
-        // Fail open: show all working-hours slots on error.
+        // Fail closed: an unavailable lookup must not advertise free slots.
+        setBusyStatus('error');
         console.error('booking_busy_slots failed:', rpcError);
         setBusySlots([]);
         setClinicCapacity(1);
         return;
       }
+      setBusyStatus('ready');
       setBusySlots(Array.isArray(data.busy) ? data.busy : []);
-      setClinicCapacity(Number(data.capacity) || 1);
+      setClinicCapacity(Number(data.capacity) || 0);
     })();
     return () => { isActive = false; };
   }, [clinic, appointment.date]);
@@ -461,6 +465,7 @@ export default function PublicBookingView({ clinicSlug }) {
     }
     // Per-dentist availability: specific dentist blocks only their overlaps;
     // "Any" uses the clinic's dentist-count capacity.
+    if (busyStatus !== 'ready') return [];
     return filterAvailableSlotsByDentist(
       slots,
       selectedDuration,
@@ -468,7 +473,7 @@ export default function PublicBookingView({ clinicSlug }) {
       clinicCapacity,
       appointment.dentistId,
     );
-  }, [appointment.date, selectedDuration, slotDuration, workingHoursStart, workingHoursEnd, busySlots, clinicCapacity, appointment.dentistId]);
+  }, [appointment.date, selectedDuration, slotDuration, workingHoursStart, workingHoursEnd, busySlots, clinicCapacity, appointment.dentistId, busyStatus]);
 
   useEffect(() => {
     if (!appointment.date) return;
@@ -767,6 +772,17 @@ export default function PublicBookingView({ clinicSlug }) {
     if (!isValidPatientStep() || !isValidAppointmentStep()) return;
 
     setSubmitting(true);
+    const { data: availability, error: availabilityError } = await supabase.rpc('booking_busy_slots_text', {
+      p_clinic_id: clinic.id, p_date: appointment.date,
+    });
+    if (availabilityError || !availability || !filterAvailableSlotsByDentist(
+      [appointment.startTime], selectedDuration, availability.busy || [],
+      availability.capacity, appointment.dentistId,
+    ).length) {
+      setError('This time is unavailable or could not be verified. Please choose another time or dentist.');
+      setSubmitting(false);
+      return;
+    }
 
     const { error: insertError } = await supabase.from('appointment_requests').insert([
       {
@@ -876,6 +892,7 @@ export default function PublicBookingView({ clinicSlug }) {
 
           {!loading && clinic && !success && (
             <form className="booking-form" onSubmit={handleSubmit}>
+              {busyStatus === 'error' && <p role="alert">Unable to check doctor availability. Please reload and try again.</p>}
               <div className="booking-steps">
                 <div className={`booking-step ${step === 0 ? 'active' : step > 0 ? 'done' : ''}`}>
                   <span>1</span> Patient type

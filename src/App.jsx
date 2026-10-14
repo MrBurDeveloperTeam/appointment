@@ -1081,7 +1081,9 @@ useEffect(() => {
       addToast('That date is a clinic holiday. Please choose another date.', 'warning');
       return;
     }
-    updateAppointment(appointment.id, updates);
+    updateAppointment(appointment.id, updates).catch(error => {
+      addToast(error.message || 'Unable to reschedule appointment.', 'error');
+    });
   };
 
   if (!exchangeDone) {
@@ -1432,6 +1434,7 @@ useEffect(() => {
 
       {showAppointmentModal && (
         <AppointmentForm
+          clinicId={activeClinicId}
           patients={patients}
           rooms={rooms}
           treatments={treatments}
