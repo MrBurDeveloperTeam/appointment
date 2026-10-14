@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthProvider';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronRight, LogOut, Mail, Phone } from 'lucide-react';
 
 export default function Header({ createAppLink, title, onNewAppointment, onToggleSidebar, credits, onOpenCredits, isSidebarOpen, isUnconfigured }) {
     const { user, signOut, role } = useAuth();
@@ -283,13 +284,13 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
 
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-                            <i className="fa-regular fa-envelope text-[10px] w-3 text-center"></i>
+                            <Mail size={12} className="shrink-0" aria-hidden="true" />
                             <p className="text-xs font-semibold truncate">{user?.email}</p>
                           </div>
 
                           {user?.phone && (
                             <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-                              <i className="fa-solid fa-phone text-[10px] w-3 text-center"></i>
+                              <Phone size={12} className="shrink-0" aria-hidden="true" />
                               <p className="text-xs font-semibold truncate">{user.phone}</p>
                             </div>
                           )}
@@ -335,7 +336,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                         </p>
                       </div>
 
-                      <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors"></i>
+                      <ChevronRight size={12} className="shrink-0 text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors" aria-hidden="true" />
                     </button>
                         
                       {/* My Channel */}
@@ -359,7 +360,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                           <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">My Channel</p>
                           <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">Manage your channel</p>
                         </div>
-                        <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors"></i>
+                        <ChevronRight size={12} className="shrink-0 text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors" aria-hidden="true" />
                       </button>
 
                       {/* Support Tickets: retained but hidden until the feature is complete. */}
@@ -374,7 +375,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                             <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">{role === 'admin' ? 'Support Tickets' : 'Support Tickets'}</p>
                             <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">{role === 'admin' ? 'Manage all support tickets' : 'Create and track support tickets'}</p>
                           </div>
-                          <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors" aria-hidden="true"></i>
+                          <ChevronRight size={12} className="shrink-0 text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors" aria-hidden="true" />
                         </button>
                       )}
                         
@@ -398,7 +399,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                           <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">Settings</p>
                           <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">Account & preferences</p>
                         </div>
-                        <i className="fa-solid fa-chevron-right text-[10px] text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors"></i>
+                        <ChevronRight size={12} className="shrink-0 text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors" aria-hidden="true" />
                       </button>
                     </div>
                         
@@ -411,7 +412,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold text-[var(--danger)] hover:bg-[var(--danger-bg)] rounded-2xl transition-all group text-left"
                       >
-                        <i className="fa-solid fa-arrow-right-from-bracket w-5"></i>
+                        <LogOut size={18} className="shrink-0 w-5" aria-hidden="true" />
                         Log Out
                       </button>
                     </div>
