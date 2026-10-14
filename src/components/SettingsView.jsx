@@ -1109,7 +1109,7 @@ export default function SettingsView({
             </div>
             {!isCompanyWorkspace && staffForm.role === 'dentist' && (
               <div className="form-group">
-                <label className="form-label" htmlFor="staff-is-me">
+                <label className="staff-self-checkbox" htmlFor="staff-is-me">
                   <input
                     id="staff-is-me"
                     type="checkbox"
@@ -1122,13 +1122,9 @@ export default function SettingsView({
                         userId: checked ? profile.user_id : '',
                       }));
                     }}
-                  />{' '}This dentist is me
+                  />
+                  <span>This dentist is me</span>
                 </label>
-                <p className="text-muted">
-                  {staffForm.userId && staffForm.userId !== profile?.user_id
-                    ? 'This dentist is already linked to another account.'
-                    : 'Link this dentist to your account to sync your personal and company schedules.'}
-                </p>
               </div>
             )}
             {staffForm.role === 'dentist' && (

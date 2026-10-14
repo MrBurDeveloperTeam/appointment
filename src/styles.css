@@ -9743,3 +9743,10 @@ tbody tr:hover {
 .today-appointment-patient > span:has(.company-appointment-label) { min-width: 0; }
 .today-appointment-patient .company-appointment-label { flex-wrap: wrap; }
 .today-appointment-patient .company-appointment-label__name { white-space: normal; overflow-wrap: anywhere; }
+
+
+/* Simple account-link checkbox; inherit the application's theme text. */
+.staff-self-checkbox { display: flex; align-items: center; gap: 10px; color: var(--text-primary); cursor: pointer; line-height: 1.5; }
+.staff-self-checkbox input { width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: var(--primary); }
+.staff-self-checkbox input:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.staff-self-checkbox:has(input:disabled) { cursor: not-allowed; }
