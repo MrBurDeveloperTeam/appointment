@@ -4526,14 +4526,20 @@ tbody tr:hover {
 
 .archived-rooms-toggle-btn:hover {
   transform: translateY(-1px);
-  background: color-mix(in srgb, var(--primary-bg) 72%, var(--primary));
+  background: #d7eeeb;
+  color: var(--primary-dark) !important;
   box-shadow: 0 6px 12px color-mix(in srgb, var(--primary) 20%, transparent);
 }
 
 .archived-rooms-toggle-btn[aria-pressed="true"] {
   background: var(--primary);
-  color: #fff;
+  color: #fff !important;
   border-color: var(--primary);
+}
+
+.archived-rooms-toggle-btn[aria-pressed="true"]:hover {
+  background: var(--primary-dark);
+  color: #fff !important;
 }
 
 .archived-rooms-toggle-btn:focus-visible {
