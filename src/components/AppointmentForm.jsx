@@ -4,7 +4,6 @@ import Modal from './Modal';
 import { addMinutes, formatTime, minutesToTime } from '../utils/time';
 import { todayISO } from '../utils/date';
 import { getInitials } from '../utils/people';
-import { getColorBg } from '../utils/colors';
 import { useToast } from '../context/ToastProvider';
 import { findAppointmentConflicts, isDateHoliday } from '../utils/availability';
 import { hasAppointmentPassed, PAST_APPOINTMENT_MESSAGE } from '../utils/appointmentReadOnly';
@@ -64,6 +63,23 @@ export default function AppointmentForm({
   const [patientQuery, setPatientQuery] = useState('');
   const [dentistMenuOpen, setDentistMenuOpen] = useState(false);
   const dentistDropdownRef = useRef(null);
+  const [roomMenuOpen, setRoomMenuOpen] = useState(false);
+  const roomDropdownRef = useRef(null);
+  useEffect(() => {
+    if (!roomMenuOpen) return undefined;
+    const onPointerDown = (e) => {
+      if (roomDropdownRef.current && !roomDropdownRef.current.contains(e.target)) setRoomMenuOpen(false);
+    };
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); setRoomMenuOpen(false); }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [roomMenuOpen]);
   useEffect(() => {
     if (!dentistMenuOpen) return undefined;
     const onPointerDown = (e) => {
@@ -620,28 +636,54 @@ export default function AppointmentForm({
 
           <div className="form-group">
             <label className="form-label">Room</label>
-            <div className="room-pills">
-              <button
-                type="button"
-                className={`room-pill ${form.roomId ? '' : 'selected'}`}
-                style={{ color: '#6B7280', background: 'var(--bg-secondary)' }}
-                onClick={() => setForm({ ...form, roomId: '' })}
-              >
-                <span className="room-pill-dot" style={{ background: '#9CA3AF' }}></span>
-                Unassigned
-              </button>
-              {rooms.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  className={`room-pill ${String(form.roomId) === String(r.id) ? 'selected' : ''}`}
-                  style={{ color: r.color, background: getColorBg(r.color) }}
-                  onClick={() => setForm({ ...form, roomId: r.id })}
-                >
-                  <span className="room-pill-dot" style={{ background: r.color }}></span>
-                  {r.name}
-                </button>
-              ))}
+            <div className="dentist-dropdown room-dropdown" ref={roomDropdownRef}>
+              {(() => {
+                const selectedRoom = rooms.find((r) => String(r.id) === String(form.roomId));
+                return (
+                  <button
+                    type="button"
+                    className={`dentist-dropdown-trigger ${roomMenuOpen ? 'open' : ''}`}
+                    aria-haspopup="listbox"
+                    aria-expanded={roomMenuOpen}
+                    onClick={() => setRoomMenuOpen((o) => !o)}
+                  >
+                    <span className="room-pill-dot" style={{ background: selectedRoom ? selectedRoom.color : '#9CA3AF' }}></span>
+                    <span className="dentist-dropdown-name">{selectedRoom ? selectedRoom.name : 'Unassigned'}</span>
+                    <svg className="dentist-dropdown-caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                      <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                );
+              })()}
+              {roomMenuOpen && (
+                <ul className="dentist-dropdown-menu" role="listbox">
+                  <li role="option" aria-selected={!form.roomId}>
+                    <button
+                      type="button"
+                      className={`dentist-dropdown-option ${form.roomId ? '' : 'selected'}`}
+                      onClick={() => { setForm({ ...form, roomId: '' }); setRoomMenuOpen(false); }}
+                    >
+                      <span className="room-pill-dot" style={{ background: '#9CA3AF' }}></span>
+                      <span className="dentist-dropdown-name">Unassigned</span>
+                    </button>
+                  </li>
+                  {rooms.map((r) => {
+                    const isSelected = String(form.roomId) === String(r.id);
+                    return (
+                      <li key={r.id} role="option" aria-selected={isSelected}>
+                        <button
+                          type="button"
+                          className={`dentist-dropdown-option ${isSelected ? 'selected' : ''}`}
+                          onClick={() => { setForm({ ...form, roomId: r.id }); setRoomMenuOpen(false); }}
+                        >
+                          <span className="room-pill-dot" style={{ background: r.color }}></span>
+                          <span className="dentist-dropdown-name">{r.name}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </div>
 

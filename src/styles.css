@@ -7127,6 +7127,14 @@ tbody tr:hover {
   flex-shrink: 0;
 }
 
+.room-dropdown .room-pill-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  margin: 0 8px 0 4px;
+}
+
 .dentist-dropdown .dentist-pill-status.available { background: var(--success); }
 .dentist-dropdown .dentist-pill-status.busy { background: var(--danger); }
 .dentist-dropdown .dentist-pill-status.partial { background: var(--warning); }
