@@ -123,6 +123,7 @@ export default function SettingsView({
     endTime: '18:00',
     assignedTo: '',
   });
+  const [staffPhoneInputError, setStaffPhoneInputError] = useState(false);
   const [holidayForm, setHolidayForm] = useState({
     name: '',
     startDate: '',
@@ -242,6 +243,7 @@ export default function SettingsView({
   };
 
   const openStaffModal = (role, staffMember) => {
+    setStaffPhoneInputError(false);
     setStaffNameMode(!staffMember && isCompanyWorkspace ? 'directory' : 'manual');
     setSelectedMemberId('');
     if (staffMember) {
@@ -1173,7 +1175,19 @@ export default function SettingsView({
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Phone</label>
-                <input className="form-input" inputMode="tel" value={staffForm.phone} onChange={(e) => setStaffForm({ ...staffForm, phone: sanitizePhoneInput(e.target.value) })} />
+                <input
+                  className="form-input"
+                  inputMode="tel"
+                  value={staffForm.phone}
+                  aria-invalid={staffPhoneInputError}
+                  aria-describedby={staffPhoneInputError ? 'staff-phone-error' : undefined}
+                  onChange={(e) => {
+                    const sanitizedValue = sanitizePhoneInput(e.target.value);
+                    setStaffPhoneInputError(sanitizedValue !== e.target.value);
+                    setStaffForm({ ...staffForm, phone: sanitizedValue });
+                  }}
+                />
+                {staffPhoneInputError && <div id="staff-phone-error" className="form-error">Enter the staff member's phone number.</div>}
               </div>
               <div className="form-group">
                 <label className="form-label">Color</label>
