@@ -303,19 +303,37 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                       {/* Snabbb Credit */}
                     <button
                       onClick={async () => {
-                        console.log('user: ', user)
-
-                        const res = await createAppLink({
-                          app: 'reward',
-                          email: user?.email,
-                          name: user?.user_metadata?.name,
-                        });
-
-                        const supabaseUserId = res.result?.supabase_user_id;
+                        // Open the tab synchronously inside the click so popup blockers allow it,
+                        // then point it at the SSO login link once the API responds.
                         const w = window.open('', '_blank');
+                        try {
+                          const res = await createAppLink({
+                            app: 'reward',
+                            email: user?.email,
+                            name: user?.user_metadata?.name,
+                          });
 
-                        if (supabaseUserId && w) {
-                          w.location.href = `https://reward.snabbb.com`;
+                          // The reward app signs the user in through this one-time SSO link.
+                          // (supabase_user_id can be null for this app, so it must not gate navigation.)
+                          const ssoUrl = res.result?.url;
+                          if (!ssoUrl) throw new Error('Reward SSO link missing from response');
+
+                          // Deep-link hint, delivered two ways so it survives the SSO redirect chain:
+                          // a short-lived shared cookie and a query param on the SSO link.
+                          try {
+                            document.cookie = 'snabbb_reward_section=credit; domain=.snabbb.com; path=/; max-age=300; SameSite=Lax; Secure';
+                          } catch {}
+                          const target = new URL(ssoUrl);
+                          target.searchParams.set('section', 'credit');
+
+                          if (w) {
+                            w.location.href = target.toString();
+                          } else {
+                            window.location.assign(target.toString());
+                          }
+                        } catch (error) {
+                          console.error('Failed to open Snabbb Reward:', error);
+                          w?.close();
                         }
                       }}
                       className="w-full flex items-center px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left"
