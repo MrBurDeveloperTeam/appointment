@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Modal from './Modal';
 import { useToast } from '../context/ToastProvider';
 import { validatePatient, normalizePatientIdNumber } from '../utils/patientValidation';
+import { sanitizePhoneInput } from '../utils/bookingValidation';
 
 export default function PatientModal({ patient, dentists, onSave, onDelete, onClose }) {
   const { addToast } = useToast();
@@ -145,7 +146,7 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
                 className="form-input"
                 value={form.phone}
                 onChange={(e) =>
-                  handleChange('phone', e.target.value)
+                  handleChange('phone', sanitizePhoneInput(e.target.value))
                 }
                 required
               />
@@ -280,7 +281,7 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
               <input
                 className="form-input"
                 value={form.emergencyContactPhone}
-                onChange={(e) => handleChange('emergencyContactPhone', e.target.value)}
+                onChange={(e) => handleChange('emergencyContactPhone', sanitizePhoneInput(e.target.value))}
               />
             </div>
           </div>

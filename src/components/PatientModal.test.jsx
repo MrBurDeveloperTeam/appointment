@@ -1,9 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import PatientModal from './PatientModal';
+import { ToastProvider } from '../context/ToastProvider';
 afterEach(cleanup);
 const valid = { name: 'Sarah Lim', idNumber: '001122-33-4455', dob: '2000-11-22', gender: 'female', phone: '+60 12-3456789', email: 'sarah@example.com' };
-const setup = (onSave = vi.fn(), patient) => render(<PatientModal dentists={[]} patient={patient} onSave={onSave} onClose={vi.fn()} />);
+const setup = (onSave = vi.fn(), patient) => render(<ToastProvider><PatientModal dentists={[]} patient={patient} onSave={onSave} onClose={vi.fn()} /></ToastProvider>);
 it('requires all six fields and focuses the first invalid field', () => {
  const save = vi.fn(); setup(save); fireEvent.click(screen.getByText('Save'));
  expect(document.activeElement.id).toBe('patient-name');
@@ -19,6 +20,11 @@ it('shows and clears errors while typing', () => {
  expect(name.getAttribute('aria-invalid')).toBe('false');
  expect(screen.queryByText(/Full name can only contain/)).toBeNull();
 });
+it('rejects alphabetic characters from the phone field while typing', () => {
+ setup(); const phone = screen.getByLabelText('Phone *');
+ fireEvent.change(phone, { target: { value: '+60 abc 12-345' } });
+ expect(phone.value).toBe('+60  12-345');
+});
 it('retains entries and highlights duplicate IC after a rejected save', async () => {
  const save = vi.fn().mockRejectedValue({ code: '23505', message: 'apt_patients_clinic_normalized_ic_key' }); setup(save, valid);
  fireEvent.click(screen.getByText('Save'));
@@ -33,7 +39,7 @@ it('prevents repeat saves while pending and allows retry after failure', async (
  fireEvent.click(screen.getByText('Save')); fireEvent.submit(document.querySelector('form'));
  expect(save).toHaveBeenCalledTimes(1);
  reject(new Error('Unable to save'));
- await screen.findByRole('alert');
+ await screen.findByText('Unable to save', { selector: 'p' });
  await waitFor(() => expect(screen.getByText('Save').disabled).toBe(false));
 });
 it('submits valid details with a normalized email', async () => {

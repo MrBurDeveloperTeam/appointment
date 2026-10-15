@@ -4,7 +4,7 @@ import { todayISO } from '../utils/date';
 import { addMinutes } from '../utils/time';
 import {
   sanitizeIC,
-  sanitizePhone,
+  sanitizePhoneInput,
   sanitizeName,
   validateNewPatient,
 } from '../utils/bookingValidation';
@@ -1164,7 +1164,7 @@ export default function PublicBookingView({ clinicSlug }) {
                   <div className="form-row">
                     <div className="form-group">
                       <label className="form-label">Phone *</label>
-                      <input className="form-input" inputMode="tel" value={patient.phone} onChange={updatePatientSanitized('phone', sanitizePhone)} required />
+                      <input className="form-input" inputMode="tel" value={patient.phone} onChange={updatePatientSanitized('phone', sanitizePhoneInput)} required />
                       {fieldErrors.phone && <div className="form-error">{fieldErrors.phone}</div>}
                     </div>
                     <div className="form-group">
@@ -1276,7 +1276,7 @@ export default function PublicBookingView({ clinicSlug }) {
                         className="form-input"
                         inputMode="tel"
                         value={patient.emergencyContactPhone}
-                        onChange={updatePatientSanitized('emergencyContactPhone', sanitizePhone)}
+                        onChange={updatePatientSanitized('emergencyContactPhone', sanitizePhoneInput)}
                         required
                       />
                       {fieldErrors.emergencyContactPhone && <div className="form-error">{fieldErrors.emergencyContactPhone}</div>}

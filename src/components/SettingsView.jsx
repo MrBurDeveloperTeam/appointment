@@ -10,6 +10,7 @@ import DataStore from '../data';
 import { useToast } from '../context/ToastProvider';
 import { getWorkspaceType } from '../services/workspaceContext';
 import { getCompanyDirectory } from '../services/companyDirectory';
+import { sanitizePhoneInput } from '../utils/bookingValidation';
 
 const TREATMENT_DURATION_OPTIONS = [
   10,
@@ -1172,7 +1173,7 @@ export default function SettingsView({
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Phone</label>
-                <input className="form-input" value={staffForm.phone} onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })} />
+                <input className="form-input" inputMode="tel" value={staffForm.phone} onChange={(e) => setStaffForm({ ...staffForm, phone: sanitizePhoneInput(e.target.value) })} />
               </div>
               <div className="form-group">
                 <label className="form-label">Color</label>

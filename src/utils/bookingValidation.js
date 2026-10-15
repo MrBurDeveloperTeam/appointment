@@ -4,6 +4,10 @@ export const sanitizeIC = (value) => (value || '').replace(/\D/g, '').slice(0, 1
 
 export const sanitizePhone = (value) => (value || '').replace(/[^0-9+ ]/g, '');
 
+// Keep common phone formatting characters, but reject alphabetic and other
+// non-phone characters as soon as the user enters them.
+export const sanitizePhoneInput = (value) => String(value || '').replace(/[^\p{N}+().\-\s]/gu, '');
+
 export const sanitizeName = (value) => (value || '').replace(/[^\p{L} '-]/gu, '');
 
 export const REQUIRED_NEW_PATIENT_FIELDS = [

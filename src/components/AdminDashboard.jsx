@@ -21,6 +21,7 @@ import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import { todayISO } from '../utils/date';
 import { useToast } from '../context/ToastProvider';
+import { sanitizePhoneInput } from '../utils/bookingValidation';
 
 const planOptions = ['Starter', 'Growth', 'Pro', 'Enterprise'];
 const statusOptions = ['active', 'trial', 'paused'];
@@ -1571,7 +1572,7 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                         <div className="form-row">
                           <div className="form-group">
                             <label className="form-label">Phone</label>
-                            <input className="form-input" value={detailForm.phone} onChange={(e) => setDetailForm({ ...detailForm, phone: e.target.value })} />
+                            <input className="form-input" inputMode="tel" value={detailForm.phone} onChange={(e) => setDetailForm({ ...detailForm, phone: sanitizePhoneInput(e.target.value) })} />
                           </div>
                           <div className="form-group">
                             <label className="form-label">Email</label>
@@ -1602,7 +1603,7 @@ export default function AdminDashboard({ onLogout, theme, setTheme }) {
                           </div>
                           <div className="form-group">
                             <label className="form-label">Phone</label>
-                            <input className="form-input" value={detailForm.phone} onChange={(e) => setDetailForm({ ...detailForm, phone: e.target.value })} />
+                            <input className="form-input" inputMode="tel" value={detailForm.phone} onChange={(e) => setDetailForm({ ...detailForm, phone: sanitizePhoneInput(e.target.value) })} />
                           </div>
                         </div>
                         <div className="form-group">

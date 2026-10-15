@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   sanitizeIC,
   sanitizePhone,
+  sanitizePhoneInput,
   sanitizeName,
   validateNewPatient,
   REQUIRED_NEW_PATIENT_FIELDS,
@@ -33,6 +34,9 @@ describe('sanitizers', () => {
   });
   it('sanitizePhone keeps digits plus and spaces only', () => {
     expect(sanitizePhone('+60 12-(345)')).toBe('+60 12345');
+  });
+  it('sanitizePhoneInput rejects letters while keeping phone formatting', () => {
+    expect(sanitizePhoneInput('+60 abc (12)-345')).toBe('+60  (12)-345');
   });
   it('sanitizeName strips digits and symbols', () => {
     expect(sanitizeName("Anne-Marie O'Neil 3!")).toBe("Anne-Marie O'Neil ");
