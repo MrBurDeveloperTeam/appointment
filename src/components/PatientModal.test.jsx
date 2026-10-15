@@ -24,6 +24,8 @@ it('rejects alphabetic characters from the phone field while typing', () => {
  setup(); const phone = screen.getByLabelText('Phone *');
  fireEvent.change(phone, { target: { value: '+60 abc 12-345' } });
  expect(phone.value).toBe('+60  12-345');
+ expect(phone.getAttribute('aria-invalid')).toBe('true');
+ expect(screen.getByText("Enter the patient's phone number.")).toBeTruthy();
 });
 it('retains entries and highlights duplicate IC after a rejected save', async () => {
  const save = vi.fn().mockRejectedValue({ code: '23505', message: 'apt_patients_clinic_normalized_ic_key' }); setup(save, valid);

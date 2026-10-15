@@ -13,6 +13,7 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
   const formRef = useRef(null);
   const [saveError, setSaveError] = useState('');
   const [rejectedIc, setRejectedIc] = useState(null);
+  const [phoneInputError, setPhoneInputError] = useState(false);
   useEffect(() => {
     if (!saving && rejectedIc) formRef.current?.querySelector('#patient-idNumber')?.focus();
   }, [saving, rejectedIc]);
@@ -46,6 +47,7 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
   }));
 
   const errors = validatePatient(form);
+  if (phoneInputError) errors.phone = "Enter the patient's phone number.";
   if (rejectedIc && rejectedIc === normalizePatientIdNumber(form.idNumber)) {
     errors.idNumber = 'A patient with this IC / ID already exists. Search for and select the existing patient instead.';
   }
@@ -145,9 +147,11 @@ export default function PatientModal({ patient, dentists, onSave, onDelete, onCl
               <input {...fieldProps('phone')}
                 className="form-input"
                 value={form.phone}
-                onChange={(e) =>
-                  handleChange('phone', sanitizePhoneInput(e.target.value))
-                }
+                onChange={(e) => {
+                  const sanitizedValue = sanitizePhoneInput(e.target.value);
+                  setPhoneInputError(sanitizedValue !== e.target.value);
+                  handleChange('phone', sanitizedValue);
+                }}
                 required
               />
               {fieldError('phone')}
