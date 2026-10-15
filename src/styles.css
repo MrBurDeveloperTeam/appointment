@@ -7000,6 +7000,123 @@ tbody tr:hover {
   background: var(--text-muted);
 }
 
+/* Dentist dropdown (replaces pill selector) */
+.dentist-dropdown {
+  position: relative;
+}
+
+.dentist-dropdown-trigger,
+.dentist-dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary, inherit);
+  cursor: pointer;
+  text-align: left;
+}
+
+.dentist-dropdown-trigger {
+  background: var(--bg-secondary);
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg, 12px);
+  transition: all var(--transition-normal);
+}
+
+.dentist-dropdown-trigger:hover,
+.dentist-dropdown-trigger.open {
+  border-color: var(--primary);
+}
+
+.dentist-dropdown-caret {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform var(--transition-normal);
+}
+
+.dentist-dropdown-trigger.open .dentist-dropdown-caret {
+  transform: rotate(180deg);
+}
+
+.dentist-dropdown-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dentist-dropdown-trigger .dentist-dropdown-name {
+  flex: 0 1 auto;
+}
+
+.dentist-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: var(--space-xs);
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.15));
+}
+
+.dentist-dropdown-option {
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md, 8px);
+}
+
+.dentist-dropdown-option:hover,
+.dentist-dropdown-option:focus-visible {
+  background: var(--bg-secondary);
+}
+
+.dentist-dropdown-option.selected {
+  background: var(--bg-secondary);
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.dentist-dropdown-availability {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.dentist-dropdown .dentist-pill-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  color: white;
+  flex-shrink: 0;
+}
+
+.dentist-dropdown .dentist-pill-status {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.dentist-dropdown .dentist-pill-status.available { background: var(--success); }
+.dentist-dropdown .dentist-pill-status.busy { background: var(--danger); }
+.dentist-dropdown .dentist-pill-status.partial { background: var(--warning); }
+.dentist-dropdown .dentist-pill-status.off-duty { background: var(--text-muted); }
+
 .dentist-availability-hint {
   font-size: var(--font-size-xs);
   color: var(--text-muted);

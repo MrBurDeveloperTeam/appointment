@@ -62,6 +62,23 @@ export default function AppointmentForm({
   }, [isEditing]);
   const [showPatientPicker, setShowPatientPicker] = useState(false);
   const [patientQuery, setPatientQuery] = useState('');
+  const [dentistMenuOpen, setDentistMenuOpen] = useState(false);
+  const dentistDropdownRef = useRef(null);
+  useEffect(() => {
+    if (!dentistMenuOpen) return undefined;
+    const onPointerDown = (e) => {
+      if (dentistDropdownRef.current && !dentistDropdownRef.current.contains(e.target)) setDentistMenuOpen(false);
+    };
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); setDentistMenuOpen(false); }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [dentistMenuOpen]);
   const now = new Date();
   const today = todayISO();
   const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -512,33 +529,66 @@ export default function AppointmentForm({
 
           <div className="form-group">
             <label className="form-label">Dentist</label>
-            <div className="dentist-selector">
-              <button
-                type="button"
-                className={`dentist-pill ${form.dentistId ? '' : 'selected'}`}
-                onClick={() => setForm({ ...form, dentistId: '' })}
-              >
-                <span className="dentist-pill-avatar" style={{ background: '#9CA3AF' }}>U</span>
-                <span>Unassigned</span>
-              </button>
-              {dentists.map((d) => {
-                const availability = dentistAvailability(d);
+            <div className="dentist-dropdown" ref={dentistDropdownRef}>
+              {(() => {
+                const selectedDentist = dentists.find((d) => String(d.id) === String(form.dentistId));
+                const selectedAvailability = selectedDentist ? dentistAvailability(selectedDentist) : null;
                 return (
                   <button
-                    key={d.id}
                     type="button"
-                    className={`dentist-pill ${String(form.dentistId) === String(d.id) ? 'selected' : ''}`}
-                    onClick={() => setForm({ ...form, dentistId: d.id })}
-                    title={availability === 'busy' ? 'Busy at selected time' : availability === 'off-duty' ? 'Off duty' : 'Available'}
+                    className={`dentist-dropdown-trigger ${dentistMenuOpen ? 'open' : ''}`}
+                    aria-haspopup="listbox"
+                    aria-expanded={dentistMenuOpen}
+                    onClick={() => setDentistMenuOpen((o) => !o)}
                   >
-                    <span className="dentist-pill-avatar" style={{ background: d.color || '#4A90A4' }}>
-                      {getInitials(d.name)}
+                    <span className="dentist-pill-avatar" style={{ background: selectedDentist ? (selectedDentist.color || '#4A90A4') : '#9CA3AF' }}>
+                      {selectedDentist ? getInitials(selectedDentist.name) : 'U'}
                     </span>
-                    <span>{d.name}</span>
-                    <span className={`dentist-pill-status ${availability}`}></span>
+                    <span className="dentist-dropdown-name">{selectedDentist ? selectedDentist.name : 'Unassigned'}</span>
+                    {selectedDentist && <span className={`dentist-pill-status ${selectedAvailability}`}></span>}
+                    <svg className="dentist-dropdown-caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                      <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   </button>
                 );
-              })}
+              })()}
+              {dentistMenuOpen && (
+                <ul className="dentist-dropdown-menu" role="listbox">
+                  <li role="option" aria-selected={!form.dentistId}>
+                    <button
+                      type="button"
+                      className={`dentist-dropdown-option ${form.dentistId ? '' : 'selected'}`}
+                      onClick={() => { setForm({ ...form, dentistId: '' }); setDentistMenuOpen(false); }}
+                    >
+                      <span className="dentist-pill-avatar" style={{ background: '#9CA3AF' }}>U</span>
+                      <span className="dentist-dropdown-name">Unassigned</span>
+                    </button>
+                  </li>
+                  {dentists.map((d) => {
+                    const availability = dentistAvailability(d);
+                    const isSelected = String(form.dentistId) === String(d.id);
+                    return (
+                      <li key={d.id} role="option" aria-selected={isSelected}>
+                        <button
+                          type="button"
+                          className={`dentist-dropdown-option ${isSelected ? 'selected' : ''}`}
+                          onClick={() => { setForm({ ...form, dentistId: d.id }); setDentistMenuOpen(false); }}
+                          title={availability === 'busy' ? 'Busy at selected time' : availability === 'off-duty' ? 'Off duty' : 'Available'}
+                        >
+                          <span className="dentist-pill-avatar" style={{ background: d.color || '#4A90A4' }}>
+                            {getInitials(d.name)}
+                          </span>
+                          <span className="dentist-dropdown-name">{d.name}</span>
+                          <span className="dentist-dropdown-availability">
+                            {availability === 'busy' ? 'Busy' : availability === 'off-duty' ? 'Off duty' : 'Available'}
+                          </span>
+                          <span className={`dentist-pill-status ${availability}`}></span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
             {availabilityLoading && <p role="status">Checking availability across workspaces...</p>}
             {availabilityError && <p role="alert">{availabilityError}</p>}
