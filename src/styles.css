@@ -2254,6 +2254,52 @@ p {
   margin-top: var(--space-xs);
 }
 
+/* Save-blocked / save-failed message above the modal footer */
+.form-save-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: 10px var(--space-lg);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  color: var(--danger);
+  background: var(--danger-bg-subtle);
+  border-top: 1px solid rgba(196, 106, 106, 0.3);
+}
+
+.form-save-error.warning {
+  color: var(--text);
+  background: var(--warning-bg-subtle);
+  border-top-color: rgba(197, 154, 82, 0.45);
+}
+
+.form-save-error.warning .form-save-error__icon { color: var(--warning); }
+
+.form-save-error__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.form-save-error__text {
+  flex: 1;
+  min-width: 0;
+  font-weight: var(--font-weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.form-save-error__close {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.form-save-error__close:hover { opacity: 1; }
+
 .form-error {
   font-size: var(--font-size-xs);
   color: var(--danger);

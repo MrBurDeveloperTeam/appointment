@@ -52,3 +52,56 @@ describe('flagged patient indicator', () => {
     expect(screen.getAllByLabelText('Flagged patient')).toHaveLength(2);
   });
 });
+
+describe('save error message', () => {
+  const newProps = (over = {}) => ({
+    ...props,
+    patients: [{ id: 'p', name: 'Patient' }],
+    initialData: { date: '2026-12-01', startTime: '10:00', duration: 30 },
+    ...over,
+  });
+  const submit = async (container) => {
+    await act(async () => { fireEvent.submit(container.querySelector('form')); });
+  };
+
+  it('tells the user why a save is blocked instead of failing silently', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-08T09:00:00'));
+    const { container } = render(<AppointmentForm {...newProps({ patients: [] })} />);
+    await submit(container);
+    expect(screen.getByRole('alert').textContent).toContain('Please select a patient.');
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+
+  it('shows a readable message inside the modal when the server rejects the save', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-08T09:00:00'));
+    const onSave = vi.fn().mockRejectedValue(new Error('Failed to fetch'));
+    const { container } = render(<AppointmentForm {...newProps({ onSave })} />);
+    await submit(container);
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('alert').textContent).toContain('Could not reach the server');
+    expect(props.onClose).not.toHaveBeenCalled();
+    // Save button is usable again so the user can retry.
+    expect(screen.getByText('Create Appointment').disabled).toBe(false);
+  });
+
+  it('maps a database overlap rejection to a clear message', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-08T09:00:00'));
+    const onSave = vi.fn().mockRejectedValue(new Error('conflicting key value violates exclusion constraint "appointments_no_overlap"'));
+    const { container } = render(<AppointmentForm {...newProps({ onSave })} />);
+    await submit(container);
+    expect(screen.getByRole('alert').textContent).toContain('This time slot was just taken');
+  });
+
+  it('clears the message when the user edits the form or dismisses it', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-08T09:00:00'));
+    const { container } = render(<AppointmentForm {...newProps({ patients: [] })} />);
+    await submit(container);
+    expect(screen.getByRole('alert')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Dismiss message'));
+    expect(screen.queryByRole('alert')).toBeNull();
+    await submit(container);
+    expect(screen.getByRole('alert')).toBeTruthy();
+    fireEvent.change(container.querySelector('textarea'), { target: { value: 'x' } });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});

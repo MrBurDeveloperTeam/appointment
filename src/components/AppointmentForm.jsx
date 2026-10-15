@@ -10,6 +10,22 @@ import { hasAppointmentPassed, PAST_APPOINTMENT_MESSAGE } from '../utils/appoint
 import PatientFlag from './PatientFlag';
 import SelectAutocomplete from './SelectAutocomplete';
 
+// Turns a raw save failure (Supabase/Postgres/network) into something a
+// receptionist can act on. Unknown errors still show the original text.
+function friendlySaveError(err) {
+  const raw = String((err && err.message) || err || '').trim();
+  if (/exclusion|overlap|already booked/i.test(raw)) {
+    return 'This time slot was just taken for the selected dentist. Please choose another time or dentist.';
+  }
+  if (/failed to fetch|network|offline|timed? ?out/i.test(raw)) {
+    return 'Could not reach the server. Check your connection and try again.';
+  }
+  if (/permission|not authori[sz]ed|row-level security|jwt|policy/i.test(raw)) {
+    return "You don't have permission to save this appointment. Please sign in again or contact your clinic admin.";
+  }
+  return raw ? `Could not save the appointment: ${raw}` : 'Could not save the appointment. Please try again.';
+}
+
 const APPOINTMENT_DURATION_OPTIONS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
 
 export default function AppointmentForm({
@@ -37,6 +53,10 @@ export default function AppointmentForm({
   // when an existing appointment already uses one).
   const activeTreatments = treatments.filter((t) => !t.archived);
   const [pendingConflicts, setPendingConflicts] = useState(null);
+  // Persistent message shown above the footer when a save is blocked or fails:
+  // { message, level: 'error' | 'warning' }. Toasts alone vanish and sit far
+  // from the Save button.
+  const [saveError, setSaveError] = useState(null);
   const [form, setForm] = useState({
     patientId: patients[0] ? patients[0].id : '',
     roomId: rooms[0] ? rooms[0].id : '',
@@ -134,6 +154,11 @@ export default function AppointmentForm({
     setPendingConflicts(null);
   }, [form.date, form.startTime, form.duration]);
 
+  // Any edit means the user is fixing the problem: drop the stale message.
+  useEffect(() => {
+    setSaveError(null);
+  }, [form]);
+
   const selectedPatient = patients.find((p) => String(p.id) === String(form.patientId));
   const selectedTreatment = treatments.find((t) => String(t.id) === String(form.treatmentId));
   const [searchResults, setSearchResults] = useState([]);
@@ -213,26 +238,34 @@ export default function AppointmentForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting || availabilityCheckRef.current) return;
+    // Show the reason inline (stays until the user changes something) and as a toast.
+    const fail = (message, level = 'error', duration) => {
+      setSaveError({ message, level });
+      addToast(message, level, duration);
+    };
+    setSaveError(null);
     if (isEditing && hasAppointmentPassed(initialData)) {
       setClock(new Date());
-      addToast(PAST_APPOINTMENT_MESSAGE, 'warning');
+      fail(PAST_APPOINTMENT_MESSAGE, 'warning');
       return;
     }
     if (!isEditing && credits < 1) {
-      addToast("Insufficient credits to create a new appointment.", 'error');
+      fail('Insufficient credits to create a new appointment.', 'error');
       return;
     }
-    if (!form.patientId || !form.date || !form.startTime) return;
+    if (!form.patientId) { fail('Please select a patient.', 'warning'); return; }
+    if (!form.date) { fail('Please choose a date.', 'warning'); return; }
+    if (!form.startTime) { fail('Please choose a start time.', 'warning'); return; }
 
     const duration = Number(form.duration);
 
     if (!Number.isInteger(duration) || duration <= 0) {
-      addToast('Enter a valid appointment duration', 'error');
+      fail('Enter a valid appointment duration.', 'error');
       return;
     }
 
     if (!isEditing && (form.date < today || (form.date === today && form.startTime <= currentTime))) {
-      addToast('Please choose a future date and time.', 'warning');
+      fail('Please choose a future date and time.', 'warning');
       return;
     }
 
@@ -241,7 +274,7 @@ export default function AppointmentForm({
       const { start, end } = settings.workingHours;
       if (start && end) {
         if (form.startTime < start || endTime > end) {
-          addToast(`Appointment must be within working hours (${formatTime(start)} - ${formatTime(end)}).`, 'warning');
+          fail(`Appointment must be within working hours (${formatTime(start)} - ${formatTime(end)}).`, 'warning');
           return;
         }
       }
@@ -250,7 +283,7 @@ export default function AppointmentForm({
     // Holiday block (hard stop, no override). The clinic is closed on holidays;
     // to open a holiday, remove it in Settings > Holidays.
     if (isDateHoliday(form.date, holidays)) {
-      addToast('This date is a clinic holiday. Please choose another date.', 'warning');
+      fail('This date is a clinic holiday. Please choose another date.', 'warning');
       return;
     }
 
@@ -264,10 +297,10 @@ export default function AppointmentForm({
         setExternalBusy(slots);
         setAvailabilityError('');
         const conflict = externalDoctorConflict(slots, form.dentistId, form.startTime, duration);
-        if (conflict) { addToast(doctorConflictMessage(conflict), 'warning', 6000); return; }
+        if (conflict) { fail(doctorConflictMessage(conflict), 'warning', 6000); return; }
       } catch (error) {
         setAvailabilityError(error.message);
-        addToast(error.message, 'error');
+        fail(error.message || 'Could not check the doctor\'s availability. Please try again.', 'error');
         return;
       } finally {
         availabilityCheckRef.current = false;
@@ -293,7 +326,7 @@ export default function AppointmentForm({
             return `${formatTime(c.startTime)}–${formatTime(cEnd)}${who ? ` (${who.name})` : ''}`;
           })
           .join(', ');
-        addToast(
+        fail(
           `This time overlaps ${conflicts.length} existing appointment${conflicts.length > 1 ? 's' : ''}: ${detail}. Click "Book anyway" to overbook.`,
           'warning',
           6000
@@ -313,8 +346,10 @@ export default function AppointmentForm({
       id: initialData && initialData.id ? initialData.id : form.id,
     }))
       .catch((err) => {
-        // Error handling is mostly done in parent (AddToast), but we catch here to ensure finall runs
+        // The parent already toasts and rethrows; keep the modal open and
+        // show the reason right above the Save button too.
         console.error("Save failed", err);
+        setSaveError({ message: friendlySaveError(err), level: 'error' });
       })
       .finally(() => {
         // Only set submitting to false if we are still mounted/didn't close
@@ -609,6 +644,17 @@ export default function AppointmentForm({
           </div>
           </fieldset>
         </div>
+
+        {saveError && (
+          <div className={`form-save-error ${saveError.level}`} role="alert" aria-live="assertive">
+            <svg className="form-save-error__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 8v4.5M12 16h.01" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="form-save-error__text">{saveError.message}</span>
+            <button type="button" className="form-save-error__close" aria-label="Dismiss message" onClick={() => setSaveError(null)}>×</button>
+          </div>
+        )}
 
         <div className="modal-footer">
           {showCreditWarning && (
