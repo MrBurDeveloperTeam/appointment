@@ -468,13 +468,12 @@ export default function SettingsView({
     }
   };
 
-  const handleUnarchiveRoom = async (room) => {
-    try {
-      await unarchiveRoom(room.id);
-      addToast('Room unarchived successfully.', 'success');
-    } catch (error) {
-      addToast(error?.message || 'Unable to unarchive room. Please try again.', 'error');
-    }
+  const handleUnarchiveRoom = (room) => {
+    setConfirmDialog({
+      open: true,
+      type: 'room-unarchive',
+      payload: { id: room.id, name: room.name },
+    });
   };
 
   const handleConfirmDelete = async () => {
@@ -497,6 +496,16 @@ export default function SettingsView({
         setConfirmDialog({ open: false, type: '', payload: null });
       } catch (error) {
         addToast(error?.message || 'Unable to archive room. Please try again.', 'error');
+      }
+      return;
+    }
+    if (confirmDialog.type === 'room-unarchive' && confirmDialog.payload?.id) {
+      try {
+        await unarchiveRoom(confirmDialog.payload.id);
+        addToast('Room unarchived successfully.', 'success');
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Unable to unarchive room. Please try again.', 'error');
       }
       return;
     }
@@ -1514,6 +1523,8 @@ export default function SettingsView({
             ? 'Archive treatment'
             : confirmDialog.type === 'room-archive'
               ? 'Archive room'
+              : confirmDialog.type === 'room-unarchive'
+                ? 'Unarchive room'
               : `Delete ${confirmDialog.type.replace('-delete', '')}`
         }
         description={
@@ -1521,6 +1532,8 @@ export default function SettingsView({
             ? `"${confirmDialog.payload?.name || 'This treatment'}" will be hidden from new appointments and online booking. Existing appointments and reports keep it, and you can restore it anytime from "Show archived".`
             : confirmDialog.type === 'room-archive'
               ? `"${confirmDialog.payload?.name || 'This room'}" will be hidden from new appointments while preserving its appointment history.`
+              : confirmDialog.type === 'room-unarchive'
+                ? `Unarchive "${confirmDialog.payload?.name || 'this room'}"? It will become available for new appointments again while keeping its previous appointment history.`
             : `This will permanently remove the ${confirmDialog.type.replace('-delete', '')}. This action cannot be undone.`
         }
         confirmLabel={
@@ -1528,9 +1541,11 @@ export default function SettingsView({
             ? 'Archive treatment'
             : confirmDialog.type === 'room-archive'
               ? 'Archive room'
+              : confirmDialog.type === 'room-unarchive'
+                ? 'Unarchive room'
               : `Delete ${confirmDialog.type.replace('-delete', '')}`
         }
-        confirmVariant="danger"
+        confirmVariant={confirmDialog.type === 'room-unarchive' ? 'primary' : 'danger'}
         onClose={() => setConfirmDialog({ open: false, type: '', payload: null })}
         onConfirm={handleConfirmDelete}
       />
