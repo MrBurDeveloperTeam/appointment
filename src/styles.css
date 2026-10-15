@@ -7063,8 +7063,11 @@ tbody tr:hover {
   margin: 0;
   padding: var(--space-xs);
   list-style: none;
-  max-height: 260px;
+  /* Show 6 rows (Unassigned counts as one), scroll for the rest */
+  max-height: calc(6 * 48px + 2 * var(--space-xs));
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   background: var(--bg-primary, #fff);
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: var(--radius-lg, 12px);
@@ -7072,6 +7075,8 @@ tbody tr:hover {
 }
 
 .dentist-dropdown-option {
+  box-sizing: border-box;
+  min-height: 48px;
   background: transparent;
   border: 0;
   border-radius: var(--radius-md, 8px);
