@@ -2403,6 +2403,43 @@ p {
   line-height: var(--line-height-relaxed);
 }
 
+.confirm-dialog-cancel,
+.confirm-dialog-confirm {
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-weight: var(--font-weight-semibold);
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+.confirm-dialog-cancel {
+  min-width: 112px;
+}
+
+.confirm-dialog-confirm {
+  min-width: 168px;
+}
+
+.confirm-dialog-cancel:hover:not(:disabled),
+.confirm-dialog-confirm:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.confirm-dialog-confirm:hover:not(:disabled) {
+  filter: brightness(0.98);
+}
+
+.confirm-dialog-cancel:active:not(:disabled),
+.confirm-dialog-confirm:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.confirm-dialog-cancel:focus-visible,
+.confirm-dialog-confirm:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
 /* ============================================
    Components - Calendar
    ============================================ */
