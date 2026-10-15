@@ -52,7 +52,7 @@ export default function SelectAutocomplete({
     const contains = [];
     for (const o of options) {
       const l = o.label.toLowerCase();
-      if (l.startsWith(q) || l.split(/[\s.\-]+/).some((w) => w.startsWith(q))) starts.push(o);
+      if (l.startsWith(q) || l.split(/[\s.-]+/).some((w) => w.startsWith(q))) starts.push(o);
       else if (l.includes(q)) contains.push(o);
     }
     return [...starts, ...contains];
@@ -114,7 +114,7 @@ export default function SelectAutocomplete({
 
   useEffect(() => {
     if (!open) return;
-    listRef.current?.querySelector(`[data-idx="${active}"]`)?.scrollIntoView({ block: 'nearest' });
+    listRef.current?.querySelector(`[data-idx="${active}"]`)?.scrollIntoView?.({ block: 'nearest' });
   }, [active, open, pos]);
 
   const openList = () => {
