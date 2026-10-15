@@ -460,6 +460,7 @@ useEffect(() => {
     patients,
     appointments,
     rooms,
+    archivedRooms,
     treatments,
     settings,
     activity,
@@ -480,6 +481,8 @@ useEffect(() => {
     addRoom,
     updateRoom,
     deleteRoom,
+    archiveRoom,
+    unarchiveRoom,
     addTreatment,
     updateTreatment,
     deleteTreatment,
@@ -1390,6 +1393,7 @@ useEffect(() => {
               profile={profile}
               settings={settings}
               rooms={rooms}
+              archivedRooms={archivedRooms}
               treatments={treatments}
               staff={staff}
               holidays={holidays}
@@ -1397,6 +1401,8 @@ useEffect(() => {
               addRoom={addRoom}
               updateRoom={updateRoom}
               deleteRoom={deleteRoom}
+              archiveRoom={archiveRoom}
+              unarchiveRoom={unarchiveRoom}
               addTreatment={addTreatment}
               updateTreatment={updateTreatment}
               deleteTreatment={deleteTreatment}

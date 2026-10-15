@@ -2403,6 +2403,67 @@ p {
   line-height: var(--line-height-relaxed);
 }
 
+.confirm-dialog-cancel,
+.confirm-dialog-confirm {
+  min-height: 48px;
+  padding: 12px 22px;
+  border-radius: 16px;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  transition: all var(--transition-normal);
+}
+
+.confirm-dialog-cancel {
+  min-width: 112px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 3px 8px rgba(23, 43, 77, 0.08);
+}
+
+.confirm-dialog-confirm {
+  min-width: 168px;
+}
+
+.confirm-dialog-cancel:hover:not(:disabled),
+.confirm-dialog-confirm:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.confirm-dialog-cancel:hover:not(:disabled) {
+  background: var(--bg-card);
+  border-color: var(--primary-light);
+  color: var(--primary-dark);
+  box-shadow: 0 5px 12px rgba(23, 43, 77, 0.12);
+}
+
+.confirm-dialog-confirm:hover:not(:disabled) {
+  filter: none;
+}
+
+.confirm-dialog-confirm.btn-primary {
+  background: var(--primary-light);
+  border-color: transparent;
+  box-shadow: 0 5px 12px rgba(42, 157, 143, 0.24);
+  text-shadow: none;
+}
+
+.confirm-dialog-confirm.btn-primary:hover:not(:disabled) {
+  background: var(--primary);
+  box-shadow: 0 7px 16px rgba(42, 157, 143, 0.3);
+}
+
+.confirm-dialog-cancel:active:not(:disabled),
+.confirm-dialog-confirm:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.confirm-dialog-cancel:focus-visible,
+.confirm-dialog-confirm:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
 /* ============================================
    Components - Calendar
    ============================================ */
@@ -4435,6 +4496,138 @@ tbody tr:hover {
   font-size: var(--font-size-xs);
   color: var(--text-muted);
   margin-top: 4px;
+}
+
+.archived-rooms-heading {
+  padding: 14px 16px 12px;
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border-light));
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--primary-bg), var(--bg-card));
+}
+
+.archived-rooms-eyebrow {
+  color: var(--primary-dark);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+.archived-rooms-title-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 7px;
+}
+
+.archived-rooms-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.archived-rooms-count {
+  display: inline-flex;
+  min-width: 24px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.archived-rooms-description {
+  max-width: 620px;
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.archived-room-unarchive-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 112px;
+  border: 1px solid color-mix(in srgb, var(--primary-dark) 70%, transparent);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--primary) 18%, transparent);
+  font-weight: var(--font-weight-semibold);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal), filter var(--transition-normal);
+}
+
+.archived-room-unarchive-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.97);
+  box-shadow: 0 7px 14px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+.archived-room-unarchive-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus), 0 7px 14px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+.archived-rooms-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--primary) 42%, var(--border-light));
+  background: var(--primary-bg);
+  color: var(--primary-dark);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--primary) 12%, transparent);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal), background var(--transition-normal), color var(--transition-normal);
+}
+
+.archived-rooms-toggle-btn:hover {
+  transform: translateY(-1px);
+  background: #d7eeeb;
+  color: var(--primary-dark) !important;
+  box-shadow: 0 6px 12px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+.archived-rooms-toggle-btn[aria-pressed="true"] {
+  background: var(--primary);
+  color: #fff !important;
+  border-color: var(--primary);
+}
+
+.archived-rooms-toggle-btn[aria-pressed="true"]:hover {
+  background: var(--primary-dark);
+  color: #fff !important;
+}
+
+.archived-rooms-toggle-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus), 0 6px 12px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+.archived-rooms-toggle-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.archived-rooms-toggle-count {
+  display: inline-flex;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+  font-size: var(--font-size-xs);
+  line-height: 1;
+}
+
+.archived-rooms-toggle-btn[aria-pressed="true"] .archived-rooms-toggle-count {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .settings-list-actions {

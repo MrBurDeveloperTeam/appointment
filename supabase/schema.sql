@@ -143,6 +143,8 @@ CREATE TABLE public.apt_rooms (
   clinic_id uuid NOT NULL,
   name text NOT NULL,
   color text,
+  is_apt_used boolean NOT NULL DEFAULT false,
+  archived_at timestamp with time zone,
   CONSTRAINT rooms_pkey PRIMARY KEY (id),
   CONSTRAINT rooms_clinic_id_fkey FOREIGN KEY (clinic_id) REFERENCES public.apt_clinics(id)
 );

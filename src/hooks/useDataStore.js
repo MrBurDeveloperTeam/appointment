@@ -6,6 +6,7 @@ export default function useDataStore(activeClinicId, enabled = true) {
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [archivedRooms, setArchivedRooms] = useState([]);
   const [treatments, setTreatments] = useState([]);
   const [settings, setSettings] = useState(null);
   const [activity, setActivity] = useState([]);
@@ -78,6 +79,7 @@ export default function useDataStore(activeClinicId, enabled = true) {
         setPatients([]);
         setAppointments([]);
         setRooms([]);
+        setArchivedRooms([]);
         setTreatments([]);
         setSettings(null);
         setActivity([]);
@@ -97,6 +99,7 @@ export default function useDataStore(activeClinicId, enabled = true) {
         toPromise(DataStore.getClinicById(activeClinicId)),
         toPromise(DataStore.getPatients()),
         toPromise(DataStore.getRooms()),
+        toPromise(DataStore.getArchivedRooms()),
         toPromise(DataStore.getTreatments()),
         toPromise(DataStore.getSettings()),
         toPromise(DataStore.getActivityLog()),
@@ -113,12 +116,13 @@ export default function useDataStore(activeClinicId, enabled = true) {
       setActiveClinicData(getValue(0, null));
       setPatients(getValue(1, []));
       setRooms(getValue(2, []));
-      setTreatments(getValue(3, []));
-      setSettings(getValue(4, null));
-      setActivity(getValue(5, []));
-      setStaff(getValue(6, []));
-      setHolidays(getValue(7, []));
-      setAppointmentRequests(getValue(8, []));
+      setArchivedRooms(getValue(3, []));
+      setTreatments(getValue(4, []));
+      setSettings(getValue(5, null));
+      setActivity(getValue(6, []));
+      setStaff(getValue(7, []));
+      setHolidays(getValue(8, []));
+      setAppointmentRequests(getValue(9, []));
       setIsReady(true);
     };
 
@@ -183,6 +187,7 @@ export default function useDataStore(activeClinicId, enabled = true) {
   };
   const refreshPatients = () => handleAsync(DataStore.getPatients(), (data) => setPatients(data || []));
   const refreshRooms = () => handleAsync(DataStore.getRooms(), (data) => setRooms(data || []));
+  const refreshArchivedRooms = () => handleAsync(DataStore.getArchivedRooms(), (data) => setArchivedRooms(data || []));
   const refreshTreatments = () => handleAsync(DataStore.getTreatments(), (data) => setTreatments(data || []));
   const refreshSettings = () => handleAsync(DataStore.getSettings(), (data) => setSettings(data || null));
   const refreshStaff = () => handleAsync(DataStore.getStaff(), (data) => setStaff(data || []));
@@ -275,6 +280,22 @@ export default function useDataStore(activeClinicId, enabled = true) {
   const deleteRoom = async (id) => {
     const result = await DataStore.deleteRoom(id);
     refreshRooms();
+    refreshActivity();
+    return result;
+  };
+
+  const archiveRoom = async (id) => {
+    const result = await DataStore.archiveRoom(id);
+    refreshRooms();
+    refreshArchivedRooms();
+    refreshActivity();
+    return result;
+  };
+
+  const unarchiveRoom = async (id) => {
+    const result = await DataStore.unarchiveRoom(id);
+    refreshRooms();
+    refreshArchivedRooms();
     refreshActivity();
     return result;
   };
@@ -406,6 +427,7 @@ export default function useDataStore(activeClinicId, enabled = true) {
     patients,
     appointments,
     rooms,
+    archivedRooms,
     treatments,
     settings,
     activity,
@@ -430,6 +452,8 @@ export default function useDataStore(activeClinicId, enabled = true) {
     addRoom,
     updateRoom,
     deleteRoom,
+    archiveRoom,
+    unarchiveRoom,
     addTreatment,
     updateTreatment,
     deleteTreatment,

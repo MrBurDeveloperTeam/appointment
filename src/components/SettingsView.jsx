@@ -37,6 +37,7 @@ export default function SettingsView({
   profile,
   settings,
   rooms,
+  archivedRooms,
   treatments,
   staff,
   holidays,
@@ -44,6 +45,8 @@ export default function SettingsView({
   addRoom,
   updateRoom,
   deleteRoom,
+  archiveRoom,
+  unarchiveRoom,
   addTreatment,
   updateTreatment,
   deleteTreatment,
@@ -62,6 +65,7 @@ export default function SettingsView({
   const colorOptions = ['#4A90A4', '#7CB798', '#E5C07B', '#9B8AC4', '#E07B7B', '#A8D8EA'];
   const specialtyOptions = ['General', 'Endodontics', 'Pediatric', 'Orthodontics', 'Periodontics', 'Prosthodontics'];
   const [activeSection, setActiveSection] = useState('staff');
+  const [showArchivedRooms, setShowArchivedRooms] = useState(false);
   const [modalState, setModalState] = useState({ type: null, mode: 'new' });
   const isCompanyWorkspace = getWorkspaceType() === 'company' || profile?.account_type === 'company';
   const companyAccountOwnerId = profile?.account_type === 'company' ? profile.user_id : undefined;
@@ -179,11 +183,11 @@ export default function SettingsView({
 
   const openRoomModal = (room) => {
     if (room) {
-      setRoomForm({ id: room.id, name: room.name, color: room.color });
+      setRoomForm({ id: room.id, name: room.name, color: room.color, isAptUsed: room.isAptUsed });
       setModalState({ type: 'room', mode: 'edit' });
       return;
     }
-    setRoomForm({ id: '', name: '', color: '#4A90A4' });
+    setRoomForm({ id: '', name: '', color: '#4A90A4', isAptUsed: false });
     setModalState({ type: 'room', mode: 'new' });
   };
 
@@ -441,7 +445,12 @@ export default function SettingsView({
 
   const handleDelete = () => {
     if (modalState.type === 'room' && roomForm.id) {
-      setConfirmDialog({ open: true, type: 'room', payload: { id: roomForm.id, name: roomForm.name } });
+      const used = Boolean(roomForm.isAptUsed);
+      setConfirmDialog({
+        open: true,
+        type: used ? 'room-archive' : 'room-delete',
+        payload: { id: roomForm.id, name: roomForm.name },
+      });
     }
     if (modalState.type === 'treatment' && treatmentForm.id) {
       // Unused treatments can be deleted; ones appointments reference are archived instead.
@@ -459,8 +468,16 @@ export default function SettingsView({
     }
   };
 
+  const handleUnarchiveRoom = (room) => {
+    setConfirmDialog({
+      open: true,
+      type: 'room-unarchive',
+      payload: { id: room.id, name: room.name },
+    });
+  };
+
   const handleConfirmDelete = async () => {
-    if (confirmDialog.type === 'room' && confirmDialog.payload?.id) {
+    if (confirmDialog.type === 'room-delete' && confirmDialog.payload?.id) {
       try {
         await deleteRoom(confirmDialog.payload.id);
         addToast('Room deleted successfully.', 'success');
@@ -468,6 +485,27 @@ export default function SettingsView({
         setConfirmDialog({ open: false, type: '', payload: null });
       } catch (error) {
         addToast(error?.message || 'Unable to delete room. Please try again.', 'error');
+      }
+      return;
+    }
+    if (confirmDialog.type === 'room-archive' && confirmDialog.payload?.id) {
+      try {
+        await archiveRoom(confirmDialog.payload.id);
+        addToast('Room archived successfully.', 'success');
+        closeModal();
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Unable to archive room. Please try again.', 'error');
+      }
+      return;
+    }
+    if (confirmDialog.type === 'room-unarchive' && confirmDialog.payload?.id) {
+      try {
+        await unarchiveRoom(confirmDialog.payload.id);
+        addToast('Room unarchived successfully.', 'success');
+        setConfirmDialog({ open: false, type: '', payload: null });
+      } catch (error) {
+        addToast(error?.message || 'Unable to unarchive room. Please try again.', 'error');
       }
       return;
     }
@@ -780,6 +818,19 @@ export default function SettingsView({
               <div className="settings-card-title">Rooms</div>
               <div className="settings-card-actions">
                 <span className="settings-card-subtitle">{rooms.length} total</span>
+                {archivedRooms.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm archived-rooms-toggle-btn"
+                    aria-pressed={showArchivedRooms}
+                    aria-label={`${showArchivedRooms ? 'Hide' : 'Show'} archived rooms`}
+                    onClick={() => setShowArchivedRooms((value) => !value)}
+                  >
+                    <span className="archived-rooms-toggle-icon" aria-hidden="true">▣</span>
+                    <span>{showArchivedRooms ? 'Hide' : 'Show'} Archived</span>
+                    <span className="archived-rooms-toggle-count">{archivedRooms.length}</span>
+                  </button>
+                )}
                 <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openRoomModal()}>
                   + Add Room
                 </button>
@@ -805,6 +856,38 @@ export default function SettingsView({
                 ))}
                 {rooms.length === 0 && <div className="empty-state">No rooms</div>}
               </div>
+              {showArchivedRooms && archivedRooms.length > 0 && (
+                <div className="settings-list" style={{ marginTop: 12 }}>
+                  <div className="archived-rooms-heading">
+                    <div className="archived-rooms-eyebrow">ROOM ARCHIVE</div>
+                    <div className="archived-rooms-title-row">
+                      <h3 className="archived-rooms-title">Archived rooms</h3>
+                      <span className="archived-rooms-count">{archivedRooms.length}</span>
+                    </div>
+                    <p className="archived-rooms-description">
+                      Hidden from new appointments while preserving appointment history.
+                    </p>
+                  </div>
+                  {archivedRooms.map((room) => (
+                    <div key={room.id} className="settings-list-item">
+                      <div>
+                        <div className="settings-list-title">{room.name}</div>
+                        <div className="settings-list-meta">Archived room · Appointment history preserved</div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm archived-room-unarchive-btn"
+                        style={lightPrimaryButtonStyle}
+                        aria-label={`Unarchive ${room.name}`}
+                        onClick={() => handleUnarchiveRoom(room)}
+                      >
+                        <span aria-hidden="true">↶</span>
+                        <span>Unarchive</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1228,7 +1311,7 @@ export default function SettingsView({
           <div className="modal-footer">
             {modalState.mode === 'edit' && (
               <button type="button" className="btn btn-danger" onClick={handleDelete}>
-                Delete
+                {roomForm.isAptUsed ? 'Archive' : 'Delete'}
               </button>
             )}
             <div className="flex-1"></div>
@@ -1431,14 +1514,34 @@ export default function SettingsView({
       )}
       <ConfirmDialog
         open={confirmDialog.open}
-        title={confirmDialog.type === 'treatment-archive' ? 'Archive treatment' : `Delete ${confirmDialog.type}`}
+        title={
+          confirmDialog.type === 'treatment-archive'
+            ? 'Archive treatment'
+            : confirmDialog.type === 'room-archive'
+              ? 'Archive room'
+              : confirmDialog.type === 'room-unarchive'
+                ? 'Unarchive room'
+              : `Delete ${confirmDialog.type.replace('-delete', '')}`
+        }
         description={
           confirmDialog.type === 'treatment-archive'
             ? `"${confirmDialog.payload?.name || 'This treatment'}" will be hidden from new appointments and online booking. Existing appointments and reports keep it, and you can restore it anytime from "Show archived".`
-            : `This will permanently remove the ${confirmDialog.type}. This action cannot be undone.`
+            : confirmDialog.type === 'room-archive'
+              ? `"${confirmDialog.payload?.name || 'This room'}" will be hidden from new appointments while preserving its appointment history.`
+              : confirmDialog.type === 'room-unarchive'
+                ? `Unarchive "${confirmDialog.payload?.name || 'this room'}"? It will become available for new appointments again while keeping its previous appointment history.`
+            : `This will permanently remove the ${confirmDialog.type.replace('-delete', '')}. This action cannot be undone.`
         }
-        confirmLabel={confirmDialog.type === 'treatment-archive' ? 'Archive treatment' : `Delete ${confirmDialog.type}`}
-        confirmVariant="danger"
+        confirmLabel={
+          confirmDialog.type === 'treatment-archive'
+            ? 'Archive treatment'
+            : confirmDialog.type === 'room-archive'
+              ? 'Archive room'
+              : confirmDialog.type === 'room-unarchive'
+                ? 'Unarchive room'
+              : `Delete ${confirmDialog.type.replace('-delete', '')}`
+        }
+        confirmVariant={confirmDialog.type === 'room-unarchive' ? 'primary' : 'danger'}
         onClose={() => setConfirmDialog({ open: false, type: '', payload: null })}
         onConfirm={handleConfirmDelete}
       />

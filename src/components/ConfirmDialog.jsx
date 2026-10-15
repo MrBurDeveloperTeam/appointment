@@ -19,10 +19,18 @@ export default function ConfirmDialog({
         <p className="confirm-text">{description}</p>
       </div>
       <div className="modal-footer">
-        <button type="button" className="btn btn-secondary" onClick={onClose}>
+        <button
+          type="button"
+          className="btn btn-secondary confirm-dialog-cancel"
+          onClick={onClose}
+        >
           Cancel
         </button>
-        <button type="button" className={confirmClass} onClick={onConfirm}>
+        <button
+          type="button"
+          className={`${confirmClass} confirm-dialog-confirm`}
+          onClick={onConfirm}
+        >
           {confirmLabel}
         </button>
       </div>
