@@ -2310,6 +2310,11 @@ p {
   border: 1px solid rgba(196, 106, 106, 0.3);
 }
 
+.form-input[aria-invalid="true"] {
+  border-color: var(--field-error-border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--field-error-border) 20%, transparent);
+}
+
 /* ============================================
    Components - Cards
    ============================================ */

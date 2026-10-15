@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastProvider';
 import { COUNTRIES, DENTAL_POSITIONS } from '../../constants/signupOptions';
 import AuthShell, { AuthField, AuthLogo } from './AuthShell';
 import DOBPicker from './DOBPicker';
+import { sanitizePhoneInput } from '../../utils/bookingValidation';
 
 const icon = (Icon) => <Icon className="auth-field-icon" />;
 
@@ -59,7 +60,7 @@ export default function RegisterPage() {
       <AuthField label="Referred by (optional)" icon={icon(Share2)} help="Referred by a doctor already on Snabbb? Enter their code, email, or use their referral link to auto-fill this field."><input className="auth-input" value={referralCode} onChange={(event) => setReferralCode(event.target.value)} placeholder="Referral code" autoComplete="off" /></AuthField>
       <AuthField label={company ? 'Name' : 'Your Name'} icon={icon(User)}><input className="auth-input" value={name} onChange={(event) => setName(event.target.value)} placeholder={company ? 'Contact Name' : 'e.g. Nour AYACHE'} required autoComplete="name" /></AuthField>
       {!company && <AuthField label="Your Email" icon={icon(Mail)} help="This will be your login email."><input type="email" className="auth-input" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="e.g. nur@email.com" required autoComplete="email" /></AuthField>}
-      <AuthField label={company ? 'Phone' : 'Phone (WhatsApp)'} icon={icon(Phone)}><input type="tel" className="auth-input" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="e.g. +60123456789" required autoComplete="tel" /></AuthField>
+      <AuthField label={company ? 'Phone' : 'Phone (WhatsApp)'} icon={icon(Phone)}><input type="tel" className="auth-input" inputMode="tel" value={phone} onChange={(event) => setPhone(sanitizePhoneInput(event.target.value))} placeholder="e.g. +60123456789" required autoComplete="tel" /></AuthField>
       <div className="auth-field"><label className="auth-label">Date of Birth</label><DOBPicker value={dob} onChange={setDob} />{company && <p className="auth-help">Date of birth of the company representative.</p>}</div>
       <AuthField label="Job Position" icon={icon(BriefcaseBusiness)}><span className="auth-select-wrap"><select className="auth-input" value={position} onChange={(event) => setPosition(event.target.value)} required><option value="">-- Select Position --</option>{DENTAL_POSITIONS.map((item) => <option key={item}>{item}</option>)}<option value="OTHER">Other</option></select><ChevronDown className="auth-chevron" /></span></AuthField>
       {position === 'OTHER' && <AuthField label="Specify Position" icon={icon(BriefcaseBusiness)}><input className="auth-input" value={customPosition} onChange={(event) => setCustomPosition(event.target.value)} placeholder="e.g. Clinic Manager" required /></AuthField>}
