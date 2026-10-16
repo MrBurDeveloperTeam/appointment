@@ -1,7 +1,7 @@
 {
   "name": "appointment-book",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.12.2",
   "type": "module",
   "scripts": {
     "predev": "node scripts/prepare-pet.mjs",
@@ -16,7 +16,7 @@
     "verify:pet": "node scripts/verify-pet.mjs"
   },
   "dependencies": {
-    "@mrburdeveloperteam/pet-function": "github:mrburdeveloperteam/pet-function#v0.9.44",
+    "@mrburdeveloperteam/pet-function": "github:mrburdeveloperteam/pet-function#v0.12.2",
     "@supabase/supabase-js": "^2.90.0",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.5",
@@ -55,5 +55,8 @@
   "overrides": {
     "@babel/parser": "7.26.10",
     "@babel/core": "7.26.10"
+  },
+  "allowScripts": {
+    "github:mrburdeveloperteam/pet-function#8a1993a66d60087829519c053ee7de0ed3475320": true
   }
 }
