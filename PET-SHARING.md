@@ -1,14 +1,14 @@
 # Appointment shared cat
 
-The manifest targets `github:mrburdeveloperteam/pet-function#v0.9.12`.
-The dependency and lockfile now use the official v0.9.12 tag, resolving to
-`a8033bf4aae9c0f53e9f0fca1776efc36ea93e7b`. Installed node_modules is version
-0.9.12 from GitHub, not the earlier local verification tarball.
+Appointment and its pet-function dependency use version **0.12.2**.
+The dependency and lockfile use the official v0.12.2 tag, resolving to
+`8a1993a66d60087829519c053ee7de0ed3475320`. The npm build approval matches
+that release commit.
 No file: dependency or sibling-folder link is used.
 Shared source is maintained in the separate `intern/pet-function` repository.
 
 The package owns the cat/pet interface, care and game runtime, AI chat presentation,
-pet options and resources, and Flappy Cat, Pac-Cat, Tetris and Meowdoku.
+pet options and resources, and the shared mini-games.
 `src/games/MeowdokuLauncher.tsx` only supplies this application's account and adapters.
 
 Appointment-specific dialogue is in pet-function/src/apps/AppointmentCatMascot.jsx.
@@ -25,9 +25,13 @@ server AI transports remain host-owned and are injected into the package.
 Existing account/clinic remount boundaries and patient-local schedule answers are preserved.
 No database schema or live records were modified by this migration.
 
-`scripts/prepare-pet.mjs` restores shared non-game images before development/build.
+`scripts/prepare-pet.mjs` restores and verifies the installed release's resource
+packs and copies shared non-game images before development/build.
 The shared Vite plugin serves canonical package games during development and emits
 identical game resources to `dist/games` during builds. No game copies remain in `public/games`.
+The postbuild script splits oversized WASM and PCK files, verifies their bytes,
+and patches Godot loaders to reconstruct them, including Kart Racing's shared
+engine. All deployment assets must remain within 25 MiB.
 The image URL folder `molar-experience` is historical naming, not an old dependency.
 
 Verification:
@@ -37,6 +41,7 @@ npm run build
 npm run typecheck
 npm test -- --run
 node scripts/verify-pet.mjs
+node --test tests/cloudflare-game-assets.node-test.mjs
 ```
 
 Manually test authenticated appointment dialogue, care/shop balance persistence,
@@ -47,8 +52,10 @@ For future shared changes, release a new version/tag, update the dependency and 
 and rebuild/redeploy this application. Updating source alone does not update live deployments.
 No paid service was added by the import integration.
 
-Validated locally: production build, typecheck, 78 existing host tests, 28 shared
-package tests (including 9 Appointment parity/safety tests), and all 82 game files.
-No real database or AI calls were made for these tests. No commit/push/publication/deploy.
-Official v0.9.12 dependency installation and lockfile update are complete.
-Commit the manifest AND regenerated lockfile along with the migration after review.
+The resource verification compares every emitted game file with the installed
+release, reconstructs split WASM/PCK byte-for-byte, and checks the deployment
+asset size limit. Run it after the production build.
+These checks do not require real database or AI calls. No database migration is
+required for this version update.
+Commit the manifest, regenerated lockfile, resource scripts, documentation and
+regression tests together. Generated dist and public/pet-function stay untracked.
