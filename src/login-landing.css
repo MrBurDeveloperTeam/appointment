@@ -156,11 +156,10 @@
   justify-content: center;
   gap: 12px;
 
-  min-height: 54px;
-  padding: 14px 18px;
+  padding: 14px 20px;
 
-  border-radius: 13px;
-  font-size: 15px;
+  border-radius: 12px;
+  font-size: 16px;
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
@@ -192,7 +191,7 @@
 .appointment-secondary-button {
   color: #102b35;
   background: #ffffff;
-  border: 2px solid #dcebea;
+  border: 1px solid #dcebea;
 }
 
 .appointment-secondary-button:hover {
@@ -254,9 +253,10 @@
 .appointment-hero h1 {
   max-width: 700px;
   margin: 22px 0 24px;
+  font-family: "Open Sans", sans-serif;
   color: var(--appointment-navy);
   font-size: clamp(42px, 5.2vw, 76px);
-  font-weight: 700;
+  font-weight: 700 !important;
   letter-spacing: -0.055em;
   line-height: 1.0;
 }
