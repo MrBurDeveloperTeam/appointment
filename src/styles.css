@@ -10079,3 +10079,10 @@ tbody tr:hover {
 .staff-self-checkbox input { width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: var(--primary); }
 .staff-self-checkbox input:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .staff-self-checkbox:has(input:disabled) { cursor: not-allowed; }
+
+/* Header account avatar: circular photo or centered initials. */
+.header-right .account-avatar-trigger{appearance:none;display:flex;align-items:center;justify-content:center;width:40px;height:40px;min-width:40px;flex:none;padding:0;border:0;border-radius:50%!important;overflow:hidden;background:#2187ed;color:#fff;box-shadow:0 2px 4px rgba(15,23,42,.12);cursor:pointer;font-family:inherit}
+.header-right .account-avatar-trigger:has(img){background:#fff}
+.account-avatar-trigger img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.account-avatar-trigger span{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:14px;font-weight:800;line-height:20px;letter-spacing:0}
+.account-avatar-trigger:focus-visible{outline:2px solid #94a3b8;outline-offset:3px}
