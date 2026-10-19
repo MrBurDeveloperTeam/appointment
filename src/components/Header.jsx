@@ -2,9 +2,18 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, LogOut, Mail, Phone } from 'lucide-react';
+import { useProfileImage } from '../../hooks/useProfileImage';
 
 export default function Header({ createAppLink, title, onNewAppointment, onToggleSidebar, credits, onOpenCredits, isSidebarOpen, isUnconfigured }) {
     const { user, signOut, role } = useAuth();
+    const { profileImageUrl } = useProfileImage(Boolean(user));
+    const [failedImageUrl, setFailedImageUrl] = useState(null);
+    const metadata = user?.user_metadata;
+    const displayName = metadata?.full_name || metadata?.name
+        || [metadata?.first_name, metadata?.last_name].filter(Boolean).join(' ')
+        || user?.email?.split('@')[0] || 'U';
+    const initials = displayName.trim().split(/\s+/).filter(Boolean).slice(0, 2)
+        .map((part) => Array.from(part)[0]).join('').toUpperCase();
     const [showAccountMenu, setShowAccountMenu] = useState(false);
     const [
         creditBalance,
@@ -185,20 +194,56 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
             </div>
 
             <div className="header-right">
+          {/* New Appointment Action */}
+          {onNewAppointment && (
+            <button
+              type="button"
+              className="btn"
+              onClick={onNewAppointment}
+              style={{
+                gap: '6px',
+                paddingLeft: '14px',
+                paddingRight: '14px',
+                background: 'var(--primary-light)',
+                border: '1px solid var(--primary-light)',
+                color: '#ffffff',
+                boxShadow: '0 2px 6px rgba(90, 184, 174, 0.22)',
+                textShadow: 'none',
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+
+              <span>New Appointment</span>
+            </button>
+          )}
                 {/* Account Dropdown */}
                 <div className="account-dropdown-container" ref={menuRef} style={{ position: 'relative' }}>
                     <button
-                        className="btn btn-icon"
+                        className="account-avatar-trigger"
+                        type="button"
                         onClick={() => {
                             setShowAccountMenu((current) => !current);
                         }}
                         aria-label="Account Settings"
-                        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                        aria-haspopup="menu"
+                        aria-expanded={showAccountMenu}
                     >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
+                        {profileImageUrl && failedImageUrl !== profileImageUrl ? (
+                            <img src={profileImageUrl} alt="" onError={() => setFailedImageUrl(profileImageUrl)} />
+                        ) : <span aria-hidden="true">{initials}</span>}
                     </button>
 
                     <AnimatePresence>
@@ -439,41 +484,6 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                     </AnimatePresence>
                 </div>
 
-          {/* New Appointment Action */}
-          {onNewAppointment && (
-            <button
-              type="button"
-              className="btn"
-              onClick={onNewAppointment}
-              style={{
-                gap: '6px',
-                paddingLeft: '14px',
-                paddingRight: '14px',
-                background: 'var(--primary-light)',
-                border: '1px solid var(--primary-light)',
-                color: '#ffffff',
-                boxShadow: '0 2px 6px rgba(90, 184, 174, 0.22)',
-                textShadow: 'none',
-              }}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-
-              <span>New Appointment</span>
-            </button>
-          )}
             </div>
         </header>
     );
