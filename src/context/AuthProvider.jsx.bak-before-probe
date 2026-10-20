@@ -1,0 +1,323 @@
+import { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { api } from '../services/api';
+import { getAppointmentAccess } from '../services/appointmentAccess';
+import DataStore from '../data';
+import React from "react";
+
+const AuthContext = createContext({});
+
+export const useAuth = () => useContext(AuthContext);
+
+export function AuthProvider({ children }) {
+    const [session, setSession] = useState(null);
+    const [user, setUser] = useState(null);
+    const [profile, setProfile] = useState(null);
+    const [role, setRole] = useState(null);
+    const [activeClinicId, setActiveClinicId] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // 1. Initialize Session
+    useEffect(() => {
+        let mounted = true;
+        let resolvedUserId = null;
+
+        const initializeAuth = async (forceCheck = false) => {
+            try {
+                // 1. First, try to exchange SSO session to ensure we have the latest tokens
+                try {
+                    const launchUrl = new URL(window.location.href);
+                    const launchToken = launchUrl.searchParams.get('sso_token') || launchUrl.searchParams.get('token');
+
+                    // An explicit token represents an intentional account
+                    // switch. Without one -- and without a forced recheck --
+                    // prefer the persisted local Supabase session and skip
+                    // the central SSO round trip. forceCheck exists
+                    // specifically to NOT take this shortcut: it's how this
+                    // tab notices the user logged out of Snabbb elsewhere
+                    // while this tab already had a valid local session it
+                    // would otherwise go on trusting forever (see the
+                    // visibilitychange/focus listener below).
+                    if (!launchToken && !forceCheck) {
+                        const { data: { session: localSession } } = await supabase.auth.getSession();
+                        if (localSession) {
+                            resolvedUserId = localSession.user.id;
+                            if (mounted) {
+                                setSession(localSession);
+                                setUser(localSession.user);
+                            }
+                            return;
+                        }
+                    }
+
+                    const exchangePath = launchToken
+                        ? `https://sso.snabbb.com/api/sso/exchange?sso_token=${encodeURIComponent(launchToken)}`
+                        : 'https://sso.snabbb.com/api/sso/exchange';
+                    const { data: sso } = await api.get(exchangePath, { timeout: 3000 });
+                    if (sso?.access_token && sso?.refresh_token) {
+                        await supabase.auth.setSession({
+                            access_token: sso.access_token,
+                            refresh_token: sso.refresh_token,
+                        });
+
+                        if (launchToken) {
+                            launchUrl.searchParams.delete('sso_token');
+                            launchUrl.searchParams.delete('token');
+                            window.history.replaceState({}, document.title, `${launchUrl.pathname}${launchUrl.search}${launchUrl.hash}`);
+                        }
+                    }
+                } catch (ssoErr) {
+                    console.error('SSO exchange failed in AuthProvider:', ssoErr);
+                    
+                    if (ssoErr.status === 401) {
+                        console.log('Clearing local auth session due to SSO 401');
+                        try {
+                            await supabase.auth.signOut();
+                        } catch (e) {
+                            console.error('Error auto-signing out on 401:', e);
+                        }
+                        
+                        if (mounted) {
+                            setSession(null);
+                            setUser(null);
+                            setProfile(null);
+                            setRole(null);
+                            DataStore.setActiveClinicId(null);
+                            setActiveClinicId(null);
+                            setLoading(false);
+                        }
+                        return; 
+                    }
+                    // For network errors, we fall back to existing local session
+                }
+
+                // 2. Now get the session (either from SSO update or local storage)
+                const { data: { session: initialSession } } = await supabase.auth.getSession();
+
+                if (mounted) {
+                    resolvedUserId = initialSession?.user?.id ?? null;
+                    setSession(initialSession);
+                    setUser(initialSession?.user ?? null);
+                    if (!initialSession) {
+                        setLoading(false);
+                    }
+                }
+            } catch (err) {
+                console.error('Error checking session:', err);
+                if (mounted) setLoading(false);
+            }
+        };
+
+        initializeAuth();
+
+        // A tab open before someone logs out of Snabbb elsewhere never finds
+        // out on its own -- initializeAuth() only runs once, above, on
+        // mount, and (per the shortcut just above) doesn't even make a
+        // network call when a local session already exists. Re-running it
+        // with forceCheck=true whenever this tab regains focus closes that
+        // gap: it skips the shortcut, hits the exchange endpoint for real,
+        // and a 401 there (shared SSO cookie gone) signs this tab out too.
+        //
+        // Throttled + single-flight: a tab switch fires BOTH `visibilitychange`
+        // and `focus`, and every click back into the window can fire `focus`
+        // again. Unthrottled, each one made a full ~1s SSO exchange and then
+        // setSession() -> onAuthStateChange -> a fresh access-context call
+        // (observed: 6 exchanges and 14 access-context calls in one session).
+        let revalidating = false;
+        // Starts at "now": the initial initializeAuth() on mount already counts as a check.
+        let lastRevalidateAt = Date.now();
+        const REVALIDATE_MIN_INTERVAL_MS = 60 * 1000;
+        const revalidateOnFocus = async () => {
+            if (document.visibilityState !== 'visible') return;
+            const now = Date.now();
+            if (revalidating || now - lastRevalidateAt < REVALIDATE_MIN_INTERVAL_MS) return;
+            revalidating = true;
+            lastRevalidateAt = now;
+            try {
+                await initializeAuth(true);
+            } finally {
+                revalidating = false;
+            }
+        };
+        document.addEventListener('visibilitychange', revalidateOnFocus);
+        window.addEventListener('focus', revalidateOnFocus);
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+            if (mounted) {
+                const nextUserId = newSession?.user?.id ?? null;
+                if (nextUserId !== resolvedUserId) {
+                    // Never render permissions from the previous identity while
+                    // the new identity's profile is still in flight.
+                    resolvedUserId = nextUserId;
+                    setLoading(Boolean(nextUserId));
+                    setError(null);
+                    setProfile(null);
+                    setRole(null);
+                    DataStore.setActiveClinicId(null);
+                    setActiveClinicId(null);
+                }
+                setSession(newSession);
+                setUser(newSession?.user ?? null);
+                if (!newSession) {
+                    setProfile(null);
+                    setRole(null);
+                    DataStore.setActiveClinicId(null);
+                    setActiveClinicId(null);
+                    setLoading(false);
+                }
+            }
+        });
+
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+            document.removeEventListener('visibilitychange', revalidateOnFocus);
+            window.removeEventListener('focus', revalidateOnFocus);
+        };
+    }, []);
+
+    const authenticatedUserId = user?.id ?? null;
+
+    // 2. Load Profile when User changes
+    useEffect(() => {
+        let mounted = true;
+
+        const loadProfile = async () => {
+            if (!authenticatedUserId) return;
+
+            // Keep loading true while fetching profile if we just got a user
+            // But if we already have a profile and just switching, maybe not? 
+            // safer to generic loading state or specific profile loading state.
+            // For global auth "ready", we want to wait for profile.
+
+            setLoading(true);
+            setError(null);
+            setProfile(null);
+            setRole(null);
+
+            try {
+                DataStore.setActiveClinicId(null);
+                setActiveClinicId(null);
+                const { data, error: fetchError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('user_id', authenticatedUserId)
+                    .maybeSingle();
+
+                if (fetchError) throw fetchError;
+
+                if (!data) throw new Error('Your profile could not be found.');
+                // Internal administrators retain their existing clinic management flow.
+                const access = data.account_type === 'admin'
+                    ? null
+                    : await getAppointmentAccess();
+                const clinicId = data.account_type === 'admin'
+                    ? data.clinic_id
+                    : access.clinicId;
+                if (access && !clinicId) {
+                    throw new Error('The selected workspace has no appointment clinic.');
+                }
+
+                if (mounted) {
+setProfile(data);
+                    const derivedRole = data.account_type === 'admin' ? 'admin' : 'dentist';
+                    setRole(derivedRole);
+
+                    if (clinicId) {
+                        DataStore.setActiveClinicId(clinicId);
+                        setActiveClinicId(clinicId);
+                    } else {
+                        DataStore.setActiveClinicId(null);
+                        setActiveClinicId(null);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load profile:', err);
+                if (mounted) {
+                    setError(err?.message || 'Unable to load your workspace. Please try again.');
+                    DataStore.setActiveClinicId(null);
+                    setActiveClinicId(null);
+                    setProfile(null);
+                }
+            } finally {
+                if (mounted) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        if (authenticatedUserId) {
+            // If we have a user but no profile yet (or user changed), load it
+            loadProfile();
+        }
+        return () => { mounted = false; };
+    // Supabase replaces the User object when it refreshes an access token.
+    // The authenticated identity has not changed in that case, so key this
+    // profile lifecycle to the stable id instead of the object reference.
+    // This keeps the mounted appointment view, unsaved form values and open
+    // pet/game screen intact when a background tab becomes visible again.
+    }, [authenticatedUserId]);
+
+    const signOut = async () => {
+        // 1. Best-effort: clear the SSO cookie on the server
+        try {
+            await api.post('/logout');
+        } catch (err) {
+            // Expected to fail on localhost (no Cloudflare worker running)
+            console.warn('Backend /logout failed (ok on localhost):', err?.message);
+        }
+
+        // 2. Always clear Supabase session (works locally too)
+        try {
+            await supabase.auth.signOut();
+
+            // 3. Wipe localStorage
+            DataStore.setActiveClinicId(null);
+            setActiveClinicId(null);
+            localStorage.removeItem('appointmentApp_activeClinic');
+            for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+                const key = localStorage.key(i);
+                if (key && (key.startsWith('sb-') || key.startsWith('supabase.auth.'))) {
+                    localStorage.removeItem(key);
+                }
+            }
+
+            // 4. Clear React state
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setRole(null);
+
+            if (window.opener && !window.opener.closed) {
+                window.opener.postMessage(
+                    { type: 'SSO_LOGOUT', source: 'miniapp' },
+                    'https://app.snabbb.com'
+                );
+            }
+        } catch (err) {
+            console.error('Error signing out of Supabase:', err);
+        } finally {
+            window.location.href = 'https://app.snabbb.com';
+        }
+    };
+
+    const value = {
+        session,
+        user,
+        profile,
+        role,
+        activeClinicId,
+        loading,
+        error,
+        signOut,
+        isAdmin: role === 'admin',
+        isAuthenticated: !!user && !!profile
+    };
+
+    return (
+        <AuthContext.Provider value={value}>
+            {children}
+        </AuthContext.Provider>
+    );
+}

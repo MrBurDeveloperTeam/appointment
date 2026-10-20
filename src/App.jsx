@@ -1,28 +1,13 @@
 import useCompanySchedule from './hooks/useCompanySchedule';
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import React from 'react';
 import useDataStore from './hooks/useDataStore';
 import { useAuth } from './context/AuthProvider';
 import { ToastProvider, useToast } from './context/ToastProvider';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import CalendarView from './components/CalendarView';
-import TodayView from './components/TodayView';
-import PatientsView from './components/PatientsView';
-import SettingsView from './components/SettingsView';
-import ReportsView from './components/ReportsView';
-import ActivityView from './components/ActivityView';
-import RequestsView from './components/RequestsView';
-import AppointmentForm from './components/AppointmentForm';
-import PatientModal from './components/PatientModal';
-import LoginView from './components/LoginView';
-import LoginPage from './components/auth/LoginPage';
-import RegisterPage from './components/auth/RegisterPage';
-import AdminDashboard from './components/AdminDashboard';
-import PublicBookingView from './components/PublicBookingView';
 import ConfirmDialog from './components/ConfirmDialog';
-import TutorialVideoModal from './components/TutorialVideoModal';
-import CreditModal from './components/CreditModal';
+import { loadPetStyles } from './petExperience/loadPetStyles';
 import { todayISO } from './utils/date';
 import { isDateHoliday } from './utils/availability';
 import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
@@ -30,10 +15,6 @@ import { supabase } from './lib/supabaseClient';
 import DataStore from "./data";
 import { api } from './services/api';
 import { getWorkspaceCacheKey } from './services/workspaceContext';
-import CatMascot from './components/CatMascot';
-import AppointmentsVirtualPet from './petExperience/AppointmentsVirtualPet';
-import MolarAIFloat from './components/MolarAIFloat';
-import MeowdokuLauncher from './games/MeowdokuLauncher';
 import { useAppointmentPersonalizedInsight } from './aiExperience/hooks/useAppointmentPersonalizedInsight';
 import { isTodayCoveredByDateRange } from './aiExperience/utils/appointmentCoverage';
 import {
@@ -54,6 +35,42 @@ import usePageDurationTracker from './hooks/usePageDurationTracker';
 import useSessionDurationTracker from './hooks/useSessionDurationTracker';
 import { logActivityToOdoo } from './services/logActivityToOdoo';
 import {APPOINTMENT_PERMISSIONS,getAppointmentAccess,hasAppointmentPermission,} from "./services/appointmentAccess";
+
+// Code-split: only the shell (Sidebar/Header) is in the entry bundle. Views,
+// modals and the pet/AI extras load on demand so a phone does not have to
+// download + parse all of them before the first paint.
+const loadCalendarView = () => import('./components/CalendarView');
+const CalendarView = lazy(loadCalendarView);
+const loadTodayView = () => import('./components/TodayView');
+const TodayView = lazy(loadTodayView);
+const PatientsView = lazy(() => import('./components/PatientsView'));
+const SettingsView = lazy(() => import('./components/SettingsView'));
+const ReportsView = lazy(() => import('./components/ReportsView'));
+const ActivityView = lazy(() => import('./components/ActivityView'));
+const RequestsView = lazy(() => import('./components/RequestsView'));
+const AppointmentForm = lazy(() => import('./components/AppointmentForm'));
+const PatientModal = lazy(() => import('./components/PatientModal'));
+const LoginView = lazy(() => import('./components/LoginView'));
+const LoginPage = lazy(() => import('./components/auth/LoginPage'));
+const RegisterPage = lazy(() => import('./components/auth/RegisterPage'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const PublicBookingView = lazy(() => import('./components/PublicBookingView'));
+const TutorialVideoModal = lazy(() => import('./components/TutorialVideoModal'));
+const CatMascot = lazy(() => import('./components/CatMascot'));
+const AppointmentsVirtualPet = lazy(() => import('./petExperience/AppointmentsVirtualPet'));
+const MolarAIFloat = lazy(() => import('./components/MolarAIFloat'));
+const MeowdokuLauncher = lazy(() => import('./games/MeowdokuLauncher'));
+// Start fetching the landing views right away, in parallel with the auth chain.
+loadCalendarView();
+loadTodayView();
+
+const ViewFallback = () => (
+  <div role="status" aria-live="polite" style={{ padding: 24, opacity: 0.7 }}>Loading…</div>
+);
+const FullFallback = () => (
+  <div className="login-page"><div className="login-card"><h1 className="login-title">Loading…</h1></div></div>
+);
+
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -645,6 +662,33 @@ useEffect(() => {
   // Meowdoku uses pet-function's shared launcher; Appointment controls
   // opening the overlay and supplies its authenticated account.
   const [isMeowdokuOpen, setIsMeowdokuOpen] = useState(false);
+  const [meowdokuEverOpened, setMeowdokuEverOpened] = useState(false);
+  const [petExtrasReady, setPetExtrasReady] = useState(false);
+
+  useEffect(() => {
+    if (isMeowdokuOpen) setMeowdokuEverOpened(true);
+  }, [isMeowdokuOpen]);
+
+  // Mascot / virtual pet / Molar AI are non-essential: load their CSS + JS
+  // when the browser is idle after sign-in, not on the launch critical path.
+  useEffect(() => {
+    if (!user?.id || petExtrasReady) return undefined;
+    let cancelled = false;
+    const run = () => {
+      loadPetStyles().then(() => {
+        if (!cancelled) setPetExtrasReady(true);
+      });
+    };
+    const hasIdle = typeof window.requestIdleCallback === 'function';
+    const handle = hasIdle
+      ? window.requestIdleCallback(run, { timeout: 4000 })
+      : window.setTimeout(run, 1500);
+    return () => {
+      cancelled = true;
+      if (hasIdle) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
+    };
+  }, [user?.id, petExtrasReady]);
   const bookingSlug = getBookingSlugFromPath();
   const [authInitializing, setAuthInitializing] = useState(true);
 
@@ -1135,7 +1179,7 @@ useEffect(() => {
   }
 
   if (bookingSlug) {
-    return <PublicBookingView clinicSlug={bookingSlug} />;
+    return <Suspense fallback={<FullFallback />}><PublicBookingView clinicSlug={bookingSlug} /></Suspense>;
   }
 
   if (authLoading) {
@@ -1223,14 +1267,16 @@ useEffect(() => {
   }
 
   if (!user) {
-    if (window.location.pathname === '/login') return <LoginPage />;
-    if (window.location.pathname === '/register') return <RegisterPage />;
-    return <LoginView />;
+    if (window.location.pathname === '/login') return <Suspense fallback={<FullFallback />}><LoginPage /></Suspense>;
+    if (window.location.pathname === '/register') return <Suspense fallback={<FullFallback />}><RegisterPage /></Suspense>;
+    return <Suspense fallback={<FullFallback />}><LoginView /></Suspense>;
   }
 
   if (authRole === 'admin') {
     return (
-      <AdminDashboard onLogout={signOut} theme={theme} setTheme={handleSetTheme} />
+      <Suspense fallback={<FullFallback />}>
+        <AdminDashboard onLogout={signOut} theme={theme} setTheme={handleSetTheme} />
+      </Suspense>
     );
   }
 
@@ -1306,6 +1352,7 @@ useEffect(() => {
           isUnconfigured={isUnconfigured}
         />
         <div className="content">
+          <Suspense fallback={<ViewFallback />}>
           {(view === 'calendar' || view === 'today') && companySchedule.loading && <p role="status">Loading company appointments...</p>}
           {(view === 'calendar' || view === 'today') && companySchedule.error && <p role="alert">{companySchedule.error}</p>}
           {companyAppointment && (
@@ -1438,10 +1485,12 @@ useEffect(() => {
               refreshRequests={refreshRequests}
             />
           )}
+          </Suspense>
         </div>
       </main>
 
       {showAppointmentModal && (
+        <Suspense fallback={null}>
         <AppointmentForm
           clinicId={activeClinicId}
           patients={patients}
@@ -1461,9 +1510,11 @@ useEffect(() => {
             setAppointmentDefaults(null);
           }}
         />
+        </Suspense>
       )}
 
       {showPatientModal && (
+        <Suspense fallback={null}>
         <PatientModal
           patient={editingPatient}
           dentists={staff.filter((s) => s.role === 'dentist')}
@@ -1474,6 +1525,7 @@ useEffect(() => {
             setEditingPatient(null);
           }}
         />
+        </Suspense>
       )}
 
       {/* {(showCreditModal || isExpired) && (
@@ -1515,10 +1567,14 @@ useEffect(() => {
         onConfirm={handleConfirmDelete}
       />
 
-      <TutorialVideoModal
-        isOpen={showTutorialVideo}
-        onClose={closeTutorialVideo}
-      />
+      {showTutorialVideo && (
+        <Suspense fallback={null}>
+          <TutorialVideoModal
+            isOpen={showTutorialVideo}
+            onClose={closeTutorialVideo}
+          />
+        </Suspense>
+      )}
 
       {/* 🐱 MOLAR ECOSYSTEM */}
       {/* `key` on CatMascot/AppointmentsVirtualPet/MeowdokuLauncher forces
@@ -1529,6 +1585,8 @@ useEffect(() => {
           "still resolving". The permanent-mount `hidden`/`contents`
           wrapper below is unchanged — Cat still never unmounts merely
           because Virtual Pet opens/closes. */}
+      {petExtrasReady && (
+        <Suspense fallback={null}>
       <div className={isVirtualPetOpen ? 'hidden' : 'contents'}>
         <CatMascot
           key={user.id}
@@ -1561,12 +1619,19 @@ useEffect(() => {
       {/* Rendered as a sibling, outside SharedVirtualPet's own overlay, so
           it stacks above it (higher z-index) rather than being clipped by
           or nested inside the Pet's own DOM subtree. */}
-      <MeowdokuLauncher
-        key={`meowdoku-${user.id}`}
-        isOpen={isMeowdokuOpen}
-        onClose={() => setIsMeowdokuOpen(false)}
-        userId={user.id}
-      />
+        </Suspense>
+      )}
+
+      {petExtrasReady && meowdokuEverOpened && (
+        <Suspense fallback={null}>
+          <MeowdokuLauncher
+            key={`meowdoku-${user.id}`}
+            isOpen={isMeowdokuOpen}
+            onClose={() => setIsMeowdokuOpen(false)}
+            userId={user.id}
+          />
+        </Suspense>
+      )}
 
     </div>
   );

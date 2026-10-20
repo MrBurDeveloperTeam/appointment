@@ -51,6 +51,26 @@ export function AuthProvider({ children }) {
                         }
                     }
 
+                    // Focus re-check with a local session: ask the Worker only
+                    // whether the Snabbb login is still valid and still the same
+                    // user (no new Supabase session minted -- that is the ~1s
+                    // generate_link + verify cost). A 401 throws into the catch
+                    // below and signs this tab out, exactly as before. A different
+                    // user or unknown mapping falls through to the full exchange;
+                    // a network error keeps the local session (as before).
+                    if (!launchToken && forceCheck) {
+                        const { data: { session: localSession } } = await supabase.auth.getSession();
+                        if (localSession) {
+                            const { data: probe } = await api.get(
+                                'https://sso.snabbb.com/api/sso/exchange?probe=1',
+                                { timeout: 3000 }
+                            );
+                            if (probe?.ok && probe.user_id && probe.user_id === localSession.user.id) {
+                                return;
+                            }
+                        }
+                    }
+
                     const exchangePath = launchToken
                         ? `https://sso.snabbb.com/api/sso/exchange?sso_token=${encodeURIComponent(launchToken)}`
                         : 'https://sso.snabbb.com/api/sso/exchange';
@@ -199,6 +219,12 @@ export function AuthProvider({ children }) {
             try {
                 DataStore.setActiveClinicId(null);
                 setActiveClinicId(null);
+                // Start the access-context request in parallel with the profile
+                // query (it only needs the session, not the profile). Admins
+                // ignore it. getAppointmentAccess de-dupes in-flight calls, so
+                // this does not add a request for non-admins.
+                const accessPromise = getAppointmentAccess();
+                accessPromise.catch(() => {});
                 const { data, error: fetchError } = await supabase
                     .from('profiles')
                     .select('*')
@@ -211,7 +237,7 @@ export function AuthProvider({ children }) {
                 // Internal administrators retain their existing clinic management flow.
                 const access = data.account_type === 'admin'
                     ? null
-                    : await getAppointmentAccess();
+                    : await accessPromise;
                 const clinicId = data.account_type === 'admin'
                     ? data.clinic_id
                     : access.clinicId;

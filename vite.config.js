@@ -17,6 +17,20 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), sharedGamesPlugin()],
     resolve: { dedupe: ['react', 'react-dom'] },
+    build: {
+      rollupOptions: {
+        output: {
+          // Stable, separately-cacheable vendor chunks.
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+            if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'react';
+            if (id.includes('@supabase')) return 'supabase';
+            if (id.includes('framer-motion')) return 'motion';
+            return undefined;
+          },
+        },
+      },
+    },
     server: {
       port: 3000,
       host: '0.0.0.0',
