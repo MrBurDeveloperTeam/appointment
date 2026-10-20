@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import CatMascot from "./CatMascot";
 import MolarAIFloat from "./MolarAIFloat";
+import { loadPetStyles } from "../petExperience/loadPetStyles";
 import { SNABBB_APP_URL, SNABBB_SIGNUP_URL } from "../constants/authLinks";
 import {
   ArrowRight,
@@ -9,6 +10,17 @@ import {
 export default function LoginView() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState(null);
+  const [petStylesReady, setPetStylesReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadPetStyles().then(() => {
+      if (!cancelled) setPetStylesReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const goToAuth = (path) => {
     window.location.assign(path);
@@ -401,8 +413,12 @@ export default function LoginView() {
         </div>
       </footer>
 
-      <CatMascot disabled={true} />
-      <MolarAIFloat disabled={true} />
+      {petStylesReady && (
+        <>
+          <CatMascot disabled={true} />
+          <MolarAIFloat disabled={true} />
+        </>
+      )}
     </div>
   );
 }
