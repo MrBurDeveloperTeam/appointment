@@ -7,6 +7,7 @@ import { ToastProvider, useToast } from './context/ToastProvider';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import ConfirmDialog from './components/ConfirmDialog';
+import LaunchScreen from './components/LaunchScreen';
 import { loadPetStyles } from './petExperience/loadPetStyles';
 import { todayISO } from './utils/date';
 import { isDateHoliday } from './utils/availability';
@@ -67,9 +68,7 @@ loadTodayView();
 const ViewFallback = () => (
   <div role="status" aria-live="polite" style={{ padding: 24, opacity: 0.7 }}>Loading…</div>
 );
-const FullFallback = () => (
-  <div className="login-page"><div className="login-card"><h1 className="login-title">Loading…</h1></div></div>
-);
+const FullFallback = () => <LaunchScreen status="Loading your workspace…" />;
 
 
 const getLocalDateString = (date = new Date()) => {
@@ -1184,12 +1183,7 @@ useEffect(() => {
 
   if (authLoading) {
     return (
-      <div className="login-page">
-        <div className="login-card">
-          <h1 className="login-title">Loading your account…</h1>
-          <p className="login-subtitle">Please wait while we verify your session.</p>
-        </div>
-      </div>
+      <LaunchScreen status="Signing you in…" />
     );
   }
 
@@ -1257,12 +1251,7 @@ useEffect(() => {
 
   if (user && !isReady && authRole !== 'admin' && activeClinicId) {
     return (
-      <div className="login-page">
-        <div className="login-card">
-          <h1 className="login-title">Loading your clinic…</h1>
-          <p className="login-subtitle">We are fetching your appointments and settings.</p>
-        </div>
-      </div>
+      <LaunchScreen status="Loading your clinic…" />
     );
   }
 
