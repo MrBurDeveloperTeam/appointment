@@ -589,7 +589,7 @@ export default function SettingsView({
   const scheduleSummary = `${form.workingHoursStart}-${form.workingHoursEnd}, ${form.slotDuration} mins`;
   // Temporarily hide Malaysia holiday bulk loading without deleting its implementation.
   // Change this flag to true when the feature is ready to be shown again.
-  const showMalaysiaHolidayLoader = false;
+  const showMalaysiaHolidayLoader = true;
   const malaysiaHolidayYear = new Date().getFullYear();
   const buildMalaysiaHolidays = (year) => [
     { name: "New Year's Day", startDate: `${year}-01-01`, endDate: `${year}-01-01`, type: 'public', isPublic: true },
