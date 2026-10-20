@@ -523,10 +523,10 @@ const DataStore = {
       type: holiday.type || "public",
       is_public: holiday.isPublic || false,
     }));
-    const { error: deleteError } = await supabase.from("holidays").delete().eq("clinic_id", activeClinic);
+    const { error: deleteError } = await supabase.from("apt_holidays").delete().eq("clinic_id", activeClinic);
     if (deleteError) throw deleteError;
     if (payload.length) {
-      const { error: insertError } = await supabase.from("holidays").insert(payload);
+      const { error: insertError } = await supabase.from("apt_holidays").insert(payload);
       if (insertError) throw insertError;
     }
     await Activity.addActivityLog(activeClinic, {
@@ -591,13 +591,13 @@ const DataStore = {
     const tables = [
       "appointments",
       "appointment_requests",
-      "patients",
-      "staff",
-      "rooms",
-      "treatments",
-      "settings",
-      "holidays",
-      "activity_log",
+      "apt_patients",
+      "apt_staff",
+      "apt_rooms",
+      "apt_treatments",
+      "apt_settings",
+      "apt_holidays",
+      "apt_activity_log",
     ];
     for (const table of tables) {
       const { error } = await supabase.from(table).delete().eq("clinic_id", activeClinic);
@@ -652,7 +652,7 @@ const DataStore = {
     };
 
     await insert(
-      "rooms",
+      "apt_rooms",
       (data.rooms || []).map((r) => ({
         id: r.id,
         clinic_id: activeClinic,
@@ -662,7 +662,7 @@ const DataStore = {
     );
 
     await insert(
-      "treatments",
+      "apt_treatments",
       (data.treatments || []).map((t) => ({
         id: t.id,
         clinic_id: activeClinic,
@@ -676,7 +676,7 @@ const DataStore = {
     );
 
     await insert(
-      "staff",
+      "apt_staff",
       (data.staff || []).map((s) => ({
         id: s.id,
         clinic_id: activeClinic,
@@ -693,7 +693,7 @@ const DataStore = {
     );
 
     await insert(
-      "patients",
+      "apt_patients",
       (data.patients || []).map((p) => ({
         id: p.id,
         clinic_id: activeClinic,
@@ -738,13 +738,13 @@ const DataStore = {
         payload.id = data.settings.id;
       }
       const { error } = await supabase
-        .from("settings")
+        .from("apt_settings")
         .upsert(payload, { onConflict: "clinic_id" });
       if (error) throw error;
     }
 
     await insert(
-      "holidays",
+      "apt_holidays",
       (data.holidays || []).map((h) => ({
         id: h.id,
         clinic_id: activeClinic,
