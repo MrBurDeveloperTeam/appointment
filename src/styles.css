@@ -10119,3 +10119,11 @@ tbody tr:hover {
     padding: 0;
   }
 }
+
+/* Desktop: keep horizontal padding on the settings card header (title / subtitle / actions) */
+@media (min-width: 769px) {
+  .settings-card-header {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
