@@ -3,13 +3,16 @@ import { useAuth } from '../context/AuthProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, LogOut, Mail, Phone } from 'lucide-react';
 import { useProfileImage } from '../../hooks/useProfileImage';
+import { useOdooSessionName } from '../hooks/useOdooSessionName';
 
 export default function Header({ createAppLink, title, onNewAppointment, onToggleSidebar, credits, onOpenCredits, isSidebarOpen, isUnconfigured }) {
     const { user, signOut, role } = useAuth();
     const { profileImageUrl } = useProfileImage(Boolean(user));
+    // Name from Odoo get_session_info (same source as the App Gallery).
+    const odooSessionName = useOdooSessionName(Boolean(user), user?.email);
     const [failedImageUrl, setFailedImageUrl] = useState(null);
     const metadata = user?.user_metadata;
-    const displayName = metadata?.full_name || metadata?.name
+    const displayName = odooSessionName || metadata?.full_name || metadata?.name
         || [metadata?.first_name, metadata?.last_name].filter(Boolean).join(' ')
         || user?.email?.split('@')[0] || 'U';
     const initials = displayName.trim().split(/\s+/).filter(Boolean).slice(0, 2)
@@ -317,7 +320,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                       <div className="flex flex-col gap-3">
                         <div>
                           <p className="text-base font-bold text-[var(--text-primary)] truncate leading-tight">
-                            {user?.user_metadata?.name}
+                            {odooSessionName || user?.user_metadata?.name}
                           </p>
 
                           {user?.jobPosition && (
@@ -355,7 +358,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                           const res = await createAppLink({
                             app: 'reward',
                             email: user?.email,
-                            name: user?.user_metadata?.name,
+                            name: odooSessionName || user?.user_metadata?.name,
                           });
 
                           // The reward app signs the user in through this one-time SSO link.
@@ -408,7 +411,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                           const res = await createAppLink({
                             app: 'e-learning',
                             email: user?.email,
-                            name: user?.user_metadata?.name,
+                            name: odooSessionName || user?.user_metadata?.name,
                           });
                           
                           const supabaseUserId = res.result?.supabase_user_id;
@@ -448,7 +451,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                           const res = await createAppLink({
                             app: 'snabbb',
                             email: user?.email,
-                            name: user?.user_metadata?.name,
+                            name: odooSessionName || user?.user_metadata?.name,
                           });
                           
                           const supabaseUserId = res.result?.supabase_user_id;
