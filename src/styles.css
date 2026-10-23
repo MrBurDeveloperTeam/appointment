@@ -10086,3 +10086,17 @@ tbody tr:hover {
 .account-avatar-trigger img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}
 .account-avatar-trigger span{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:14px;font-weight:800;line-height:20px;letter-spacing:0}
 .account-avatar-trigger:focus-visible{outline:2px solid #94a3b8;outline-offset:3px}
+
+
+/* Inline spinner for buttons in a loading state */
+.btn-spinner {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 0.5em;
+  vertical-align: -0.125em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}

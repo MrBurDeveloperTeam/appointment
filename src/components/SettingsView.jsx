@@ -604,7 +604,9 @@ export default function SettingsView({
     { name: 'Deepavali', startDate: `${year}-10-20`, endDate: `${year}-10-20`, type: 'public', isPublic: true },
     { name: 'Christmas Day', startDate: `${year}-12-25`, endDate: `${year}-12-25`, type: 'public', isPublic: true },
   ];
-  const handleLoadMalaysiaHolidays = () => {
+  const [loadingMalaysiaHolidays, setLoadingMalaysiaHolidays] = useState(false);
+  const handleLoadMalaysiaHolidays = async () => {
+    if (loadingMalaysiaHolidays) return;
     const base = buildMalaysiaHolidays(malaysiaHolidayYear);
     const existing = (holidays || []).map((h) => ({
       name: h.name,
@@ -616,7 +618,12 @@ export default function SettingsView({
     const keyOf = (h) => `${h.name}-${h.startDate}`;
     const existingKeys = new Set(existing.map(keyOf));
     const merged = [...existing, ...base.filter((h) => !existingKeys.has(keyOf(h)))];
-    saveHolidays(merged);
+    setLoadingMalaysiaHolidays(true);
+    try {
+      await saveHolidays(merged);
+    } finally {
+      setLoadingMalaysiaHolidays(false);
+    }
   };
 
   // Inventory stock per item name + unit ([{ name, uom, qty }]); null = could not be loaded.
@@ -953,8 +960,20 @@ export default function SettingsView({
                   + Add Holiday
                 </button>
                 {showMalaysiaHolidayLoader && (
-                  <button className="btn btn-secondary btn-sm" onClick={handleLoadMalaysiaHolidays}>
-                    Load Malaysia Holidays
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={handleLoadMalaysiaHolidays}
+                    disabled={loadingMalaysiaHolidays}
+                    aria-busy={loadingMalaysiaHolidays}
+                  >
+                    {loadingMalaysiaHolidays ? (
+                      <>
+                        <span className="btn-spinner" aria-hidden="true" />
+                        Loading…
+                      </>
+                    ) : (
+                      'Load Malaysia Holidays'
+                    )}
                   </button>
                 )}
               </div>
