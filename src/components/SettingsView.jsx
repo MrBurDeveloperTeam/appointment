@@ -984,7 +984,7 @@ export default function SettingsView({
                   <button
                     key={h.id}
                     type="button"
-                    className="settings-list-item clickable"
+                    className="settings-list-item clickable holiday-row"
                     onClick={() => openHolidayModal(h)}
                   >
                     <div>

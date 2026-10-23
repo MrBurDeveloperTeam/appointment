@@ -10100,3 +10100,15 @@ tbody tr:hover {
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
+
+/* Holiday rows: grey background on hover instead of lift + shadow */
+.settings-list-item.holiday-row.clickable:hover {
+  background: #eceff1;
+  border-color: var(--border-light);
+  box-shadow: none;
+  transform: none;
+}
+
+:root[data-theme="dark"] .settings-list-item.holiday-row.clickable:hover {
+  background: var(--bg-hover);
+}
