@@ -10112,3 +10112,10 @@ tbody tr:hover {
 :root[data-theme="dark"] .settings-list-item.holiday-row.clickable:hover {
   background: var(--bg-hover);
 }
+
+/* Mobile: no inner padding on settings card bodies */
+@media (max-width: 768px) {
+  .settings-card-body {
+    padding: 0;
+  }
+}
