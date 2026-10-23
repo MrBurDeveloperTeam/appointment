@@ -4380,7 +4380,7 @@ tbody tr:hover {
 }
 
 .settings-card-body {
-  padding: var(--space-xs);
+  padding: 1rem;
   display: grid;
   gap: var(--space-md);
 }
