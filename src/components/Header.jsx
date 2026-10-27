@@ -446,19 +446,8 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                       )}
                         
                       {/* Settings */}
-                      <button
-                        onClick={async () => {
-                          const res = await createAppLink({
-                            app: 'snabbb',
-                            email: user?.email,
-                            name: odooSessionName || user?.user_metadata?.name,
-                          });
-                          
-                          const supabaseUserId = res.result?.supabase_user_id;
-                          if (supabaseUserId) {
-                            window.location.assign('https://app.snabbb.com/profile-settings');
-                          }
-                        }}
+                      <a
+                        href="https://app.snabbb.com/profile-settings"
                         className="w-full flex items-center px-4 py-3.5 hover:bg-[var(--bg-hover)] rounded-2xl transition-all group text-left"
                       >
                         <div className="flex-1 min-w-0">
@@ -466,7 +455,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                           <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">Account & preferences</p>
                         </div>
                         <ChevronRight size={12} className="shrink-0 text-[var(--border-strong)] group-hover:text-[var(--text-muted)] transition-colors" aria-hidden="true" />
-                      </button>
+                      </a>
                     </div>
                         
                     {/* Log Out */}
