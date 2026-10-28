@@ -824,10 +824,15 @@ export default function SettingsView({
 
         {activeSection === 'rooms' && (
           <div className="settings-card">
-            <div className="settings-card-header">
-              <div className="settings-card-title">Rooms</div>
-              <div className="settings-card-actions">
+            <div className="settings-card-header settings-card-header--managed">
+              <div className="settings-card-heading">
+                <div className="settings-card-title">Rooms</div>
                 <span className="settings-card-subtitle">{rooms.length} total</span>
+              </div>
+              <div className="settings-card-actions">
+                <button className="btn btn-primary btn-sm" type="button" style={lightPrimaryButtonStyle} onClick={() => openRoomModal()}>
+                  + Add Room
+                </button>
                 {archivedRooms.length > 0 && (
                   <button
                     type="button"
@@ -841,9 +846,6 @@ export default function SettingsView({
                     <span className="archived-rooms-toggle-count">{archivedRooms.length}</span>
                   </button>
                 )}
-                <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openRoomModal()}>
-                  + Add Room
-                </button>
               </div>
             </div>
             <div className="settings-card-body">
@@ -904,10 +906,15 @@ export default function SettingsView({
 
         {activeSection === 'treatments' && (
           <div className="settings-card">
-            <div className="settings-card-header">
-              <div className="settings-card-title">Treatments</div>
-              <div className="settings-card-actions">
+            <div className="settings-card-header settings-card-header--managed">
+              <div className="settings-card-heading">
+                <div className="settings-card-title">Treatments</div>
                 <span className="settings-card-subtitle">{activeTreatments.length} total</span>
+              </div>
+              <div className="settings-card-actions">
+                <button className="btn btn-primary btn-sm" type="button" style={lightPrimaryButtonStyle} onClick={() => openTreatmentModal()}>
+                  + Add Treatment
+                </button>
                 {archivedTreatments.length > 0 && (
                   <button
                     type="button"
@@ -917,9 +924,6 @@ export default function SettingsView({
                     {showArchivedTreatments ? 'Hide' : 'Show'} archived ({archivedTreatments.length})
                   </button>
                 )}
-                <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openTreatmentModal()}>
-                  + Add Treatment
-                </button>
               </div>
             </div>
             <div className="settings-card-body">
@@ -952,15 +956,18 @@ export default function SettingsView({
 
         {activeSection === 'holidays' && (
           <div className="settings-card">
-            <div className="settings-card-header">
-              <div className="settings-card-title">Holidays</div>
-              <div className="settings-card-actions">
+            <div className="settings-card-header settings-card-header--managed">
+              <div className="settings-card-heading">
+                <div className="settings-card-title">Holidays</div>
                 <span className="settings-card-subtitle">{holidays.length} configured</span>
-                <button className="btn btn-primary btn-sm" style={lightPrimaryButtonStyle} onClick={() => openHolidayModal()}>
+              </div>
+              <div className="settings-card-actions">
+                <button className="btn btn-primary btn-sm" type="button" style={lightPrimaryButtonStyle} onClick={() => openHolidayModal()}>
                   + Add Holiday
                 </button>
                 {showMalaysiaHolidayLoader && (
                   <button
+                    type="button"
                     className="btn btn-secondary btn-sm"
                     onClick={handleLoadMalaysiaHolidays}
                     disabled={loadingMalaysiaHolidays}

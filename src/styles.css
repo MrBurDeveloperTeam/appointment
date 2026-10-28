@@ -4422,6 +4422,13 @@ tbody tr:hover {
   gap: var(--space-sm);
 }
 
+.settings-card-heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
 .settings-card-title {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
@@ -10277,6 +10284,55 @@ tbody tr:hover {
 @media (max-width: 768px) {
   .settings-card-body {
     padding: 0;
+  }
+
+  .settings-card-header--managed {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-ms);
+    padding: var(--space-ms) 0 var(--space-md);
+  }
+
+  .settings-card-header--managed .settings-card-heading {
+    justify-content: space-between;
+  }
+
+  .settings-card-header--managed .settings-card-subtitle {
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .settings-card-header--managed .settings-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: var(--space-sm);
+  }
+
+  .settings-card-header--managed .settings-card-actions > .btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: var(--space-sm);
+    white-space: normal;
+    line-height: 1.25;
+    text-align: center;
+  }
+
+  .settings-card-header--managed .settings-card-actions > .btn:only-child {
+    grid-column: 1 / -1;
+  }
+
+  .settings-card-header--managed .archived-rooms-toggle-btn {
+    gap: var(--space-xs);
+  }
+
+  .settings-card-header--managed .archived-rooms-toggle-btn > span:nth-child(2) {
+    min-width: 0;
+  }
+
+  .settings-card-header--managed .archived-rooms-toggle-icon {
+    display: none;
   }
 }
 
