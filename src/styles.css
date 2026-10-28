@@ -2026,14 +2026,14 @@ p {
 .header-new-appointment {
   gap: 6px;
   padding-inline: 14px;
-  background: var(--primary-dark);
-  border: 1px solid var(--primary-dark);
-  color: #fff;
-  box-shadow: 0 2px 6px rgba(31, 122, 111, 0.18);
+  background: var(--primary-light);
+  border: 1px solid var(--primary-light);
+  color: #153f3b;
+  box-shadow: 0 2px 6px rgba(90, 184, 174, 0.22);
 }
 
 .header-new-appointment:hover {
-  box-shadow: 0 4px 10px rgba(31, 122, 111, 0.26);
+  box-shadow: 0 4px 10px rgba(90, 184, 174, 0.3);
 }
 
 .header-new-appointment:focus-visible {
