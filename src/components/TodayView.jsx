@@ -58,8 +58,7 @@ export default function TodayView({ appointments, patients, rooms, treatments, o
     return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Confirmed';
   };
 
-  const openDentalChart = (event, appointment, selectedPatient) => {
-    event.stopPropagation();
+  const openDentalChart = (appointment, selectedPatient) => {
     if (!selectedPatient?.id) return;
 
     window.open(dentalChartingUrl({
@@ -134,63 +133,65 @@ export default function TodayView({ appointments, patients, rooms, treatments, o
         {pagedAppointments.map((apt) => {
           const patient = patientDetails(apt.patientId);
           return (
-            <div
+            <article
               key={apt.id}
               className="today-appointment-card"
-              onClick={() => onAppointmentSelect && onAppointmentSelect(apt)}
-              style={{ cursor: 'pointer' }}
             >
-              <div className="today-appointment-time">
-                <span className="today-appointment-time-start">{formatTime(apt.startTime)}</span>
-                <span className="today-appointment-divider">-</span>
-                <span className="today-appointment-time-end">
-                  {formatTime(apt.endTime || addMinutes(apt.startTime, apt.duration || 30))}
+              <button
+                type="button"
+                className="today-appointment-details"
+                onClick={() => onAppointmentSelect?.(apt)}
+                disabled={!onAppointmentSelect}
+              >
+                <span className="today-appointment-time">
+                  <span className="today-appointment-time-start">{formatTime(apt.startTime)}</span>
+                  <span className="today-appointment-divider" aria-hidden="true">–</span>
+                  <span className="today-appointment-time-end">
+                    {formatTime(apt.endTime || addMinutes(apt.startTime, apt.duration || 30))}
+                  </span>
                 </span>
-              </div>
-              <div className="today-appointment-info">
-                <div className="today-appointment-header">
-                  <div className="today-appointment-patient">
-                    <span className="today-appointment-avatar">
-                      {patient ? getInitials(patient.name) : 'P'}
+                <span className="today-appointment-info">
+                  <span className="today-appointment-header">
+                    <span className="today-appointment-patient">
+                      <span className="today-appointment-avatar">
+                        {patient ? getInitials(patient.name) : 'P'}
+                      </span>
+                      <span className="today-appointment-patient-name">{apt.readOnly ? <CompanyAppointmentLabel appointment={apt} /> : patientName(apt.patientId)}</span>
+                      {patient?.is_flagged === true && <PatientFlag className="today-patient-flag" />}
                     </span>
-                    <span>{apt.readOnly ? <CompanyAppointmentLabel appointment={apt} /> : patientName(apt.patientId)}</span>
-                    {patient?.is_flagged === true && <PatientFlag className="today-patient-flag" />}
-                  </div>
-                  <div className="today-appointment-actions">
                     <span className={`today-status-pill ${apt.status || 'confirmed'}`}>
                       {statusLabel(apt.status)}
                     </span>
-                    <button
-                      type="button"
-                      className="today-dental-chart-button"
-                      disabled={apt.readOnly ? switchingCompany || !onOpenCompanyWorkspace : !patient}
-                      onClick={(event) => {
-                        if (apt.readOnly) {
-                          event.stopPropagation();
-                          onOpenCompanyWorkspace?.(apt);
-                        } else {
-                          openDentalChart(event, apt, patient);
-                        }
-                      }}
-                      aria-label={apt.readOnly ? `Open in ${apt.companyName} company workspace` : `Open ${patient?.name || 'patient'} in dental charting`}
-                    >
-                      {apt.readOnly ? (switchingCompany ? 'Switching...' : 'Open in company workspace') : 'Open in Dental Charting'}
-                      <span aria-hidden="true">↗</span>
-                    </button>
-                  </div>
-                </div>
-                <div className="today-appointment-meta">
-                  <span className="today-appointment-meta-item">{apt.duration || 30} mins</span>
-                  {apt.roomId && (
-                    <span className="today-appointment-meta-item">{roomName(apt.roomId)}</span>
-                  )}
-                  {apt.treatmentId && (
-                    <span className="today-appointment-meta-item">{treatmentName(apt.treatmentId)}</span>
-                  )}
-                </div>
-                {apt.notes && <div className="today-appointment-notes">{apt.notes}</div>}
-              </div>
-            </div>
+                  </span>
+                  <span className="today-appointment-meta">
+                    <span className="today-appointment-meta-item">{apt.duration || 30} mins</span>
+                    {apt.roomId && (
+                      <span className="today-appointment-meta-item">{roomName(apt.roomId)}</span>
+                    )}
+                    {apt.treatmentId && (
+                      <span className="today-appointment-meta-item">{treatmentName(apt.treatmentId)}</span>
+                    )}
+                  </span>
+                  {apt.notes && <span className="today-appointment-notes">{apt.notes}</span>}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="today-dental-chart-button"
+                disabled={apt.readOnly ? switchingCompany || !onOpenCompanyWorkspace : !patient}
+                onClick={() => {
+                  if (apt.readOnly) {
+                    onOpenCompanyWorkspace?.(apt);
+                  } else {
+                    openDentalChart(apt, patient);
+                  }
+                }}
+                aria-label={apt.readOnly ? `Open in ${apt.companyName} company workspace` : `Open ${patient?.name || 'patient'} in dental charting`}
+              >
+                {apt.readOnly ? (switchingCompany ? 'Switching...' : 'Open in company workspace') : 'Open in Dental Charting'}
+                <span aria-hidden="true">↗</span>
+              </button>
+            </article>
           );
         })}
       </div>
