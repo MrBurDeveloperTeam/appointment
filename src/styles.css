@@ -7280,6 +7280,11 @@ tbody tr:hover {
     gap: var(--space-sm);
   }
 
+  .reports-metric-card {
+    min-width: 0;
+    padding-inline: var(--space-sm);
+  }
+
   .reports-filter .form-select {
     width: 100%;
   }
@@ -8260,6 +8265,16 @@ tbody tr:hover {
 
   .reports-card {
     padding: var(--space-sm);
+  }
+}
+
+@media (max-width: 480px) {
+  .reports-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reports-metrics .reports-metric-card:last-child {
+    grid-column: 1 / -1;
   }
 }
 
