@@ -178,10 +178,11 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
     }, []);
 
     return (
-        <header className={`header${onNewAppointment ? ' header--with-action' : ''}`} style={{ position: 'relative', zIndex: 1000 }}>
+        <header className="header" style={{ position: 'relative', zIndex: 1000 }}>
             <div className="header-left">
                 {!isSidebarOpen && (
                     <button
+                        type="button"
                         className="btn btn-icon header-menu-btn"
                         onClick={onToggleSidebar}
                         aria-label="Open menu"
@@ -203,16 +204,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
               type="button"
               className="btn header-new-appointment"
               onClick={onNewAppointment}
-              style={{
-                gap: '6px',
-                paddingLeft: '14px',
-                paddingRight: '14px',
-                background: 'var(--primary-light)',
-                border: '1px solid var(--primary-light)',
-                color: '#ffffff',
-                boxShadow: '0 2px 6px rgba(90, 184, 174, 0.22)',
-                textShadow: 'none',
-              }}
+              aria-label="New appointment"
             >
               <svg
                 width="16"
@@ -229,7 +221,8 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
 
-              <span>New Appointment</span>
+              <span className="header-new-appointment-full">New Appointment</span>
+              <span className="header-new-appointment-short" aria-hidden="true">New</span>
             </button>
           )}
                 {/* Account Dropdown */}
@@ -370,7 +363,9 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
                           // a short-lived shared cookie and a query param on the SSO link.
                           try {
                             document.cookie = 'snabbb_reward_section=credit; domain=.snabbb.com; path=/; max-age=300; SameSite=Lax; Secure';
-                          } catch {}
+                          } catch {
+                            // The query parameter still carries the destination if cookies are blocked.
+                          }
                           const target = new URL(ssoUrl);
                           target.searchParams.set('section', 'credit');
 
