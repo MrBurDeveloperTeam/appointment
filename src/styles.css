@@ -9498,6 +9498,46 @@ tbody tr:hover {
   }
 }
 
+/* Give the page title its own row when the full action cannot fit beside it. */
+@media (max-width: 520px) {
+  .header--with-action {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "heading account"
+      "action action";
+    column-gap: var(--space-sm);
+    row-gap: var(--space-sm);
+  }
+
+  .header--with-action .header-left {
+    grid-area: heading;
+    width: 100%;
+  }
+
+  .header--with-action .header-title {
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .header--with-action .header-right {
+    display: contents;
+  }
+
+  .header--with-action .account-dropdown-container {
+    grid-area: account;
+    justify-self: end;
+  }
+
+  .header--with-action .header-new-appointment {
+    grid-area: action;
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
 /* Keep mobile account dropdown inside the screen */
 @media (max-width: 768px) {
   .header {

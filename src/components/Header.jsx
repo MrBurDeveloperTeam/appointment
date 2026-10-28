@@ -178,7 +178,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
     }, []);
 
     return (
-        <header className="header" style={{ position: 'relative', zIndex: 1000 }}>
+        <header className={`header${onNewAppointment ? ' header--with-action' : ''}`} style={{ position: 'relative', zIndex: 1000 }}>
             <div className="header-left">
                 {!isSidebarOpen && (
                     <button
@@ -201,7 +201,7 @@ export default function Header({ createAppLink, title, onNewAppointment, onToggl
           {onNewAppointment && (
             <button
               type="button"
-              className="btn"
+              className="btn header-new-appointment"
               onClick={onNewAppointment}
               style={{
                 gap: '6px',
