@@ -9,9 +9,9 @@
     "orientation": "any",
     "icons": [
         {
-            "src": "/assets/appointment.png",
+            "src": "/assets/appointment.webp",
             "sizes": "any",
-            "type": "image/png"
+            "type": "image/webp"
         }
     ]
 }
