@@ -74,7 +74,7 @@ export default function LoginView() {
     <div className="appointment-landing">
       <nav className="appointment-nav">
         <a className="appointment-brand" href={SNABBB_APP_URL} aria-label="Snabbb">
-          <img src="/assets/Snabbb (Teal).png" alt="Snabbb" />
+          <img src="/assets/Snabbb (Teal).webp" alt="Snabbb" />
           <span>Appointment</span>
         </a>
 
@@ -399,7 +399,7 @@ export default function LoginView() {
           href={SNABBB_APP_URL}
           aria-label="Snabbb"
         >
-          <img src="/assets/Snabbb (Teal).png" alt="Snabbb" />
+          <img src="/assets/Snabbb (Teal).webp" alt="Snabbb" />
           <span>Appointment</span>
         </a>
 

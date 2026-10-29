@@ -3,7 +3,7 @@ export default function AuthShell({ children, centered = false }) {
 }
 
 export function AuthLogo() {
-  return <a href="https://app.snabbb.com/" className="auth-logo" title="Go to Snabbb Home"><img src="/assets/Snabbb (Teal).png" alt="Snabbb" /></a>;
+  return <a href="https://app.snabbb.com/" className="auth-logo" title="Go to Snabbb Home"><img src="/assets/Snabbb (Teal).webp" alt="Snabbb" /></a>;
 }
 
 export function AuthField({ label, icon, help, children }) {
