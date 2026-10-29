@@ -157,7 +157,7 @@ export default function Sidebar({
         >
           <img
             className="sidebar-logo-img"
-            src={theme === 'dark' ? "/assets/Snabbb (White).png" : "/assets/Snabbb (Teal).webp"}
+            src={theme === 'dark' ? "/assets/Snabbb (White).webp" : "/assets/Snabbb (Teal).webp"}
             alt="Snabbb"
           />
         </div>
