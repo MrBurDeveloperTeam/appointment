@@ -12,7 +12,7 @@ export default function LaunchScreen({ title = 'Opening Appointment…', status 
     <div className="ls" role="status" aria-live="polite">
       <img
         className="ls-icon"
-        src="https://app.snabbb.com/icons/new-icons/appointment.png?v=1"
+        src="/assets/appointment.webp"
         alt=""
         width="160"
         height="160"
